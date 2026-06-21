@@ -14,7 +14,7 @@ function UI:CreateFrame()
   end
 
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "BasicFrameTemplateWithInset")
-  frame:SetSize(760, 520)
+  frame:SetSize(1040, 620)
   frame:SetPoint("CENTER")
   frame:Hide()
   frame:SetMovable(true)
@@ -32,38 +32,7 @@ function UI:CreateFrame()
   frame.subtitle:SetText("Bind buttons by purpose, not just spells.")
 
   self.frame = frame
-  self:CreateTabs()
   self:ShowLayouts()
-end
-
-function UI:CreateTabs()
-  local frame = self.frame
-  local tabs = {
-    {
-      id = "layouts",
-      label = "Layouts",
-      handler = function()
-        self:ShowLayouts()
-      end,
-    },
-    {
-      id = "groups",
-      label = "Action Groups",
-      handler = function()
-        self:ShowGroups()
-      end,
-    },
-  }
-
-  self.tabs = {}
-  for index, tab in ipairs(tabs) do
-    local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    button:SetSize(120, 24)
-    button:SetPoint("TOPLEFT", frame, "TOPLEFT", 16 + ((index - 1) * 126), -56)
-    button:SetText(tab.label)
-    button:SetScript("OnClick", tab.handler)
-    self.tabs[tab.id] = button
-  end
 end
 
 function UI:ClearContent()
@@ -73,7 +42,7 @@ function UI:ClearContent()
   end
 
   self.content = CreateFrame("Frame", nil, self.frame)
-  self.content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 16, -88)
+  self.content:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 16, -56)
   self.content:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 16)
 end
 

@@ -14,7 +14,8 @@ globals = {
   "MuscleMemoryDB",
   "SLASH_MUSCLEMEMORY1",
   "SLASH_MUSCLEMEMORY2",
-  "SlashCmdList"
+  "SlashCmdList",
+  "StaticPopupDialogs"
 }
 
 read_globals = {
@@ -32,7 +33,10 @@ read_globals = {
   "GameFontNormalSmall",
   "GameTooltip",
   "GetActionInfo",
+  "GetActionText",
+  "GetActionTexture",
   "GetCursorInfo",
+  "GetItemInfo",
   "GetItemCount",
   "GetMacroInfo",
   "GetNumMacros",
@@ -40,6 +44,7 @@ read_globals = {
   "GetSpellInfo",
   "HasAction",
   "InCombatLockdown",
+  "IsEquippedItem",
   "IsPlayerSpell",
   "IsSpellKnown",
   "MAX_ACCOUNT_MACROS",
@@ -48,6 +53,7 @@ read_globals = {
   "PickupMacro",
   "PickupSpell",
   "PlaceAction",
+  "StaticPopup_Show",
   "UIParent",
   "UnitClass",
   "UnitName",

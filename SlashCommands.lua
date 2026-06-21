@@ -39,6 +39,26 @@ function Slash:Handle(message)
     return
   end
 
+  if command == "capture" then
+    local root = MM.DB:GetRoot()
+    local layoutId = root.ui.selectedLayout or "Core"
+    if words[2] and words[2] ~= "all" then
+      local slot = tonumber(words[2])
+      local ok, reason = MM.ui.CaptureMode:CaptureSlot(layoutId, slot)
+      if ok then
+        MM:Print("captured " .. MM.Actions.GetSlotLabel(slot) .. " into layout " .. layoutId .. ".")
+      else
+        MM:Warn(reason or "could not capture slot")
+      end
+      return
+    end
+
+    local captured, _, failed, failures = MM.ui.CaptureMode:CaptureFilledSlots(layoutId)
+    MM:Print(string.format("captured %d filled slots into layout %s, failed %d.", captured, layoutId, failed))
+    MM.ui.CaptureMode:PrintFailures(failures)
+    return
+  end
+
   if command == "copygroup" then
     local sourceId = words[2]
     local targetId = words[3]
@@ -58,5 +78,7 @@ function Slash:Handle(message)
     return
   end
 
-  MM:Print("commands: /mm, /mm apply [profile], /mm preview [profile], /mm copygroup <standard> [custom]")
+  MM:Print(
+    "commands: /mm, /mm apply [profile], /mm preview [profile], /mm capture [slot|all], /mm copygroup <standard> [custom]"
+  )
 end

@@ -4,8 +4,11 @@ local Events = {}
 MM.Events = Events
 MM:RegisterModule("Events", Events)
 
+local PENDING_PROMPT_COOLDOWN_SECONDS = 30
+
 function Events:OnInitialize()
   local frame = MM.eventFrame
+  self.pendingPromptTimes = {}
   frame:RegisterEvent("PLAYER_REGEN_ENABLED")
   frame:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
   frame:RegisterEvent("SPELLS_CHANGED")
@@ -19,6 +22,18 @@ function Events:MarkPending(profileId, reason)
     reason = reason or "pending",
     time = time(),
   }
+end
+
+function Events:ShouldPrintPendingPrompt(profileId, reason)
+  local key = tostring(profileId) .. ":" .. tostring(reason)
+  local now = time()
+  local lastPrompt = self.pendingPromptTimes[key]
+  if lastPrompt and (now - lastPrompt) < PENDING_PROMPT_COOLDOWN_SECONDS then
+    return false
+  end
+
+  self.pendingPromptTimes[key] = now
+  return true
 end
 
 function Events:PromptOrApply(profileId, reason)
@@ -43,7 +58,9 @@ function Events:PromptOrApply(profileId, reason)
   end
 
   self:MarkPending(profileId, reason)
-  MM:Print(string.format("%s is pending because %s. Use /mm apply to apply it.", profile.name or profileId, reason))
+  if self:ShouldPrintPendingPrompt(profileId, reason) then
+    MM:Print(string.format("%s is pending because %s. Use /mm apply to apply it.", profile.name or profileId, reason))
+  end
 end
 
 function Events:OnEvent(event)

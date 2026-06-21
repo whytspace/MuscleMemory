@@ -50,6 +50,13 @@ function Spells.IsKnown(spellId)
     return true
   end
 
+  if IsSpellKnown then
+    local ok, known = pcall(IsSpellKnown, spellId, true)
+    if ok and known then
+      return true
+    end
+  end
+
   return false
 end
 

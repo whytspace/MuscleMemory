@@ -34,7 +34,9 @@ local function matchesRequirements(candidate)
   return true
 end
 
-function Resolver:ResolveAction(assignment)
+function Resolver:ResolveAction(assignment, options)
+  options = options or {}
+
   if not assignment then
     return nil, "missing assignment"
   end
@@ -54,27 +56,38 @@ function Resolver:ResolveAction(assignment)
   end
 
   if assignment.type == "spell" then
-    if MM.Spells.IsKnown(assignment.id) then
-      local info = MM.Spells.GetInfo(assignment.id)
+    local info = MM.Spells.GetInfo(assignment.id)
+    local available = MM.Spells.IsKnown(assignment.id)
+    if options.requireAvailable and not available then
+      return nil, "spell not known"
+    end
+
+    if info or available then
       return {
         kind = "spell",
         id = assignment.id,
         label = info and info.name or ("spell " .. tostring(assignment.id)),
         icon = info and info.icon,
+        pickupAvailable = available,
       }
     end
-    return nil, "spell not known"
+    return nil, "spell not found"
   end
 
   if assignment.type == "item" then
-    if MM.Items.IsOwned(assignment.id) then
+    local info = MM.Items.GetInfo(assignment.id)
+    if options.requireAvailable and not MM.Items.IsOwned(assignment.id) then
+      return nil, "item not owned"
+    end
+
+    if info or MM.Items.IsOwned(assignment.id) then
       return {
         kind = "item",
         id = assignment.id,
-        label = "item " .. tostring(assignment.id),
+        label = info and info.name or ("item " .. tostring(assignment.id)),
       }
     end
-    return nil, "item not owned"
+    return nil, "item not found"
   end
 
   if assignment.type == "macro" then
@@ -91,7 +104,11 @@ function Resolver:ResolveAction(assignment)
 
   if assignment.type == "mount" then
     local info = MM.Mounts.GetInfo(assignment.id)
-    if info and MM.Mounts.IsKnown(assignment.id) then
+    if options.requireAvailable and not MM.Mounts.IsKnown(assignment.id) then
+      return nil, "mount not known"
+    end
+
+    if info then
       return {
         kind = "mount",
         id = assignment.id,
@@ -99,7 +116,7 @@ function Resolver:ResolveAction(assignment)
         icon = info.icon,
       }
     end
-    return nil, "mount not known"
+    return nil, "mount not found"
   end
 
   if assignment.type == "equipmentset" then
@@ -140,7 +157,7 @@ function Resolver:ResolveGroupAssignment(assignment)
 
   for _, candidate in ipairs(group.candidates or {}) do
     if matchesRequirements(candidate) then
-      local resolved = self:ResolveAction(candidate)
+      local resolved = self:ResolveAction(candidate, { requireAvailable = true })
       if resolved then
         resolved.group = group
         return resolved

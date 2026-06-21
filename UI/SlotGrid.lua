@@ -3,76 +3,558 @@ local ADDON_NAME, MM = ...
 local SlotGrid = {}
 MM.ui.SlotGrid = SlotGrid
 
-local function getAssignmentLabel(assignment)
-  if not assignment then
-    return "Ignore"
-  end
+local ICON_SIZE = 32
+local CELL_GAP = 6
+local LEFT_WIDTH = 174
+local RIGHT_WIDTH = 250
+local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local DELETE_LAYOUT_DIALOG = "MUSCLEMEMORY_DELETE_LAYOUT"
 
-  if assignment.type == "group" then
-    local group = MM.DB:GetGroup({ source = assignment.source, id = assignment.id })
-    return group and group.name or ("Group: " .. tostring(assignment.id))
-  end
-
-  return assignment.type or "Ignore"
+local function sortedLayouts()
+  return MM.DB:GetActiveLayouts()
 end
 
-function SlotGrid:Build(parent)
-  local root = MM.DB:GetRoot()
-  local layoutId = root.ui.selectedLayout or "Core"
-  local layout = MM.DB:GetLayout(layoutId)
+local function sortedGroups()
+  local groups = {}
+  for groupId, group in pairs(MM.StandardGroups or {}) do
+    if MM.DB:IsStandardGroupEnabled(groupId) then
+      groups[#groups + 1] = {
+        source = "standard",
+        id = groupId,
+        name = group.name or groupId,
+      }
+    end
+  end
 
-  local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  title:SetPoint("TOPLEFT")
-  title:SetText("Layout: " .. (layout and layout.name or layoutId))
+  for groupId, group in pairs(MM.DB:GetRoot().customGroups or {}) do
+    if group.enabled ~= false then
+      groups[#groups + 1] = {
+        source = "custom",
+        id = groupId,
+        name = group.name or groupId,
+      }
+    end
+  end
 
-  local apply = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  apply:SetSize(90, 24)
-  apply:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
-  apply:SetText("Apply")
-  apply:SetScript("OnClick", function()
-    MM.Applier:ApplyProfile()
+  table.sort(groups, function(left, right)
+    return left.name < right.name
   end)
 
-  local preview = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  preview:SetSize(90, 24)
-  preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
-  preview:SetText("Preview")
-  preview:SetScript("OnClick", function()
+  return groups
+end
+
+local function makeButton(parent, text, width, onClick)
+  local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+  button:SetSize(width or 100, 22)
+  button:SetText(text)
+  button:SetScript("OnClick", onClick)
+  return button
+end
+
+local function makeListRow(parent, text, width, selected, onClick, rightInset)
+  local row = CreateFrame("Button", nil, parent)
+  row:SetSize(width, 26)
+  row:RegisterForClicks("LeftButtonUp")
+  row:SetScript("OnClick", onClick)
+
+  row.selected = row:CreateTexture(nil, "BACKGROUND")
+  row.selected:SetAllPoints()
+  row.selected:SetColorTexture(0.18, 0.32, 0.58, selected and 0.45 or 0)
+
+  row.hover = row:CreateTexture(nil, "BACKGROUND")
+  row.hover:SetAllPoints()
+  row.hover:SetColorTexture(1, 1, 1, 0.08)
+  row.hover:Hide()
+
+  row.accent = row:CreateTexture(nil, "ARTWORK")
+  row.accent:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -3)
+  row.accent:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 3)
+  row.accent:SetWidth(3)
+  row.accent:SetColorTexture(0.45, 0.65, 1, selected and 0.9 or 0)
+
+  row.label = row:CreateFontString(nil, "OVERLAY", selected and "GameFontHighlightSmall" or "GameFontNormalSmall")
+  row.label:SetPoint("LEFT", row, "LEFT", 8, 0)
+  row.label:SetPoint("RIGHT", row, "RIGHT", -(rightInset or 6), 0)
+  row.label:SetJustifyH("LEFT")
+  row.label:SetText(text)
+
+  row:SetScript("OnEnter", function(frame)
+    frame.hover:Show()
+  end)
+  row:SetScript("OnLeave", function(frame)
+    frame.hover:Hide()
+  end)
+
+  return row
+end
+
+local function makeEditBox(parent, width)
+  local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+  box:SetSize(width, 22)
+  box:SetAutoFocus(false)
+  return box
+end
+
+local function makeSectionLabel(parent, text)
+  local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  label:SetText(text)
+  return label
+end
+
+local function makeVerticalDivider(parent, relativeTo, relativePoint, x)
+  local divider = parent:CreateTexture(nil, "ARTWORK")
+  divider:SetPoint("TOP", relativeTo, "TOP" .. relativePoint, x, -4)
+  divider:SetPoint("BOTTOM", relativeTo, "BOTTOM" .. relativePoint, x, 4)
+  divider:SetWidth(1)
+  divider:SetColorTexture(1, 1, 1, 0.12)
+  return divider
+end
+
+local function makeSlotBorder(parent)
+  local border = {}
+  border.top = parent:CreateTexture(nil, "OVERLAY")
+  border.top:SetPoint("TOPLEFT")
+  border.top:SetPoint("TOPRIGHT")
+
+  border.bottom = parent:CreateTexture(nil, "OVERLAY")
+  border.bottom:SetPoint("BOTTOMLEFT")
+  border.bottom:SetPoint("BOTTOMRIGHT")
+
+  border.left = parent:CreateTexture(nil, "OVERLAY")
+  border.left:SetPoint("TOPLEFT")
+  border.left:SetPoint("BOTTOMLEFT")
+
+  border.right = parent:CreateTexture(nil, "OVERLAY")
+  border.right:SetPoint("TOPRIGHT")
+  border.right:SetPoint("BOTTOMRIGHT")
+
+  return border
+end
+
+local function setSlotBorder(border, thickness, r, g, b, a)
+  border.top:SetHeight(thickness)
+  border.bottom:SetHeight(thickness)
+  border.left:SetWidth(thickness)
+  border.right:SetWidth(thickness)
+
+  border.top:SetColorTexture(r, g, b, a)
+  border.bottom:SetColorTexture(r, g, b, a)
+  border.left:SetColorTexture(r, g, b, a)
+  border.right:SetColorTexture(r, g, b, a)
+end
+
+local function makeArrowButton(parent, direction, enabled, onClick)
+  local button = CreateFrame("Button", nil, parent)
+  button:SetSize(24, 24)
+  button:SetScript("OnClick", onClick)
+
+  local prefix = direction == "up" and "UI-ScrollBar-ScrollUpButton" or "UI-ScrollBar-ScrollDownButton"
+  button:SetNormalTexture("Interface\\Buttons\\" .. prefix .. "-Up")
+  button:SetPushedTexture("Interface\\Buttons\\" .. prefix .. "-Down")
+  button:SetDisabledTexture("Interface\\Buttons\\" .. prefix .. "-Disabled")
+  button:SetHighlightTexture("Interface\\Buttons\\" .. prefix .. "-Highlight")
+
+  if not enabled then
+    button:Disable()
+  end
+
+  return button
+end
+
+local function makeEmptyMarker(parent)
+  local marker = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
+  marker:SetPoint("CENTER", parent, "CENTER", 0, 0)
+  marker:SetText("X")
+  marker:SetTextColor(0.75, 0.82, 0.95, 0.95)
+  marker:Hide()
+  return marker
+end
+
+local function getLayoutSlot(layout, slot)
+  return layout and layout.slots and layout.slots[slot] or nil
+end
+
+local function refresh()
+  MM.UI:ShowLayouts()
+end
+
+local function deleteLayout(layoutId)
+  local ok, reason = MM.DB:DeleteLayout(layoutId)
+  if not ok then
+    MM:Warn(reason or "could not delete layout")
+  end
+  refresh()
+end
+
+local function confirmDeleteLayout(layoutId, layoutName)
+  if StaticPopupDialogs and StaticPopup_Show then
+    StaticPopupDialogs[DELETE_LAYOUT_DIALOG] = StaticPopupDialogs[DELETE_LAYOUT_DIALOG]
+      or {
+        text = "Delete layout %s?",
+        button1 = "Delete",
+        button2 = "Cancel",
+        OnAccept = function(_, data)
+          deleteLayout(data.layoutId)
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+      }
+    StaticPopup_Show(DELETE_LAYOUT_DIALOG, layoutName, nil, { layoutId = layoutId })
+    return
+  end
+
+  deleteLayout(layoutId)
+end
+
+local function assignSlot(layoutId, slot, assignment)
+  MM.ui.SlotEditor:SetAssignment(layoutId, slot, assignment)
+  MM.DB:SetSelectedSlot(slot)
+  refresh()
+end
+
+local function enableSlotFromBar(layoutId, slot)
+  local ok, reason = MM.ui.CaptureMode:CaptureSlot(layoutId, slot)
+  if not ok then
+    MM.ui.SlotEditor:SetAssignment(layoutId, slot, { type = "empty" })
+    if reason ~= "slot has no capturable action" then
+      MM:Warn(reason or "could not capture slot")
+    end
+  end
+
+  MM.DB:SetSelectedSlot(slot)
+  refresh()
+end
+
+local function assignCursor(layoutId, slot)
+  local assignment, reason = MM.ui.CaptureMode:GetAssignmentFromCursor()
+  if not assignment then
+    MM:Warn(reason or "could not read cursor")
+    return
+  end
+
+  assignSlot(layoutId, slot, assignment)
+  if ClearCursor then
+    ClearCursor()
+  end
+end
+
+function SlotGrid:BuildLayoutsPane(parent, layoutId)
+  local title = makeSectionLabel(parent, "Layouts")
+  title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+
+  local create = makeButton(parent, "New", 58, function()
+    local nextNumber = MM.Tables.Count(MM.DB:GetRoot().layouts or {}) + 1
+    MM.DB:CreateLayout("Layout " .. tostring(nextNumber))
+    refresh()
+  end)
+  create:SetPoint("TOPRIGHT", parent, "TOPLEFT", LEFT_WIDTH, 2)
+
+  local layouts = sortedLayouts()
+  local y = -30
+  for index, layout in ipairs(layouts) do
+    local button = makeListRow(
+      parent,
+      tostring(index) .. ". " .. layout.name,
+      LEFT_WIDTH,
+      layout.id == layoutId,
+      function()
+        MM.DB:SetSelectedLayoutId(layout.id)
+        MM.DB:SetSelectedSlot(nil)
+        refresh()
+      end,
+      58
+    )
+    button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
+
+    local up = makeArrowButton(button, "up", index > 1, function()
+      if MM.DB:MoveActiveLayout(layout.id, -1) then
+        MM.DB:SetSelectedLayoutId(layout.id)
+        refresh()
+      end
+    end)
+    up:SetPoint("RIGHT", button, "RIGHT", -25, 0)
+
+    local down = makeArrowButton(button, "down", index < #layouts, function()
+      if MM.DB:MoveActiveLayout(layout.id, 1) then
+        MM.DB:SetSelectedLayoutId(layout.id)
+        refresh()
+      end
+    end)
+    down:SetPoint("RIGHT", button, "RIGHT", -1, 0)
+
+    y = y - 28
+  end
+end
+
+function SlotGrid:BuildToolbar(parent, layoutId)
+  local preview = makeButton(parent, "Preview", 78, function()
     MM.Applier:PreviewProfile()
   end)
+  preview:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
 
-  local help = parent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  help:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-  help:SetText("Click a slot to cycle: Ignore -> Empty -> Kick / Interrupt -> Taunt.")
+  local apply = makeButton(parent, "Apply", 70, function()
+    MM.Applier:ApplyProfile()
+  end)
+  apply:SetPoint("RIGHT", preview, "LEFT", -8, 0)
 
-  local startY = -52
+  local enableAll = makeButton(parent, "Enable All", 90, function()
+    MM.DB:SetAllLayoutSlots(layoutId, true)
+    refresh()
+  end)
+  enableAll:SetPoint("RIGHT", apply, "LEFT", -8, 0)
+
+  local disableAll = makeButton(parent, "Disable All", 90, function()
+    MM.DB:SetAllLayoutSlots(layoutId, false)
+    MM.DB:SetSelectedSlot(nil)
+    refresh()
+  end)
+  disableAll:SetPoint("RIGHT", enableAll, "LEFT", -8, 0)
+end
+
+function SlotGrid:BuildSlotButton(parent, layoutId, layout, slot, point, relativeTo, x, y)
+  local assignment = getLayoutSlot(layout, slot)
+  local configured = assignment ~= nil
+  local selected = MM.DB:GetSelectedSlot() == slot
+
+  local button = CreateFrame("Button", nil, parent)
+  button:SetSize(ICON_SIZE, ICON_SIZE)
+  button:SetPoint(point, relativeTo, x, y)
+  button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  button:RegisterForDrag("LeftButton")
+
+  button.bg = button:CreateTexture(nil, "BACKGROUND")
+  button.bg:SetAllPoints()
+  button.bg:SetColorTexture(0.04, 0.04, 0.04, configured and 0.95 or 0.25)
+
+  button.icon = button:CreateTexture(nil, "ARTWORK")
+  button.icon:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+  button.icon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+
+  button.emptyMarker = makeEmptyMarker(button)
+
+  local iconState = configured and MM.Actions.GetAssignmentIconState(assignment, slot, layout)
+    or {
+      kind = "icon",
+      texture = MM.Actions.GetLiveSlotIcon(slot),
+    }
+  if iconState.kind == "empty" then
+    button.icon:SetColorTexture(0, 0, 0, 0)
+    button.emptyMarker:Show()
+  elseif iconState.kind == "ignore" then
+    button.icon:SetColorTexture(0, 0, 0, 0)
+  elseif iconState.kind == "preserve" then
+    button.icon:SetTexture(QUESTION_ICON)
+  elseif iconState.texture then
+    button.icon:SetTexture(iconState.texture)
+  else
+    button.icon:SetColorTexture(0, 0, 0, 0)
+  end
+  button.icon:SetAlpha(configured and 1 or 0.45)
+
+  button.border = makeSlotBorder(button)
+  if selected then
+    setSlotBorder(button.border, 3, 0.45, 0.68, 1, 0.95)
+  elseif configured then
+    setSlotBorder(button.border, 2, 0.32, 0.58, 1, 0.78)
+  else
+    setSlotBorder(button.border, 1, 0.85, 0.9, 1, 0.16)
+  end
+
+  button:SetAlpha(configured and 1 or 0.68)
+  button.tooltipText = MM.Actions.GetAssignmentLabel(assignment)
+  button:SetScript("OnEnter", function(frame)
+    GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+    GameTooltip:SetText(MM.Actions.GetSlotLabel(slot))
+    if configured then
+      GameTooltip:AddLine(frame.tooltipText, 1, 1, 1)
+    else
+      GameTooltip:AddLine("Disabled in this layout", 0.75, 0.75, 0.75)
+    end
+    GameTooltip:Show()
+  end)
+  button:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+  end)
+  button:SetScript("OnClick", function(_, mouseButton)
+    if GetCursorInfo and GetCursorInfo() then
+      assignCursor(layoutId, slot)
+      return
+    end
+
+    if mouseButton == "RightButton" then
+      assignSlot(layoutId, slot, nil)
+      return
+    end
+
+    if not configured then
+      enableSlotFromBar(layoutId, slot)
+    else
+      MM.DB:SetSelectedSlot(slot)
+      refresh()
+    end
+  end)
+  button:SetScript("OnReceiveDrag", function()
+    assignCursor(layoutId, slot)
+  end)
+end
+
+function SlotGrid:BuildGrid(parent, layoutId, layout)
+  local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+  title:SetText("Layout")
+
+  local nameBox = makeEditBox(parent, 170)
+  nameBox:SetPoint("LEFT", title, "RIGHT", 12, 0)
+  nameBox:SetText(layout and layout.name or layoutId)
+  nameBox:SetCursorPosition(0)
+
+  local delete = makeButton(parent, "Delete", 66, function()
+    confirmDeleteLayout(layoutId, layout and layout.name or layoutId)
+  end)
+  delete:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
+  if MM.Tables.Count(MM.DB:GetRoot().layouts or {}) <= 1 then
+    delete:Disable()
+  end
+
+  local originalName = layout and layout.name or layoutId
+  local function saveName()
+    local value = nameBox:GetText()
+    if value == originalName then
+      return
+    end
+
+    local ok, reason = MM.DB:RenameLayout(layoutId, value)
+    if ok then
+      refresh()
+    else
+      nameBox:SetText(originalName)
+      MM:Warn(reason or "could not rename layout")
+    end
+  end
+
+  nameBox:SetScript("OnEnterPressed", function(frame)
+    frame:ClearFocus()
+  end)
+  nameBox:SetScript("OnEscapePressed", function(frame)
+    frame:SetText(originalName)
+    frame:ClearFocus()
+  end)
+  nameBox:SetScript("OnEditFocusLost", saveName)
+
+  self:BuildToolbar(parent, layoutId)
+
+  local grid = CreateFrame("Frame", nil, parent)
+  grid:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -42)
+  grid:SetSize(520, 420)
+
+  for column = 1, MM.ACTIONS_PER_BAR do
+    local header = grid:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    header:SetPoint("TOPLEFT", grid, "TOPLEFT", 54 + ((column - 1) * (ICON_SIZE + CELL_GAP)), 0)
+    header:SetText(tostring(column))
+  end
+
   for bar = 1, math.floor(MM.MAX_ACTION_SLOT / MM.ACTIONS_PER_BAR) do
-    local barLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    barLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, startY - ((bar - 1) * 34) - 6)
-    barLabel:SetText("Bar " .. bar)
+    local rowLabel = grid:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    rowLabel:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, -24 - ((bar - 1) * (ICON_SIZE + CELL_GAP)))
+    rowLabel:SetText("Bar " .. tostring(bar))
 
     for buttonIndex = 1, MM.ACTIONS_PER_BAR do
       local slot = ((bar - 1) * MM.ACTIONS_PER_BAR) + buttonIndex
-      local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-      button:SetSize(48, 28)
-      button:SetPoint("TOPLEFT", parent, "TOPLEFT", 54 + ((buttonIndex - 1) * 52), startY - ((bar - 1) * 34))
-
-      local assignment = layout and layout.slots[slot]
-      button:SetText(buttonIndex)
-      button.tooltipText = getAssignmentLabel(assignment)
-      button:SetScript("OnEnter", function(buttonFrame)
-        GameTooltip:SetOwner(buttonFrame, "ANCHOR_RIGHT")
-        GameTooltip:SetText(MM.Actions.GetSlotLabel(slot))
-        GameTooltip:AddLine(buttonFrame.tooltipText, 1, 1, 1)
-        GameTooltip:Show()
-      end)
-      button:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-      end)
-      button:SetScript("OnClick", function()
-        MM.ui.SlotEditor:CycleSlot(layoutId, slot)
-        MM.UI:ShowLayouts()
-      end)
+      self:BuildSlotButton(
+        grid,
+        layoutId,
+        layout,
+        slot,
+        "TOPLEFT",
+        grid,
+        54 + ((buttonIndex - 1) * (ICON_SIZE + CELL_GAP)),
+        -18 - ((bar - 1) * (ICON_SIZE + CELL_GAP))
+      )
     end
   end
+end
+
+function SlotGrid:BuildSlotPane(parent, layoutId, layout)
+  local selectedSlot = MM.DB:GetSelectedSlot()
+  local title = makeSectionLabel(parent, "Selected Slot")
+  title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+
+  if not selectedSlot then
+    local note = parent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    note:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
+    note:SetWidth(RIGHT_WIDTH)
+    note:SetJustifyH("LEFT")
+    note:SetText("Click a faded slot to enable and capture it, or click an enabled slot to edit it.")
+    return
+  end
+
+  local assignment = getLayoutSlot(layout, selectedSlot)
+  local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  label:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
+  label:SetWidth(RIGHT_WIDTH)
+  label:SetJustifyH("LEFT")
+  label:SetText(MM.Actions.GetSlotLabel(selectedSlot) .. ": " .. MM.Actions.GetAssignmentLabel(assignment))
+
+  local capture = makeButton(parent, "Capture Current", 118, function()
+    local ok, reason = MM.ui.CaptureMode:CaptureSlot(layoutId, selectedSlot)
+    if not ok then
+      MM:Warn(reason or "could not capture slot")
+    end
+    refresh()
+  end)
+  capture:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -12)
+
+  local empty = makeButton(parent, "Empty", 62, function()
+    assignSlot(layoutId, selectedSlot, { type = "empty" })
+  end)
+  empty:SetPoint("LEFT", capture, "RIGHT", 8, 0)
+
+  local disable = makeButton(parent, "Disable", 70, function()
+    assignSlot(layoutId, selectedSlot, nil)
+  end)
+  disable:SetPoint("LEFT", empty, "RIGHT", 8, 0)
+
+  local groupsLabel = makeSectionLabel(parent, "Action Groups")
+  groupsLabel:SetPoint("TOPLEFT", capture, "BOTTOMLEFT", 0, -22)
+
+  local y = -26
+  for _, group in ipairs(sortedGroups()) do
+    local button = makeButton(parent, group.name, RIGHT_WIDTH, function()
+      assignSlot(layoutId, selectedSlot, {
+        type = "group",
+        source = group.source,
+        id = group.id,
+        unresolvedFallback = "inherit",
+      })
+    end)
+    button:SetPoint("TOPLEFT", groupsLabel, "BOTTOMLEFT", 0, y)
+    y = y - 24
+  end
+end
+
+function SlotGrid:Build(parent)
+  local layoutId = MM.DB:GetSelectedLayoutId()
+  local layout = MM.DB:GetLayout(layoutId)
+
+  local left = CreateFrame("Frame", nil, parent)
+  left:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+  left:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
+  left:SetWidth(LEFT_WIDTH)
+  self:BuildLayoutsPane(left, layoutId)
+
+  makeVerticalDivider(parent, left, "RIGHT", 9)
+
+  local center = CreateFrame("Frame", nil, parent)
+  center:SetPoint("TOPLEFT", left, "TOPRIGHT", 18, 0)
+  center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RIGHT_WIDTH + 18), 0)
+  self:BuildGrid(center, layoutId, layout)
+
+  local right = CreateFrame("Frame", nil, parent)
+  right:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
+  right:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+  right:SetWidth(RIGHT_WIDTH)
+  makeVerticalDivider(parent, right, "LEFT", -9)
+  self:BuildSlotPane(right, layoutId, layout)
 end

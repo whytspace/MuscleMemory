@@ -9,6 +9,12 @@ local function Spell(spellId)
   }
 end
 
+local function ClassSpell(spellId, classes)
+  local spell = Spell(spellId)
+  spell.classes = classes
+  return spell
+end
+
 MM.StandardGroups = {
   lust = {
     id = "lust",
@@ -21,7 +27,7 @@ MM.StandardGroups = {
       Spell(S.HEROISM),
       Spell(S.TIME_WARP),
       Spell(S.FURY_OF_THE_ASPECTS),
-      Spell(S.PRIMAL_RAGE),
+      ClassSpell(S.COMMAND_PET, { "HUNTER" }),
     },
   },
   interrupt = {

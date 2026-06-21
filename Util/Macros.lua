@@ -67,6 +67,31 @@ function Macros.Scan()
   return results
 end
 
+function Macros.FindUniqueByName(name)
+  if not name then
+    return nil, "macro name unavailable"
+  end
+
+  local match
+  local count = 0
+  for _, macro in ipairs(Macros.Scan()) do
+    if macro.name == name then
+      match = macro
+      count = count + 1
+    end
+  end
+
+  if count == 1 then
+    return match
+  end
+
+  if count > 1 then
+    return nil, "macro name is ambiguous"
+  end
+
+  return nil, "macro name not found"
+end
+
 function Macros.Resolve(reference)
   if not reference or not reference.bodyHash then
     return nil, "macro reference has no body hash"

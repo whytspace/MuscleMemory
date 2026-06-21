@@ -4,27 +4,6 @@ local Applier = {}
 MM.Applier = Applier
 MM:RegisterModule("Applier", Applier)
 
-local function sortedActiveLayouts(profile)
-  local active = {}
-  for layoutId, config in pairs(profile.activeLayouts or {}) do
-    if config.enabled ~= false then
-      active[#active + 1] = {
-        id = layoutId,
-        order = config.order or 100,
-      }
-    end
-  end
-
-  table.sort(active, function(left, right)
-    if left.order == right.order then
-      return left.id < right.id
-    end
-    return left.order < right.order
-  end)
-
-  return active
-end
-
 function Applier:BuildPlan(profileId)
   local profile = MM.DB:GetProfile(profileId)
   if not profile then
@@ -35,41 +14,57 @@ function Applier:BuildPlan(profileId)
     profileId = profileId or MM.DB:GetActiveProfileId(),
     slots = {},
     conflicts = {},
+    layouts = MM.DB:GetActiveLayouts(profileId),
   }
 
-  for _, activeLayout in ipairs(sortedActiveLayouts(profile)) do
-    local layout = MM.DB:GetLayout(activeLayout.id)
-    if layout and layout.enabled ~= false then
-      for slot, assignment in pairs(layout.slots or {}) do
-        local numericSlot = tonumber(slot)
-        if not MM.Actions.IsValidSlot(numericSlot) then
-          plan.conflicts[#plan.conflicts + 1] = {
-            slot = tostring(slot),
-            firstLayout = activeLayout.id,
-            secondLayout = "invalid slot",
-          }
-        elseif plan.slots[numericSlot] then
-          plan.conflicts[#plan.conflicts + 1] = {
-            slot = numericSlot,
-            firstLayout = plan.slots[numericSlot].layoutId,
-            secondLayout = activeLayout.id,
-          }
-        else
-          local resolved, reason = MM.Resolver:ResolveAction(assignment)
-          local fallback, fallbackSource = MM.Resolver:GetEffectiveFallback(assignment, layout)
-          plan.slots[numericSlot] = {
-            slot = numericSlot,
-            layoutId = activeLayout.id,
-            layout = layout,
-            assignment = assignment,
-            resolved = resolved,
-            unresolvedReason = reason,
-            fallback = fallback,
-            fallbackSource = fallbackSource,
-          }
+  for _, activeLayout in ipairs(plan.layouts) do
+    for slot in pairs(activeLayout.layout.slots or {}) do
+      local numericSlot = tonumber(slot)
+      if not MM.Actions.IsValidSlot(numericSlot) then
+        plan.conflicts[#plan.conflicts + 1] = {
+          slot = tostring(slot),
+          firstLayout = activeLayout.id,
+          secondLayout = "invalid slot",
+        }
+      end
+    end
+  end
+
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local finalEntry
+    local terminalEntry
+
+    for _, activeLayout in ipairs(plan.layouts) do
+      local layout = activeLayout.layout
+      local assignment = layout.slots and layout.slots[slot]
+      if assignment then
+        local resolved, reason = MM.Resolver:ResolveAction(assignment)
+        local fallback, fallbackSource = MM.Resolver:GetEffectiveFallback(assignment, layout)
+        local entry = {
+          slot = slot,
+          layoutId = activeLayout.id,
+          layout = layout,
+          assignment = assignment,
+          resolved = resolved,
+          unresolvedReason = reason,
+          fallback = fallback,
+          fallbackSource = fallbackSource,
+        }
+
+        if not (resolved and resolved.kind == "ignore") then
+          if resolved and resolved.kind == "empty" then
+            terminalEntry = entry
+          elseif resolved then
+            finalEntry = entry
+            break
+          else
+            terminalEntry = entry
+          end
         end
       end
     end
+
+    plan.slots[slot] = finalEntry or terminalEntry
   end
 
   return plan
@@ -86,23 +81,113 @@ function Applier:PreviewProfile(profileId)
     for _, conflict in ipairs(plan.conflicts) do
       MM:Warn(
         string.format(
-          "slot %d is assigned by both %s and %s.",
-          conflict.slot,
+          "layout %s contains invalid slot %s (%s).",
           conflict.firstLayout,
+          tostring(conflict.slot),
           conflict.secondLayout
         )
       )
     end
   end
 
-  local count = 0
-  for slot, entry in pairs(plan.slots) do
-    count = count + 1
-    local label = entry.resolved and entry.resolved.label or ("unresolved: " .. tostring(entry.unresolvedReason))
-    MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), label))
+  local managed = 0
+  local changed = 0
+  local unchanged = 0
+  local unresolvedKept = 0
+  local unresolvedCleared = 0
+  local unresolvedKeptEntries = {}
+  local unrestorableEntries = {}
+  local unavailable = 0
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local entry = plan.slots[slot]
+    if entry then
+      managed = managed + 1
+
+      if entry.resolved then
+        if MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
+          unchanged = unchanged + 1
+        elseif entry.resolved.pickupAvailable == false then
+          unavailable = unavailable + 1
+          unchanged = unchanged + 1
+          MM:Warn(
+            string.format(
+              "%s cannot restore %s because it is not currently available.",
+              MM.Actions.GetSlotLabel(slot),
+              entry.resolved.label
+            )
+          )
+        else
+          changed = changed + 1
+          MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), entry.resolved.label))
+        end
+      elseif entry.fallback == "clear" then
+        if HasAction and HasAction(slot) then
+          changed = changed + 1
+          unresolvedCleared = unresolvedCleared + 1
+          MM:Print(
+            string.format("%s -> clear unresolved slot (%s)", MM.Actions.GetSlotLabel(slot), entry.unresolvedReason)
+          )
+        else
+          unchanged = unchanged + 1
+        end
+      elseif MM.Actions.IsAssignmentInSlot(entry.assignment, slot) then
+        unchanged = unchanged + 1
+        unrestorableEntries[#unrestorableEntries + 1] = entry
+      else
+        unchanged = unchanged + 1
+        unresolvedKept = unresolvedKept + 1
+        unresolvedKeptEntries[#unresolvedKeptEntries + 1] = entry
+      end
+    end
   end
 
-  MM:Print(string.format("previewed %d managed slots.", count))
+  if MM.DB:GetRoot().debug and #unrestorableEntries > 0 then
+    for _, entry in ipairs(unrestorableEntries) do
+      MM:Debug(
+        string.format(
+          "%s currently matches but is not restorable: %s (%s).",
+          MM.Actions.GetSlotLabel(entry.slot),
+          tostring(entry.unresolvedReason),
+          MM.Actions.GetAssignmentLabel(entry.assignment)
+        )
+      )
+      MM:Debug(MM.Actions.GetRawSlotLabel(entry.slot))
+    end
+  end
+
+  if changed == 0 then
+    MM:Print(string.format("previewed %d managed slots: no changes.", managed))
+  else
+    MM:Print(string.format("previewed %d managed slots: %d would change, %d unchanged.", managed, changed, unchanged))
+  end
+
+  if unresolvedCleared > 0 then
+    MM:Print(string.format("%d unresolved slots would be cleared by fallback.", unresolvedCleared))
+  end
+
+  if unavailable > 0 then
+    MM:Print(string.format("%d managed slots cannot currently be restored.", unavailable))
+  end
+
+  if unresolvedKept > 0 then
+    if MM.DB:GetRoot().debug then
+      for _, entry in ipairs(unresolvedKeptEntries) do
+        MM:Debug(
+          string.format(
+            "%s unresolved: %s. Fallback keep leaves it unchanged.",
+            MM.Actions.GetSlotLabel(entry.slot),
+            tostring(entry.unresolvedReason) .. " (" .. MM.Actions.GetAssignmentLabel(entry.assignment) .. ")"
+          )
+        )
+        MM:Debug(MM.Actions.GetRawSlotLabel(entry.slot))
+      end
+    else
+      MM:Print(
+        string.format("%d unresolved slots would be left unchanged. Use /mm debug to list them.", unresolvedKept)
+      )
+    end
+  end
+
   return plan
 end
 
@@ -142,6 +227,10 @@ function Applier:ApplyEntry(entry)
 
   if entry.resolved.kind == "empty" then
     return MM.Actions.ClearSlot(slot)
+  end
+
+  if entry.resolved.pickupAvailable == false then
+    return false, "action is not currently available"
   end
 
   local pickedUp
@@ -186,7 +275,7 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   if #plan.conflicts > 0 and not options.allowConflicts then
-    MM:Warn("cannot apply because active layouts contain slot conflicts. Use /mm preview for details.")
+    MM:Warn("cannot apply because active layouts contain invalid slots. Use /mm preview for details.")
     return false
   end
 
@@ -194,25 +283,28 @@ function Applier:ApplyProfile(profileId, options)
   local unchanged = 0
   local failed = 0
 
-  for _, entry in pairs(plan.slots) do
-    local ok, applyReason = self:ApplyEntry(entry)
-    if ok then
-      if entry.resolved then
-        applied = applied + 1
-      else
-        unchanged = unchanged + 1
-        MM:Warn(
-          string.format(
-            "%s unresolved: %s. %s.",
-            MM.Actions.GetSlotLabel(entry.slot),
-            entry.unresolvedReason,
-            entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local entry = plan.slots[slot]
+    if entry then
+      local ok, applyReason = self:ApplyEntry(entry)
+      if ok then
+        if entry.resolved then
+          applied = applied + 1
+        else
+          unchanged = unchanged + 1
+          MM:Warn(
+            string.format(
+              "%s unresolved: %s. %s.",
+              MM.Actions.GetSlotLabel(entry.slot),
+              entry.unresolvedReason,
+              entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
+            )
           )
-        )
+        end
+      else
+        failed = failed + 1
+        MM:Warn(string.format("%s failed: %s", MM.Actions.GetSlotLabel(entry.slot), applyReason))
       end
-    else
-      failed = failed + 1
-      MM:Warn(string.format("%s failed: %s", MM.Actions.GetSlotLabel(entry.slot), applyReason))
     end
   end
 
