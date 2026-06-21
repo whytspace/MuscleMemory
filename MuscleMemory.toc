@@ -1,0 +1,34 @@
+## Interface: 120100
+## Title: Muscle Memory
+## Notes: Bind buttons by purpose, not just spells.
+## Author: Whytspace
+## Version: 0.1.0
+## SavedVariables: MuscleMemoryDB
+
+Core.lua
+Defaults.lua
+
+Util/Print.lua
+Util/Tables.lua
+Util/Spells.lua
+Util/Items.lua
+Util/Macros.lua
+Util/Mounts.lua
+Util/EquipmentSets.lua
+Util/Actions.lua
+
+Data/SpellIds.lua
+Data/StandardGroups.lua
+
+Database.lua
+Resolver.lua
+Applier.lua
+Events.lua
+SlashCommands.lua
+
+UI/MainFrame.lua
+UI/SlotGrid.lua
+UI/SlotEditor.lua
+UI/GroupList.lua
+UI/GroupEditor.lua
+UI/CaptureMode.lua
