@@ -84,12 +84,14 @@ function Applier:PreviewProfile(profileId)
 
   if #plan.conflicts > 0 then
     for _, conflict in ipairs(plan.conflicts) do
-      MM:Warn(string.format(
-        "slot %d is assigned by both %s and %s.",
-        conflict.slot,
-        conflict.firstLayout,
-        conflict.secondLayout
-      ))
+      MM:Warn(
+        string.format(
+          "slot %d is assigned by both %s and %s.",
+          conflict.slot,
+          conflict.firstLayout,
+          conflict.secondLayout
+        )
+      )
     end
   end
 
@@ -142,7 +144,7 @@ function Applier:ApplyEntry(entry)
     return MM.Actions.ClearSlot(slot)
   end
 
-  local pickedUp = false
+  local pickedUp
   if entry.resolved.kind == "spell" then
     pickedUp = MM.Spells.Pickup(entry.resolved.id)
   elseif entry.resolved.kind == "item" then
@@ -199,12 +201,14 @@ function Applier:ApplyProfile(profileId, options)
         applied = applied + 1
       else
         unchanged = unchanged + 1
-        MM:Warn(string.format(
-          "%s unresolved: %s. %s.",
-          MM.Actions.GetSlotLabel(entry.slot),
-          entry.unresolvedReason,
-          entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
-        ))
+        MM:Warn(
+          string.format(
+            "%s unresolved: %s. %s.",
+            MM.Actions.GetSlotLabel(entry.slot),
+            entry.unresolvedReason,
+            entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
+          )
+        )
       end
     else
       failed = failed + 1

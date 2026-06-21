@@ -39,8 +39,20 @@ end
 function UI:CreateTabs()
   local frame = self.frame
   local tabs = {
-    { id = "layouts", label = "Layouts", handler = function() self:ShowLayouts() end },
-    { id = "groups", label = "Action Groups", handler = function() self:ShowGroups() end },
+    {
+      id = "layouts",
+      label = "Layouts",
+      handler = function()
+        self:ShowLayouts()
+      end,
+    },
+    {
+      id = "groups",
+      label = "Action Groups",
+      handler = function()
+        self:ShowGroups()
+      end,
+    },
   }
 
   self.tabs = {}

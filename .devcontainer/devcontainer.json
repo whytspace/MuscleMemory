@@ -1,0 +1,30 @@
+{
+  "name": "Muscle Memory",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/MuscleMemory,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace/MuscleMemory",
+  "remoteUser": "vscode",
+  "postCreateCommand": "cd ${containerWorkspaceFolder} && sh .devcontainer/postCreate.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "Lua.runtime.version": "Lua 5.1",
+        "Lua.workspace.checkThirdParty": false,
+        "Lua.diagnostics.disable": ["lowercase-global"],
+        "Lua.format.defaultConfig": {
+          "indent_style": "space",
+          "indent_size": "2"
+        }
+      },
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "sumneko.lua",
+        "JohnnyMorganz.stylua"
+      ]
+    }
+  }
+}

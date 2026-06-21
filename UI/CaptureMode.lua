@@ -7,5 +7,4 @@ function CaptureMode:Start()
   MM:Print("capture mode is not implemented yet.")
 end
 
-function CaptureMode:Stop()
-end
+function CaptureMode:Stop() end

@@ -12,6 +12,21 @@ Muscle Memory keeps action bars consistent across characters. A profile chooses 
 - `/mm copygroup <standard> [custom]` copies an immutable standard action group into editable custom data.
 - `/mm debug` toggles debug output.
 
+## Development Container
+
+This repository includes a devcontainer with Lua 5.1, LuaRocks, Luacheck, StyLua, and Lua language server.
+
+Use:
+
+```sh
+devc up
+devc luacheck .
+devc stylua .
+devc lua-language-server --version
+```
+
+WoW embeds a Lua 5.1-family runtime with Blizzard-specific globals, so the linter is configured through `.luacheckrc` rather than assuming a plain Lua application.
+
 ## Current Model
 
 - **Profile**: chooses which layouts are active.
