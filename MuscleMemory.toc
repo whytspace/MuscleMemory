@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120007
 ## Title: Muscle Memory
 ## Notes: Bind buttons by purpose, not just spells.
 ## Author: Whytspace
