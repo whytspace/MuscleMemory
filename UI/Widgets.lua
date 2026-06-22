@@ -138,19 +138,29 @@ function Widgets.VGroove(parent)
   return groove
 end
 
--- A vertically scrolling region. Returns (scrollFrame, content); add rows to
--- `content` and grow its height. Content width tracks the viewport.
+-- A vertically scrolling region using the modern thin scrollbar
+-- (Guild/Communities/Settings look): a WowScrollBox scrolling a single child,
+-- paired with a MinimalScrollBar to its right. Returns (scrollBox, content); add
+-- rows to `content` and set its height. The scrollbar sits just to the region's
+-- right, so the caller leaves a little room there.
 function Widgets.ScrollList(parent)
-  local scroll = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-  local content = CreateFrame("Frame", nil, scroll)
-  content:SetSize(1, 1)
-  scroll:SetScrollChild(content)
-  scroll:SetScript("OnSizeChanged", function(_, width)
-    content:SetWidth(width)
+  local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBox")
+
+  local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
+  scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 6, 0)
+  scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 6, 0)
+
+  local content = CreateFrame("Frame", nil, scrollBox)
+  content.scrollable = true
+  content:SetScript("OnSizeChanged", function()
+    scrollBox:FullUpdate()
   end)
-  -- UIPanelScrollFrameTemplate parents its scrollbar so it overhangs the right
-  -- edge; the caller leaves room for it.
-  return scroll, content
+
+  local view = CreateScrollBoxLinearView()
+  view:SetPanExtent(40)
+  ScrollUtil.InitScrollBoxWithScrollBar(scrollBox, scrollBar, view)
+
+  return scrollBox, content
 end
 
 -- The little three-bar "priority list" badge that marks a memory-driven slot.

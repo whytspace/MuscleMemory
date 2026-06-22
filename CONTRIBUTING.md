@@ -16,6 +16,26 @@ WoW embeds a Lua 5.1-family runtime with Blizzard-specific globals, so Luacheck 
 through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck .` and
 `devc stylua .` before committing — both should be clean.
 
+## UI conventions
+
+Build the UI with current WoW UI systems, not their legacy equivalents — the add-on targets
+current retail only. In particular: `WowScrollBox` + `MinimalScrollBar` for scrolling (not
+`UIPanelScrollFrameTemplate`), `MenuUtil` context menus (not `UIDropDownMenu`), and the
+`TabSystem` for tabs. When unsure, mirror a recent Blizzard panel (Communities, Settings).
+
+## Textures and assets
+
+The game can't load PNG/SVG at runtime — UI textures must be **TGA** (32-bit RGBA,
+uncompressed, power-of-two dimensions). Keep source PNGs in `Assets/` and generate the `.tga`:
+
+```sh
+scripts/build-textures.sh        # all Assets/*.png -> .tga at 256x256
+scripts/build-textures.sh 512    # override the size
+```
+
+Needs ImageMagick (`brew install imagemagick`). Reference textures by path without extension,
+e.g. `Interface\AddOns\MuscleMemory\Assets\logo`.
+
 ## Testing
 
 Unit tests run under [Busted](https://lunarmodules.github.io/busted/) in the dev container:

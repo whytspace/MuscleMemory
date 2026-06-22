@@ -27,7 +27,6 @@ function AboutTab:Build(parent)
   logo:SetSize(96, 96)
   logo:SetPoint("TOP", column, "TOP", 0, 0)
   logo:SetTexture(MM.ui.LOGO_TEXTURE)
-  logo:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
   local title = Widgets.Label(column, "GameFontNormalHuge", "Muscle Memory", colors.gold)
   title:SetPoint("TOP", logo, "BOTTOM", 0, -16)

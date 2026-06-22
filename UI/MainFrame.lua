@@ -10,9 +10,9 @@ MM:RegisterModule("UI", UI)
 
 MM.ui.state = MM.ui.state or { tab = "muscles" }
 
--- A standard Blizzard icon stands in for the addon logo; the .png in Assets is
--- web-only (the client loads BLP/TGA), so swap this for a packaged texture later.
-MM.ui.LOGO_TEXTURE = "Interface\\Icons\\Spell_Shadow_Brainwash"
+-- The packaged logo texture (Assets/logo.tga; regenerate from logo.png with
+-- scripts/build-textures.sh). Used for the title-bar portrait and the About page.
+MM.ui.LOGO_TEXTURE = "Interface\\AddOns\\MuscleMemory\\Assets\\logo"
 
 local TABS = {
   { id = "muscles", label = "Muscles" },
@@ -167,6 +167,21 @@ function UI:CreateFrame()
   end
   if frame.SetPortraitToAsset then
     frame:SetPortraitToAsset(MM.ui.LOGO_TEXTURE)
+    -- Zoom the portrait texture out so the full logo sits inside the circular
+    -- ring instead of being clipped by it, on a black disc.
+    local portrait = frame.PortraitContainer and frame.PortraitContainer.portrait
+    if portrait then
+      portrait:SetTexCoord(-0.15, 1.15, -0.15, 1.15)
+
+      local backdrop = frame.PortraitContainer:CreateTexture(nil, "BACKGROUND")
+      backdrop:SetAllPoints(portrait)
+      backdrop:SetColorTexture(0, 0, 0, 1)
+
+      local mask = frame.PortraitContainer:CreateMaskTexture()
+      mask:SetAllPoints(backdrop)
+      mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDED", "CLAMPTOBLACKADDED")
+      backdrop:AddMaskTexture(mask)
+    end
   end
 
   -- Drag from the title bar.
