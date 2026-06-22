@@ -34,107 +34,91 @@ local function matchesRequirements(candidate)
   return true
 end
 
-function Resolver:ResolveAction(assignment, options)
-  options = options or {}
+-- One resolver per assignment type. Each returns a resolved action or (nil, reason).
+local resolvers = {
+  ignore = function()
+    return { kind = "ignore", label = "Ignore" }
+  end,
 
-  if not assignment then
-    return nil, "missing assignment"
-  end
+  empty = function()
+    return { kind = "empty", label = "Empty" }
+  end,
 
-  if assignment.type == "ignore" then
-    return {
-      kind = "ignore",
-      label = "Ignore",
-    }
-  end
-
-  if assignment.type == "empty" then
-    return {
-      kind = "empty",
-      label = "Empty",
-    }
-  end
-
-  if assignment.type == "spell" then
+  spell = function(assignment, options)
     local info = MM.Spells.GetInfo(assignment.id)
     local available = MM.Spells.IsKnown(assignment.id)
     if options.requireAvailable and not available then
       return nil, "spell not known"
     end
-
-    if info or available then
-      return {
-        kind = "spell",
-        id = assignment.id,
-        label = info and info.name or ("spell " .. tostring(assignment.id)),
-        icon = info and info.icon,
-        pickupAvailable = available,
-      }
+    if not (info or available) then
+      return nil, "spell not found"
     end
-    return nil, "spell not found"
-  end
+    return {
+      kind = "spell",
+      id = assignment.id,
+      label = info and info.name or ("spell " .. tostring(assignment.id)),
+      icon = info and info.icon,
+      pickupAvailable = available,
+    }
+  end,
 
-  if assignment.type == "item" then
+  item = function(assignment, options)
     local info = MM.Items.GetInfo(assignment.id)
     if options.requireAvailable and not MM.Items.IsOwned(assignment.id) then
       return nil, "item not owned"
     end
-
-    if info or MM.Items.IsOwned(assignment.id) then
-      return {
-        kind = "item",
-        id = assignment.id,
-        label = info and info.name or ("item " .. tostring(assignment.id)),
-      }
+    if not (info or MM.Items.IsOwned(assignment.id)) then
+      return nil, "item not found"
     end
-    return nil, "item not found"
-  end
+    return {
+      kind = "item",
+      id = assignment.id,
+      label = info and info.name or ("item " .. tostring(assignment.id)),
+    }
+  end,
 
-  if assignment.type == "macro" then
+  macro = function(assignment)
     local macro, reason = MM.Macros.Resolve(assignment)
-    if macro then
-      return {
-        kind = "macro",
-        macro = macro,
-        label = macro.name,
-      }
+    if not macro then
+      return nil, reason
     end
-    return nil, reason
-  end
+    return { kind = "macro", macro = macro, label = macro.name }
+  end,
 
-  if assignment.type == "mount" then
+  mount = function(assignment, options)
     local info = MM.Mounts.GetInfo(assignment.id)
     if options.requireAvailable and not MM.Mounts.IsKnown(assignment.id) then
       return nil, "mount not known"
     end
-
-    if info then
-      return {
-        kind = "mount",
-        id = assignment.id,
-        label = info.name,
-        icon = info.icon,
-      }
+    if not info then
+      return nil, "mount not found"
     end
-    return nil, "mount not found"
-  end
+    return { kind = "mount", id = assignment.id, label = info.name, icon = info.icon }
+  end,
 
-  if assignment.type == "equipmentset" then
-    if MM.EquipmentSets.Exists(assignment.name) then
-      return {
-        kind = "equipmentset",
-        name = assignment.name,
-        label = assignment.name,
-      }
+  equipmentset = function(assignment)
+    if not MM.EquipmentSets.Exists(assignment.name) then
+      return nil, "equipment set not found"
     end
-    return nil, "equipment set not found"
+    return { kind = "equipmentset", name = assignment.name, label = assignment.name }
+  end,
+
+  group = function(assignment)
+    return Resolver:ResolveGroupAssignment(assignment)
+  end,
+}
+
+function Resolver:ResolveAction(assignment, options)
+  if not assignment then
+    return nil, "missing assignment"
   end
 
-  if assignment.type == "group" then
-    return self:ResolveGroupAssignment(assignment)
+  local resolve = resolvers[assignment.type]
+  if not resolve then
+    return nil, "unsupported assignment type " .. tostring(assignment.type)
   end
 
-  return nil, "unsupported assignment type " .. tostring(assignment.type)
+  return resolve(assignment, options or {})
 end
 
 function Resolver:ResolveGroupAssignment(assignment)

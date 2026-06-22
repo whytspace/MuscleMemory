@@ -1,12 +1,7 @@
 local ADDON_NAME, MM = ...
 
-MM.name = ADDON_NAME
-MM.displayName = "Muscle Memory"
-MM.version = "0.1.0"
 MM.modules = MM.modules or {}
-MM.events = MM.events or {}
 MM.ui = MM.ui or {}
-MM.util = MM.util or {}
 
 MM.MAX_ACTION_SLOT = 120
 MM.ACTIONS_PER_BAR = 12
@@ -25,10 +20,6 @@ function MM:CallModules(method, ...)
   end
 end
 
-function MM:IsReady()
-  return self.ready == true
-end
-
 function MM:Initialize()
   if self.ready then
     return
@@ -38,14 +29,6 @@ function MM:Initialize()
   self:CallModules("OnInitialize")
   self.ready = true
   self:Print("loaded. Use /mm to open Muscle Memory.")
-end
-
-function MM:ApplyProfile(profileId, options)
-  return self.Applier:ApplyProfile(profileId, options)
-end
-
-function MM:PreviewProfile(profileId)
-  return self.Applier:PreviewProfile(profileId)
 end
 
 function MM:Open()

@@ -51,21 +51,14 @@ function UI:ShowLayouts()
   MM.ui.SlotGrid:Build(self.content)
 end
 
-function UI:ShowGroups()
-  self:ClearContent()
-  MM.ui.GroupList:Build(self.content)
+-- Re-render the layouts view if the window is currently open.
+function UI:Refresh()
+  if self.frame and self.frame:IsShown() then
+    self:ShowLayouts()
+  end
 end
 
 function UI:Open()
   self:CreateFrame()
   self.frame:Show()
-end
-
-function UI:Toggle()
-  self:CreateFrame()
-  if self.frame:IsShown() then
-    self.frame:Hide()
-  else
-    self.frame:Show()
-  end
 end

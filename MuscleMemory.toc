@@ -22,13 +22,10 @@ Data/StandardGroups.lua
 
 Database.lua
 Resolver.lua
+Capture.lua
 Applier.lua
 Events.lua
 SlashCommands.lua
 
 UI/MainFrame.lua
 UI/SlotGrid.lua
-UI/SlotEditor.lua
-UI/GroupList.lua
-UI/GroupEditor.lua
-UI/CaptureMode.lua

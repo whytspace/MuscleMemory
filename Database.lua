@@ -4,6 +4,38 @@ local DB = {}
 MM.DB = DB
 MM:RegisterModule("DB", DB)
 
+-- Slugify a display name into a unique key for `taken` (a map of existing ids).
+local function uniqueId(name, fallback, taken)
+  local base = string.gsub(string.lower(name or fallback), "[^%w]+", "_")
+  base = string.gsub(base, "^_+", "")
+  base = string.gsub(base, "_+$", "")
+  if base == "" then
+    base = fallback
+  end
+
+  local id, suffix = base, 2
+  while taken[id] do
+    id, suffix = base .. "_" .. suffix, suffix + 1
+  end
+  return id
+end
+
+-- Find an entry id in `map` by exact id or case-insensitive name.
+local function matchByName(map, target)
+  if not target or target == "" then
+    return nil
+  end
+  if map[target] then
+    return target
+  end
+  for id, entry in pairs(map) do
+    if string.lower(entry.name or id) == string.lower(target) then
+      return id
+    end
+  end
+  return nil
+end
+
 function DB:Initialize()
   MuscleMemoryDB = MM.Tables.MergeDefaults(MuscleMemoryDB, MM.defaults)
   self.root = MuscleMemoryDB
@@ -22,38 +54,142 @@ function DB:GetProfile(profileId)
   return self:GetRoot().profiles[profileId]
 end
 
-function DB:GetActiveLayouts(profileId)
+function DB:GetProfileList()
+  local list = {}
+  for id, profile in pairs(self:GetRoot().profiles) do
+    list[#list + 1] = { id = id, name = profile.name or id }
+  end
+  table.sort(list, function(left, right)
+    return left.name < right.name
+  end)
+  return list
+end
+
+function DB:FindProfileId(target)
+  return matchByName(self:GetRoot().profiles, target)
+end
+
+function DB:FindLayoutId(target)
+  return matchByName(self:GetRoot().layouts, target)
+end
+
+function DB:CreateProfile(name)
+  local root = self:GetRoot()
+  local id = uniqueId(name, "profile", root.profiles)
+
+  local activeLayouts, order = {}, 1
+  for layoutId in pairs(root.layouts) do
+    activeLayouts[layoutId] = { enabled = true, order = order }
+    order = order + 1
+  end
+
+  root.profiles[id] = {
+    name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
+    activeLayouts = activeLayouts,
+    triggers = MM.Tables.DeepCopy(MM.defaults.profiles.Default.triggers),
+  }
+  root.activeProfile = id
+  return id, root.profiles[id]
+end
+
+function DB:RenameProfile(profileId, name)
   local profile = self:GetProfile(profileId)
-  local active = {}
   if not profile then
-    return active
+    return false, "unknown profile"
+  end
+
+  name = string.gsub(name or "", "^%s+", "")
+  name = string.gsub(name, "%s+$", "")
+  if name == "" then
+    return false, "profile name cannot be empty"
+  end
+
+  profile.name = name
+  return true
+end
+
+function DB:DeleteProfile(profileId)
+  local root = self:GetRoot()
+  if not root.profiles[profileId] then
+    return false, "unknown profile"
+  end
+  if MM.Tables.Count(root.profiles) <= 1 then
+    return false, "cannot delete the last profile"
+  end
+
+  root.profiles[profileId] = nil
+  if root.activeProfile == profileId then
+    root.activeProfile = next(root.profiles)
+  end
+  return true
+end
+
+function DB:SetActiveProfile(profileId)
+  local root = self:GetRoot()
+  if not root.profiles[profileId] then
+    return false, "unknown profile"
+  end
+  root.activeProfile = profileId
+  return true
+end
+
+-- Every layout in the profile, ordered, each tagged with its enabled state.
+-- This is the canonical list for the UI and reordering.
+function DB:GetProfileLayouts(profileId)
+  local profile = self:GetProfile(profileId)
+  local list = {}
+  if not profile then
+    return list
   end
 
   for layoutId, config in pairs(profile.activeLayouts or {}) do
     local layout = self:GetLayout(layoutId)
-    if layout and config.enabled ~= false and layout.enabled ~= false then
-      active[#active + 1] = {
+    if layout then
+      list[#list + 1] = {
         id = layoutId,
         layout = layout,
         name = layout.name or layoutId,
         order = config.order or 100,
+        enabled = config.enabled ~= false,
       }
     end
   end
 
-  table.sort(active, function(left, right)
+  table.sort(list, function(left, right)
     if left.order == right.order then
       return left.name < right.name
     end
     return left.order < right.order
   end)
 
-  for index, entry in ipairs(active) do
+  for index, entry in ipairs(list) do
     entry.order = index
     profile.activeLayouts[entry.id].order = index
   end
 
+  return list
+end
+
+-- The enabled subset, in order. This is what gets applied.
+function DB:GetActiveLayouts(profileId)
+  local active = {}
+  for _, entry in ipairs(self:GetProfileLayouts(profileId)) do
+    if entry.enabled then
+      active[#active + 1] = entry
+    end
+  end
   return active
+end
+
+function DB:SetLayoutEnabled(layoutId, enabled, profileId)
+  local profile = self:GetProfile(profileId)
+  local config = profile and profile.activeLayouts[layoutId]
+  if not config then
+    return false, "layout is not part of this profile"
+  end
+
+  config.enabled = enabled and true or false
+  return true
 end
 
 function DB:GetLayout(layoutId)
@@ -93,23 +229,10 @@ end
 
 function DB:CreateLayout(name)
   local root = self:GetRoot()
-  local baseId = string.gsub(string.lower(name or "layout"), "[^%w]+", "_")
-  baseId = string.gsub(baseId, "^_+", "")
-  baseId = string.gsub(baseId, "_+$", "")
-  if baseId == "" then
-    baseId = "layout"
-  end
-
-  local layoutId = baseId
-  local suffix = 2
-  while root.layouts[layoutId] do
-    layoutId = baseId .. "_" .. suffix
-    suffix = suffix + 1
-  end
+  local layoutId = uniqueId(name, "layout", root.layouts)
 
   root.layouts[layoutId] = {
     name = name or ("Layout " .. tostring(MM.Tables.Count(root.layouts) + 1)),
-    enabled = true,
     revision = 1,
     unresolvedFallback = "inherit",
     slots = {},
@@ -163,82 +286,58 @@ function DB:DeleteLayout(layoutId)
   end
 
   if root.ui.selectedLayout == layoutId then
-    local active = self:GetActiveLayouts()
-    if active[1] then
-      root.ui.selectedLayout = active[1].id
-    else
-      root.ui.selectedLayout = next(root.layouts)
-    end
+    local remaining = self:GetProfileLayouts()[1]
+    root.ui.selectedLayout = remaining and remaining.id or next(root.layouts)
     root.ui.selectedSlot = nil
   end
 
   return true
 end
 
-function DB:MoveActiveLayout(layoutId, direction, profileId)
+-- Move `layoutId` to position `toIndex` within `profileId` (defaults to the
+-- active profile). Explicit inputs, single mutation, no selection state read.
+function DB:MoveLayout(layoutId, toIndex, profileId)
   local profile = self:GetProfile(profileId)
   if not profile or not profile.activeLayouts[layoutId] then
-    return false
+    return false, "layout is not part of this profile"
   end
 
-  local layouts = self:GetActiveLayouts(profileId)
-  local index
-  for currentIndex, entry in ipairs(layouts) do
-    if entry.id == layoutId then
-      index = currentIndex
-      break
-    end
+  toIndex = tonumber(toIndex)
+  if not toIndex then
+    return false, "needs a target position"
   end
 
-  if not index then
-    return false
-  end
+  local layouts = self:GetProfileLayouts(profileId)
+  toIndex = math.max(1, math.min(toIndex, #layouts))
 
-  local targetIndex = index + direction
-  if targetIndex < 1 or targetIndex > #layouts then
-    return false
-  end
-
-  local current = layouts[index]
-  local target = layouts[targetIndex]
-  profile.activeLayouts[current.id].order = targetIndex
-  profile.activeLayouts[target.id].order = index
-  return true
-end
-
-function DB:MoveActiveLayoutToIndex(layoutId, targetIndex, profileId)
-  local profile = self:GetProfile(profileId)
-  if not profile or not profile.activeLayouts[layoutId] then
-    return false
-  end
-
-  local layouts = self:GetActiveLayouts(profileId)
-  targetIndex = tonumber(targetIndex)
-  if not targetIndex or targetIndex < 1 or targetIndex > #layouts then
-    return false
-  end
-
-  local sourceIndex
-  local moved
+  local fromIndex
   for index, entry in ipairs(layouts) do
     if entry.id == layoutId then
-      sourceIndex = index
-      moved = entry
+      fromIndex = index
       break
     end
   end
 
-  if not sourceIndex or sourceIndex == targetIndex then
-    return false
+  if not fromIndex or fromIndex == toIndex then
+    return false, "layout is already at that position"
   end
 
-  table.remove(layouts, sourceIndex)
-  table.insert(layouts, targetIndex, moved)
-
+  table.insert(layouts, toIndex, table.remove(layouts, fromIndex))
   for index, entry in ipairs(layouts) do
     profile.activeLayouts[entry.id].order = index
   end
+  return true
+end
 
+function DB:SetSlot(layoutId, slot, assignment)
+  local layout = self:GetLayout(layoutId)
+  slot = tonumber(slot)
+  if not layout or not MM.Actions.IsValidSlot(slot) then
+    return false
+  end
+
+  layout.slots[slot] = assignment
+  layout.revision = (layout.revision or 1) + 1
   return true
 end
 

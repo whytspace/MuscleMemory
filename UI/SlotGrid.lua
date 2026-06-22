@@ -11,7 +11,7 @@ local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local DELETE_LAYOUT_DIALOG = "MUSCLEMEMORY_DELETE_LAYOUT"
 
 local function sortedLayouts()
-  return MM.DB:GetActiveLayouts()
+  return MM.DB:GetProfileLayouts()
 end
 
 local function sortedGroups()
@@ -51,7 +51,7 @@ local function makeButton(parent, text, width, onClick)
   return button
 end
 
-local function makeListRow(parent, text, width, selected, onClick, rightInset)
+local function makeListRow(parent, text, width, selected, onClick, rightInset, leftInset)
   local row = CreateFrame("Button", nil, parent)
   row:SetSize(width, 26)
   row:RegisterForClicks("LeftButtonUp")
@@ -73,7 +73,7 @@ local function makeListRow(parent, text, width, selected, onClick, rightInset)
   row.accent:SetColorTexture(0.45, 0.65, 1, selected and 0.9 or 0)
 
   row.label = row:CreateFontString(nil, "OVERLAY", selected and "GameFontHighlightSmall" or "GameFontNormalSmall")
-  row.label:SetPoint("LEFT", row, "LEFT", 8, 0)
+  row.label:SetPoint("LEFT", row, "LEFT", leftInset or 8, 0)
   row.label:SetPoint("RIGHT", row, "RIGHT", -(rightInset or 6), 0)
   row.label:SetJustifyH("LEFT")
   row.label:SetText(text)
@@ -92,6 +92,14 @@ local function makeEditBox(parent, width)
   local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
   box:SetSize(width, 22)
   box:SetAutoFocus(false)
+  return box
+end
+
+local function makeCheckbox(parent, checked, onClick)
+  local box = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+  box:SetSize(20, 20)
+  box:SetChecked(checked)
+  box:SetScript("OnClick", onClick)
   return box
 end
 
@@ -209,15 +217,15 @@ local function confirmDeleteLayout(layoutId, layoutName)
 end
 
 local function assignSlot(layoutId, slot, assignment)
-  MM.ui.SlotEditor:SetAssignment(layoutId, slot, assignment)
+  MM.DB:SetSlot(layoutId, slot, assignment)
   MM.DB:SetSelectedSlot(slot)
   refresh()
 end
 
 local function enableSlotFromBar(layoutId, slot)
-  local ok, reason = MM.ui.CaptureMode:CaptureSlot(layoutId, slot)
+  local ok, reason = MM.Capture:CaptureSlot(layoutId, slot)
   if not ok then
-    MM.ui.SlotEditor:SetAssignment(layoutId, slot, { type = "empty" })
+    MM.DB:SetSlot(layoutId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
       MM:Warn(reason or "could not capture slot")
     end
@@ -228,7 +236,7 @@ local function enableSlotFromBar(layoutId, slot)
 end
 
 local function assignCursor(layoutId, slot)
-  local assignment, reason = MM.ui.CaptureMode:GetAssignmentFromCursor()
+  local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(reason or "could not read cursor")
     return
@@ -264,23 +272,29 @@ function SlotGrid:BuildLayoutsPane(parent, layoutId)
         MM.DB:SetSelectedSlot(nil)
         refresh()
       end,
-      58
+      58,
+      26
     )
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
 
+    local check = makeCheckbox(button, layout.enabled, function()
+      MM.DB:SetLayoutEnabled(layout.id, not layout.enabled)
+      refresh()
+    end)
+    check:SetPoint("LEFT", button, "LEFT", 2, 0)
+    if not layout.enabled then
+      button.label:SetTextColor(0.5, 0.5, 0.5)
+    end
+
     local up = makeArrowButton(button, "up", index > 1, function()
-      if MM.DB:MoveActiveLayout(layout.id, -1) then
-        MM.DB:SetSelectedLayoutId(layout.id)
-        refresh()
-      end
+      MM.DB:MoveLayout(layout.id, index - 1)
+      refresh()
     end)
     up:SetPoint("RIGHT", button, "RIGHT", -25, 0)
 
     local down = makeArrowButton(button, "down", index < #layouts, function()
-      if MM.DB:MoveActiveLayout(layout.id, 1) then
-        MM.DB:SetSelectedLayoutId(layout.id)
-        refresh()
-      end
+      MM.DB:MoveLayout(layout.id, index + 1)
+      refresh()
     end)
     down:SetPoint("RIGHT", button, "RIGHT", -1, 0)
 
@@ -498,7 +512,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   label:SetText(MM.Actions.GetSlotLabel(selectedSlot) .. ": " .. MM.Actions.GetAssignmentLabel(assignment))
 
   local capture = makeButton(parent, "Capture Current", 118, function()
-    local ok, reason = MM.ui.CaptureMode:CaptureSlot(layoutId, selectedSlot)
+    local ok, reason = MM.Capture:CaptureSlot(layoutId, selectedSlot)
     if not ok then
       MM:Warn(reason or "could not capture slot")
     end
@@ -516,8 +530,34 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   end)
   disable:SetPoint("LEFT", empty, "RIGHT", 8, 0)
 
+  local spellLabel = makeSectionLabel(parent, "Spell ID")
+  spellLabel:SetPoint("TOPLEFT", capture, "BOTTOMLEFT", 0, -22)
+
+  local spellInput = makeEditBox(parent, 96)
+  spellInput:SetPoint("LEFT", spellLabel, "RIGHT", 12, 0)
+  if spellInput.SetNumeric then
+    spellInput:SetNumeric(true)
+  end
+  if assignment and assignment.type == "spell" then
+    spellInput:SetText(tostring(assignment.id))
+  end
+
+  local function setSpell()
+    local spellId = tonumber(spellInput:GetText())
+    if spellId then
+      assignSlot(layoutId, selectedSlot, { type = "spell", id = spellId, unresolvedFallback = "inherit" })
+    else
+      MM:Warn("enter a spell ID first.")
+    end
+  end
+  spellInput:SetScript("OnEnterPressed", setSpell)
+  spellInput:SetScript("OnEscapePressed", spellInput.ClearFocus)
+
+  local setSpellButton = makeButton(parent, "Set", 44, setSpell)
+  setSpellButton:SetPoint("LEFT", spellInput, "RIGHT", 8, 0)
+
   local groupsLabel = makeSectionLabel(parent, "Action Groups")
-  groupsLabel:SetPoint("TOPLEFT", capture, "BOTTOMLEFT", 0, -22)
+  groupsLabel:SetPoint("TOPLEFT", spellLabel, "BOTTOMLEFT", 0, -22)
 
   local y = -26
   for _, group in ipairs(sortedGroups()) do

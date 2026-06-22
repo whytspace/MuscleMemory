@@ -24,7 +24,6 @@ MM.defaults = {
   layouts = {
     Core = {
       name = "Core",
-      enabled = true,
       revision = 1,
       unresolvedFallback = "inherit",
       slots = {},
