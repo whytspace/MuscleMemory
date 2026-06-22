@@ -8,10 +8,10 @@ local CELL_GAP = 6
 local LEFT_WIDTH = 174
 local RIGHT_WIDTH = 250
 local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local DELETE_LAYOUT_DIALOG = "MUSCLEMEMORY_DELETE_LAYOUT"
+local DELETE_LAYER_DIALOG = "MUSCLEMEMORY_DELETE_LAYER"
 
-local function sortedLayouts()
-  return MM.DB:GetProfileLayouts()
+local function sortedLayers()
+  return MM.DB:GetProfileLayers()
 end
 
 local function sortedGroups()
@@ -166,54 +166,54 @@ local function makeEmptyMarker(parent)
   return marker
 end
 
-local function getLayoutSlot(layout, slot)
-  return layout and layout.slots and layout.slots[slot] or nil
+local function getLayerSlot(layer, slot)
+  return layer and layer.slots and layer.slots[slot] or nil
 end
 
 local function refresh()
-  MM.UI:ShowLayouts()
+  MM.UI:ShowLayers()
 end
 
-local function deleteLayout(layoutId)
-  local ok, reason = MM.DB:DeleteLayout(layoutId)
+local function deleteLayer(layerId)
+  local ok, reason = MM.DB:DeleteLayer(layerId)
   if not ok then
-    MM:Warn(reason or "could not delete layout")
+    MM:Warn(reason or "could not delete layer")
   end
   refresh()
 end
 
-local function confirmDeleteLayout(layoutId, layoutName)
+local function confirmDeleteLayer(layerId, layerName)
   if StaticPopupDialogs and StaticPopup_Show then
-    StaticPopupDialogs[DELETE_LAYOUT_DIALOG] = StaticPopupDialogs[DELETE_LAYOUT_DIALOG]
+    StaticPopupDialogs[DELETE_LAYER_DIALOG] = StaticPopupDialogs[DELETE_LAYER_DIALOG]
       or {
-        text = "Delete layout %s?",
+        text = "Delete layer %s?",
         button1 = "Delete",
         button2 = "Cancel",
         OnAccept = function(_, data)
-          deleteLayout(data.layoutId)
+          deleteLayer(data.layerId)
         end,
         timeout = 0,
         whileDead = true,
         hideOnEscape = true,
         preferredIndex = 3,
       }
-    StaticPopup_Show(DELETE_LAYOUT_DIALOG, layoutName, nil, { layoutId = layoutId })
+    StaticPopup_Show(DELETE_LAYER_DIALOG, layerName, nil, { layerId = layerId })
     return
   end
 
-  deleteLayout(layoutId)
+  deleteLayer(layerId)
 end
 
-local function assignSlot(layoutId, slot, assignment)
-  MM.DB:SetSlot(layoutId, slot, assignment)
+local function assignSlot(layerId, slot, assignment)
+  MM.DB:SetSlot(layerId, slot, assignment)
   MM.DB:SetSelectedSlot(slot)
   refresh()
 end
 
-local function enableSlotFromBar(layoutId, slot)
-  local ok, reason = MM.Capture:CaptureSlot(layoutId, slot)
+local function enableSlotFromBar(layerId, slot)
+  local ok, reason = MM.Capture:CaptureSlot(layerId, slot)
   if not ok then
-    MM.DB:SetSlot(layoutId, slot, { type = "empty" })
+    MM.DB:SetSlot(layerId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
       MM:Warn(reason or "could not capture slot")
     end
@@ -223,42 +223,42 @@ local function enableSlotFromBar(layoutId, slot)
   refresh()
 end
 
-local function assignCursor(layoutId, slot)
+local function assignCursor(layerId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(reason or "could not read cursor")
     return
   end
 
-  assignSlot(layoutId, slot, assignment)
+  assignSlot(layerId, slot, assignment)
   if ClearCursor then
     ClearCursor()
   end
 end
 
-function SlotGrid:BuildLayoutsPane(parent, layoutId)
-  local title = makeSectionLabel(parent, "Layouts")
+function SlotGrid:BuildLayersPane(parent, layerId)
+  local title = makeSectionLabel(parent, "Layers")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
 
   local create = makeButton(parent, "New", 58, function()
-    local nextNumber = MM.Tables.Count(MM.DB:GetRoot().layouts or {}) + 1
-    local id = MM.DB:CreateLayout("Layout " .. tostring(nextNumber))
-    MM.DB:SetSelectedLayoutId(id)
+    local nextNumber = MM.Tables.Count(MM.DB:GetRoot().layers or {}) + 1
+    local id = MM.DB:CreateLayer("Layer " .. tostring(nextNumber))
+    MM.DB:SetSelectedLayerId(id)
     MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
   create:SetPoint("TOPRIGHT", parent, "TOPLEFT", LEFT_WIDTH, 2)
 
-  local layouts = sortedLayouts()
+  local layers = sortedLayers()
   local y = -30
-  for index, layout in ipairs(layouts) do
+  for index, layer in ipairs(layers) do
     local button = makeListRow(
       parent,
-      tostring(index) .. ". " .. layout.name,
+      tostring(index) .. ". " .. layer.name,
       LEFT_WIDTH,
-      layout.id == layoutId,
+      layer.id == layerId,
       function()
-        MM.DB:SetSelectedLayoutId(layout.id)
+        MM.DB:SetSelectedLayerId(layer.id)
         MM.DB:SetSelectedSlot(nil)
         refresh()
       end,
@@ -267,23 +267,23 @@ function SlotGrid:BuildLayoutsPane(parent, layoutId)
     )
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
 
-    local check = makeCheckbox(button, layout.enabled, function()
-      MM.DB:SetLayoutEnabled(layout.id, not layout.enabled)
+    local check = makeCheckbox(button, layer.enabled, function()
+      MM.DB:SetLayerEnabled(layer.id, not layer.enabled)
       refresh()
     end)
     check:SetPoint("LEFT", button, "LEFT", 2, 0)
-    if not layout.enabled then
+    if not layer.enabled then
       button.label:SetTextColor(0.5, 0.5, 0.5)
     end
 
     local up = makeArrowButton(button, "up", index > 1, function()
-      MM.DB:MoveLayout(layout.id, index - 1)
+      MM.DB:MoveLayer(layer.id, index - 1)
       refresh()
     end)
     up:SetPoint("RIGHT", button, "RIGHT", -25, 0)
 
-    local down = makeArrowButton(button, "down", index < #layouts, function()
-      MM.DB:MoveLayout(layout.id, index + 1)
+    local down = makeArrowButton(button, "down", index < #layers, function()
+      MM.DB:MoveLayer(layer.id, index + 1)
       refresh()
     end)
     down:SetPoint("RIGHT", button, "RIGHT", -1, 0)
@@ -292,7 +292,7 @@ function SlotGrid:BuildLayoutsPane(parent, layoutId)
   end
 end
 
-function SlotGrid:BuildToolbar(parent, layoutId)
+function SlotGrid:BuildToolbar(parent, layerId)
   local preview = makeButton(parent, "Preview", 78, function()
     MM.Applier:PreviewProfile()
   end)
@@ -304,21 +304,21 @@ function SlotGrid:BuildToolbar(parent, layoutId)
   apply:SetPoint("RIGHT", preview, "LEFT", -8, 0)
 
   local enableAll = makeButton(parent, "Enable All", 90, function()
-    MM.DB:SetAllLayoutSlots(layoutId, true)
+    MM.DB:SetAllLayerSlots(layerId, true)
     refresh()
   end)
   enableAll:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
   local disableAll = makeButton(parent, "Disable All", 90, function()
-    MM.DB:SetAllLayoutSlots(layoutId, false)
+    MM.DB:SetAllLayerSlots(layerId, false)
     MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
   disableAll:SetPoint("RIGHT", enableAll, "LEFT", -8, 0)
 end
 
-function SlotGrid:BuildSlotButton(parent, layoutId, layout, slot, point, relativeTo, x, y)
-  local assignment = getLayoutSlot(layout, slot)
+function SlotGrid:BuildSlotButton(parent, layerId, layer, slot, point, relativeTo, x, y)
+  local assignment = getLayerSlot(layer, slot)
   local configured = assignment ~= nil
   local selected = MM.DB:GetSelectedSlot() == slot
 
@@ -338,7 +338,7 @@ function SlotGrid:BuildSlotButton(parent, layoutId, layout, slot, point, relativ
 
   button.emptyMarker = makeEmptyMarker(button)
 
-  local iconState = configured and MM.Actions.GetAssignmentIconState(assignment, slot, layout)
+  local iconState = configured and MM.Actions.GetAssignmentIconState(assignment, slot, layer)
     or {
       kind = "icon",
       texture = MM.Actions.GetLiveSlotIcon(slot),
@@ -374,7 +374,7 @@ function SlotGrid:BuildSlotButton(parent, layoutId, layout, slot, point, relativ
     if configured then
       GameTooltip:AddLine(frame.tooltipText, 1, 1, 1)
     else
-      GameTooltip:AddLine("Disabled in this layout", 0.75, 0.75, 0.75)
+      GameTooltip:AddLine("Disabled in this layer", 0.75, 0.75, 0.75)
     end
     GameTooltip:Show()
   end)
@@ -383,58 +383,58 @@ function SlotGrid:BuildSlotButton(parent, layoutId, layout, slot, point, relativ
   end)
   button:SetScript("OnClick", function(_, mouseButton)
     if GetCursorInfo and GetCursorInfo() then
-      assignCursor(layoutId, slot)
+      assignCursor(layerId, slot)
       return
     end
 
     if mouseButton == "RightButton" then
-      assignSlot(layoutId, slot, nil)
+      assignSlot(layerId, slot, nil)
       return
     end
 
     if not configured then
-      enableSlotFromBar(layoutId, slot)
+      enableSlotFromBar(layerId, slot)
     else
       MM.DB:SetSelectedSlot(slot)
       refresh()
     end
   end)
   button:SetScript("OnReceiveDrag", function()
-    assignCursor(layoutId, slot)
+    assignCursor(layerId, slot)
   end)
 end
 
-function SlotGrid:BuildGrid(parent, layoutId, layout)
+function SlotGrid:BuildGrid(parent, layerId, layer)
   local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
-  title:SetText("Layout")
+  title:SetText("Layer")
 
   local nameBox = makeEditBox(parent, 170)
   nameBox:SetPoint("LEFT", title, "RIGHT", 12, 0)
-  nameBox:SetText(layout and layout.name or layoutId)
+  nameBox:SetText(layer and layer.name or layerId)
   nameBox:SetCursorPosition(0)
 
   local delete = makeButton(parent, "Delete", 66, function()
-    confirmDeleteLayout(layoutId, layout and layout.name or layoutId)
+    confirmDeleteLayer(layerId, layer and layer.name or layerId)
   end)
   delete:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
-  if MM.Tables.Count(MM.DB:GetRoot().layouts or {}) <= 1 then
+  if MM.Tables.Count(MM.DB:GetRoot().layers or {}) <= 1 then
     delete:Disable()
   end
 
-  local originalName = layout and layout.name or layoutId
+  local originalName = layer and layer.name or layerId
   local function saveName()
     local value = nameBox:GetText()
     if value == originalName then
       return
     end
 
-    local ok, reason = MM.DB:RenameLayout(layoutId, value)
+    local ok, reason = MM.DB:RenameLayer(layerId, value)
     if ok then
       refresh()
     else
       nameBox:SetText(originalName)
-      MM:Warn(reason or "could not rename layout")
+      MM:Warn(reason or "could not rename layer")
     end
   end
 
@@ -447,7 +447,7 @@ function SlotGrid:BuildGrid(parent, layoutId, layout)
   end)
   nameBox:SetScript("OnEditFocusLost", saveName)
 
-  self:BuildToolbar(parent, layoutId)
+  self:BuildToolbar(parent, layerId)
 
   local grid = CreateFrame("Frame", nil, parent)
   grid:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -42)
@@ -468,8 +468,8 @@ function SlotGrid:BuildGrid(parent, layoutId, layout)
       local slot = ((bar - 1) * MM.ACTIONS_PER_BAR) + buttonIndex
       self:BuildSlotButton(
         grid,
-        layoutId,
-        layout,
+        layerId,
+        layer,
         slot,
         "TOPLEFT",
         grid,
@@ -480,7 +480,7 @@ function SlotGrid:BuildGrid(parent, layoutId, layout)
   end
 end
 
-function SlotGrid:BuildSlotPane(parent, layoutId, layout)
+function SlotGrid:BuildSlotPane(parent, layerId, layer)
   local selectedSlot = MM.DB:GetSelectedSlot()
   local title = makeSectionLabel(parent, "Selected Slot")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
@@ -494,7 +494,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
     return
   end
 
-  local assignment = getLayoutSlot(layout, selectedSlot)
+  local assignment = getLayerSlot(layer, selectedSlot)
   local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   label:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
   label:SetWidth(RIGHT_WIDTH)
@@ -502,7 +502,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   label:SetText(MM.Actions.GetSlotLabel(selectedSlot) .. ": " .. MM.Actions.GetAssignmentLabel(assignment))
 
   local capture = makeButton(parent, "Capture Current", 118, function()
-    local ok, reason = MM.Capture:CaptureSlot(layoutId, selectedSlot)
+    local ok, reason = MM.Capture:CaptureSlot(layerId, selectedSlot)
     if not ok then
       MM:Warn(reason or "could not capture slot")
     end
@@ -511,12 +511,12 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   capture:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -12)
 
   local empty = makeButton(parent, "Empty", 62, function()
-    assignSlot(layoutId, selectedSlot, { type = "empty" })
+    assignSlot(layerId, selectedSlot, { type = "empty" })
   end)
   empty:SetPoint("LEFT", capture, "RIGHT", 8, 0)
 
   local disable = makeButton(parent, "Disable", 70, function()
-    assignSlot(layoutId, selectedSlot, nil)
+    assignSlot(layerId, selectedSlot, nil)
   end)
   disable:SetPoint("LEFT", empty, "RIGHT", 8, 0)
 
@@ -535,7 +535,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   local function setSpell()
     local spellId = tonumber(spellInput:GetText())
     if spellId then
-      assignSlot(layoutId, selectedSlot, { type = "spell", id = spellId })
+      assignSlot(layerId, selectedSlot, { type = "spell", id = spellId })
     else
       MM:Warn("enter a spell ID first.")
     end
@@ -552,7 +552,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   local y = -26
   for _, group in ipairs(sortedGroups()) do
     local button = makeButton(parent, group.name, RIGHT_WIDTH, function()
-      assignSlot(layoutId, selectedSlot, {
+      assignSlot(layerId, selectedSlot, {
         type = "group",
         source = group.source,
         id = group.id,
@@ -564,26 +564,26 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
 end
 
 function SlotGrid:Build(parent)
-  local layoutId = MM.DB:GetSelectedLayoutId()
-  local layout = MM.DB:GetLayout(layoutId)
+  local layerId = MM.DB:GetSelectedLayerId()
+  local layer = MM.DB:GetLayer(layerId)
 
   local left = CreateFrame("Frame", nil, parent)
   left:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   left:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   left:SetWidth(LEFT_WIDTH)
-  self:BuildLayoutsPane(left, layoutId)
+  self:BuildLayersPane(left, layerId)
 
   makeVerticalDivider(parent, left, "RIGHT", 9)
 
   local center = CreateFrame("Frame", nil, parent)
   center:SetPoint("TOPLEFT", left, "TOPRIGHT", 18, 0)
   center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RIGHT_WIDTH + 18), 0)
-  self:BuildGrid(center, layoutId, layout)
+  self:BuildGrid(center, layerId, layer)
 
   local right = CreateFrame("Frame", nil, parent)
   right:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   right:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   right:SetWidth(RIGHT_WIDTH)
   makeVerticalDivider(parent, right, "LEFT", -9)
-  self:BuildSlotPane(right, layoutId, layout)
+  self:BuildSlotPane(right, layerId, layer)
 end

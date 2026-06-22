@@ -26,13 +26,13 @@ local function words(text)
   return list
 end
 
-local function selectedLayout()
-  return MM.DB:GetSelectedLayoutId()
+local function selectedLayer()
+  return MM.DB:GetSelectedLayerId()
 end
 
-local function layoutName(layoutId)
-  local layout = MM.DB:GetLayout(layoutId)
-  return layout and layout.name or layoutId
+local function layerName(layerId)
+  local layer = MM.DB:GetLayer(layerId)
+  return layer and layer.name or layerId
 end
 
 local function refresh()
@@ -119,140 +119,140 @@ local function profileDelete(args)
   report(nil, MM.DB:DeleteProfile(id))
 end
 
--- Layouts ------------------------------------------------------------------
+-- Layers ------------------------------------------------------------------
 
-local function layoutList()
-  local selected = selectedLayout()
-  for _, entry in ipairs(MM.DB:GetProfileLayouts()) do
+local function layerList()
+  local selected = selectedLayer()
+  for _, entry in ipairs(MM.DB:GetProfileLayers()) do
     local tags = (entry.enabled and "" or "  (disabled)") .. (entry.id == selected and "  (selected)" or "")
     MM:Print(string.format("%d. %s%s", entry.order, entry.name, tags))
   end
 end
 
-local function layoutNew(args)
+local function layerNew(args)
   local name = table.concat(args, " ")
-  local id = MM.DB:CreateLayout(name ~= "" and name or nil)
-  MM.DB:SetSelectedLayoutId(id)
+  local id = MM.DB:CreateLayer(name ~= "" and name or nil)
+  MM.DB:SetSelectedLayerId(id)
   MM.DB:SetSelectedSlot(nil)
   refresh()
-  MM:Print("created layout " .. layoutName(id) .. ".")
+  MM:Print("created layer " .. layerName(id) .. ".")
 end
 
--- Resolve a layout by profile-list index or by id/name.
-local function resolveLayoutId(target)
+-- Resolve a layer by profile-list index or by id/name.
+local function resolveLayerId(target)
   local index = tonumber(target)
-  return index and (MM.DB:GetProfileLayouts()[index] or {}).id or MM.DB:FindLayoutId(target)
+  return index and (MM.DB:GetProfileLayers()[index] or {}).id or MM.DB:FindLayerId(target)
 end
 
-local function layoutSelect(args)
-  local id = resolveLayoutId(table.concat(args, " "))
+local function layerSelect(args)
+  local id = resolveLayerId(table.concat(args, " "))
   if not id then
-    MM:Warn("usage: /mm layout select <index|name>")
+    MM:Warn("usage: /mm layer select <index|name>")
     return
   end
-  MM.DB:SetSelectedLayoutId(id)
+  MM.DB:SetSelectedLayerId(id)
   MM.DB:SetSelectedSlot(nil)
   refresh()
-  MM:Print("selected layout " .. layoutName(id) .. ".")
+  MM:Print("selected layer " .. layerName(id) .. ".")
 end
 
-local function layoutRename(args)
+local function layerRename(args)
   local target, new = args[1], args[2]
   if not target or not new then
-    MM:Warn("usage: /mm layout rename <index|name> <new>")
+    MM:Warn("usage: /mm layer rename <index|name> <new>")
     return
   end
 
-  local id = resolveLayoutId(target)
+  local id = resolveLayerId(target)
   if not id then
-    MM:Warn("no layout matching '" .. target .. "'.")
+    MM:Warn("no layer matching '" .. target .. "'.")
     return
   end
-  report("renamed layout to " .. new .. ".", MM.DB:RenameLayout(id, new))
+  report("renamed layer to " .. new .. ".", MM.DB:RenameLayer(id, new))
 end
 
-local function layoutDelete(args)
+local function layerDelete(args)
   local target = table.concat(args, " ")
   if target == "" then
-    MM:Warn("usage: /mm layout delete <index|name>")
+    MM:Warn("usage: /mm layer delete <index|name>")
     return
   end
 
-  local id = resolveLayoutId(target)
+  local id = resolveLayerId(target)
   if not id then
-    MM:Warn("no layout matching '" .. target .. "'.")
+    MM:Warn("no layer matching '" .. target .. "'.")
     return
   end
-  report(nil, MM.DB:DeleteLayout(id))
+  report(nil, MM.DB:DeleteLayer(id))
 end
 
-local function setLayoutEnabled(enabled)
+local function setLayerEnabled(enabled)
   return function(args)
-    local id = resolveLayoutId(table.concat(args, " "))
+    local id = resolveLayerId(table.concat(args, " "))
     if not id then
-      MM:Warn("usage: /mm layout " .. (enabled and "enable" or "disable") .. " <index|name>")
+      MM:Warn("usage: /mm layer " .. (enabled and "enable" or "disable") .. " <index|name>")
       return
     end
     report(
-      (enabled and "enabled" or "disabled") .. " layout " .. layoutName(id) .. ".",
-      MM.DB:SetLayoutEnabled(id, enabled)
+      (enabled and "enabled" or "disabled") .. " layer " .. layerName(id) .. ".",
+      MM.DB:SetLayerEnabled(id, enabled)
     )
   end
 end
 
-local function layoutMove(args)
-  local id = resolveLayoutId(args[1] or "")
+local function layerMove(args)
+  local id = resolveLayerId(args[1] or "")
   local toIndex = tonumber(args[2])
   if not id or not toIndex then
-    MM:Warn("usage: /mm layout move <index|name> <position>")
+    MM:Warn("usage: /mm layer move <index|name> <position>")
     return
   end
-  report(string.format("moved %s to position %d.", layoutName(id), toIndex), MM.DB:MoveLayout(id, toIndex))
+  report(string.format("moved %s to position %d.", layerName(id), toIndex), MM.DB:MoveLayer(id, toIndex))
 end
 
 local function setAllSlots(enabled)
   return function()
-    local id = selectedLayout()
-    MM.DB:SetAllLayoutSlots(id, enabled)
+    local id = selectedLayer()
+    MM.DB:SetAllLayerSlots(id, enabled)
     if not enabled then
       MM.DB:SetSelectedSlot(nil)
     end
     refresh()
-    MM:Print(string.format("%s all slots in layout %s.", enabled and "enabled" or "disabled", layoutName(id)))
+    MM:Print(string.format("%s all slots in layer %s.", enabled and "enabled" or "disabled", layerName(id)))
   end
 end
 
-local function layoutCapture(args)
-  local id = selectedLayout()
+local function layerCapture(args)
+  local id = selectedLayer()
   if args[1] and args[1] ~= "all" then
     local slot = tonumber(args[1])
     local ok, reason = MM.Capture:CaptureSlot(id, slot)
     if ok then
-      MM:Print("captured " .. MM.Actions.GetSlotLabel(slot) .. " into " .. layoutName(id) .. ".")
+      MM:Print("captured " .. MM.Actions.GetSlotLabel(slot) .. " into " .. layerName(id) .. ".")
     else
       MM:Warn(reason or "could not capture slot")
     end
   else
     local captured, failures = MM.Capture:CaptureFilledSlots(id)
-    MM:Print(string.format("captured %d filled slots into %s, failed %d.", captured, layoutName(id), #failures))
+    MM:Print(string.format("captured %d filled slots into %s, failed %d.", captured, layerName(id), #failures))
     MM.Capture:PrintFailures(failures)
   end
   refresh()
 end
 
 local function slotEdit(args)
-  local id = selectedLayout()
+  local id = selectedLayer()
   local slot = tonumber(args[1])
   if not MM.Actions.IsValidSlot(slot) then
-    MM:Warn("usage: /mm layout slot <1-" .. MM.MAX_ACTION_SLOT .. "> <verb>")
+    MM:Warn("usage: /mm layer slot <1-" .. MM.MAX_ACTION_SLOT .. "> <verb>")
     return
   end
 
   local verb, arg = args[2], args[3]
 
   if not verb or verb == "show" then
-    local layout = MM.DB:GetLayout(id)
-    MM:Print(MM.Actions.GetSlotLabel(slot) .. ": " .. MM.Actions.GetAssignmentLabel(layout and layout.slots[slot]))
+    local layer = MM.DB:GetLayer(id)
+    MM:Print(MM.Actions.GetSlotLabel(slot) .. ": " .. MM.Actions.GetAssignmentLabel(layer and layer.slots[slot]))
     return
   end
 
@@ -269,7 +269,7 @@ local function slotEdit(args)
   elseif verb == "spell" or verb == "item" or verb == "mount" then
     local actionId = tonumber(arg)
     if not actionId then
-      MM:Warn(string.format("usage: /mm layout slot %d %s <id>", slot, verb))
+      MM:Warn(string.format("usage: /mm layer slot %d %s <id>", slot, verb))
       return
     end
     assignment = { type = verb, id = actionId }
@@ -356,24 +356,24 @@ local tree = {
         delete = { desc = "delete a profile", args = "<name>", run = profileDelete },
       },
     },
-    layout = {
-      desc = "manage the selected layout",
+    layer = {
+      desc = "manage the selected layer",
       commands = {
-        list = { desc = "list active layouts", run = layoutList },
-        new = { desc = "create a layout", args = "<name>", run = layoutNew },
-        select = { desc = "select a layout", args = "<index|name>", run = layoutSelect },
-        rename = { desc = "rename a layout", args = "<index|name> <new>", run = layoutRename },
-        delete = { desc = "delete a layout", args = "<index|name>", run = layoutDelete },
-        move = { desc = "move a layout to a position", args = "<index|name> <position>", run = layoutMove },
-        enable = { desc = "enable a layout in the active profile", args = "<index|name>", run = setLayoutEnabled(true) },
+        list = { desc = "list active layers", run = layerList },
+        new = { desc = "create a layer", args = "<name>", run = layerNew },
+        select = { desc = "select a layer", args = "<index|name>", run = layerSelect },
+        rename = { desc = "rename a layer", args = "<index|name> <new>", run = layerRename },
+        delete = { desc = "delete a layer", args = "<index|name>", run = layerDelete },
+        move = { desc = "move a layer to a position", args = "<index|name> <position>", run = layerMove },
+        enable = { desc = "enable a layer in the active profile", args = "<index|name>", run = setLayerEnabled(true) },
         disable = {
-          desc = "disable a layout in the active profile",
+          desc = "disable a layer in the active profile",
           args = "<index|name>",
-          run = setLayoutEnabled(false),
+          run = setLayerEnabled(false),
         },
         enableall = { desc = "enable every slot", run = setAllSlots(true) },
         disableall = { desc = "clear every slot", run = setAllSlots(false) },
-        capture = { desc = "capture a live slot, or all filled slots", args = "[slot|all]", run = layoutCapture },
+        capture = { desc = "capture a live slot, or all filled slots", args = "[slot|all]", run = layerCapture },
         slot = {
           desc = "edit a slot",
           args = "<n> [spell|item|mount <id> | group <id> | empty | ignore | disable | capture]",

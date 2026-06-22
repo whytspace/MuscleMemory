@@ -195,7 +195,7 @@ function Actions.GetAssignmentIcon(assignment, slot)
   return Actions.GetLiveSlotIcon(slot)
 end
 
-function Actions.GetAssignmentIconState(assignment, slot, layout)
+function Actions.GetAssignmentIconState(assignment, slot, layer)
   if not assignment then
     return {
       kind = "icon",
@@ -228,7 +228,7 @@ function Actions.GetAssignmentIconState(assignment, slot, layout)
       }
     end
 
-    local fallback = MM.Resolver:GetEffectiveFallback(assignment, layout)
+    local fallback = MM.Resolver:GetEffectiveFallback(assignment, layer)
     if fallback == "clear" then
       return { kind = "empty" }
     end

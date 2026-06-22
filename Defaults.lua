@@ -6,7 +6,7 @@ MM.defaults = {
   profiles = {
     Default = {
       name = "Default",
-      activeLayouts = {
+      activeLayers = {
         Core = {
           enabled = true,
           order = 1,
@@ -21,7 +21,7 @@ MM.defaults = {
       },
     },
   },
-  layouts = {
+  layers = {
     Core = {
       name = "Core",
       slots = {},
@@ -30,7 +30,7 @@ MM.defaults = {
   customGroups = {},
   characterState = {},
   ui = {
-    selectedLayout = "Core",
+    selectedLayer = "Core",
     selectedGroupSource = "standard",
     selectedGroupId = "interrupt",
   },

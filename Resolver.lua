@@ -140,7 +140,7 @@ function Resolver:ResolveGroupAssignment(assignment)
   return nil, "group " .. tostring(group.name or assignment.id) .. " had no matching candidate"
 end
 
-function Resolver:GetEffectiveFallback(assignment, layout)
+function Resolver:GetEffectiveFallback(assignment, layer)
   if assignment and assignment.unresolvedFallback and assignment.unresolvedFallback ~= "inherit" then
     return assignment.unresolvedFallback, "slot"
   end
@@ -155,8 +155,8 @@ function Resolver:GetEffectiveFallback(assignment, layout)
     end
   end
 
-  if layout and layout.unresolvedFallback and layout.unresolvedFallback ~= "inherit" then
-    return layout.unresolvedFallback, "layout"
+  if layer and layer.unresolvedFallback and layer.unresolvedFallback ~= "inherit" then
+    return layer.unresolvedFallback, "layer"
   end
 
   return MM.DB:GetRoot().globalFallback or "keep", "global"

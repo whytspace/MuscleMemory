@@ -76,11 +76,11 @@ function DB:FindProfileId(target)
   return matchByName(self:GetRoot().profiles, target)
 end
 
-function DB:FindLayoutId(target)
-  return matchByName(self:GetRoot().layouts, target)
+function DB:FindLayerId(target)
+  return matchByName(self:GetRoot().layers, target)
 end
 
--- A new profile is a copy of the active profile's layout selection and
+-- A new profile is a copy of the active profile's layer selection and
 -- triggers, so it starts as a variation of your current setup.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
@@ -89,7 +89,7 @@ function DB:CreateProfile(name)
 
   root.profiles[id] = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
-    activeLayouts = MM.Tables.DeepCopy(source and source.activeLayouts or {}),
+    activeLayers = MM.Tables.DeepCopy(source and source.activeLayers or {}),
     triggers = MM.Tables.DeepCopy(source and source.triggers or MM.defaults.profiles.Default.triggers),
   }
   return id, root.profiles[id]
@@ -133,22 +133,22 @@ function DB:SetActiveProfile(profileId)
   return true
 end
 
--- Every layout in the profile, ordered, each tagged with its enabled state.
+-- Every layer in the profile, ordered, each tagged with its enabled state.
 -- This is the canonical list for the UI and reordering.
-function DB:GetProfileLayouts(profileId)
+function DB:GetProfileLayers(profileId)
   local profile = self:GetProfile(profileId)
   local list = {}
   if not profile then
     return list
   end
 
-  for layoutId, config in pairs(profile.activeLayouts or {}) do
-    local layout = self:GetLayout(layoutId)
-    if layout then
+  for layerId, config in pairs(profile.activeLayers or {}) do
+    local layer = self:GetLayer(layerId)
+    if layer then
       list[#list + 1] = {
-        id = layoutId,
-        layout = layout,
-        name = layout.name or layoutId,
+        id = layerId,
+        layer = layer,
+        name = layer.name or layerId,
         order = config.order or 100,
         enabled = config.enabled ~= false,
       }
@@ -164,16 +164,16 @@ function DB:GetProfileLayouts(profileId)
 
   for index, entry in ipairs(list) do
     entry.order = index
-    profile.activeLayouts[entry.id].order = index
+    profile.activeLayers[entry.id].order = index
   end
 
   return list
 end
 
 -- The enabled subset, in order. This is what gets applied.
-function DB:GetActiveLayouts(profileId)
+function DB:GetActiveLayers(profileId)
   local active = {}
-  for _, entry in ipairs(self:GetProfileLayouts(profileId)) do
+  for _, entry in ipairs(self:GetProfileLayers(profileId)) do
     if entry.enabled then
       active[#active + 1] = entry
     end
@@ -181,36 +181,36 @@ function DB:GetActiveLayouts(profileId)
   return active
 end
 
-function DB:SetLayoutEnabled(layoutId, enabled, profileId)
+function DB:SetLayerEnabled(layerId, enabled, profileId)
   local profile = self:GetProfile(profileId)
-  local config = profile and profile.activeLayouts[layoutId]
+  local config = profile and profile.activeLayers[layerId]
   if not config then
-    return false, "layout is not part of this profile"
+    return false, "layer is not part of this profile"
   end
 
   config.enabled = enabled and true or false
   return true
 end
 
-function DB:GetLayout(layoutId)
-  return self:GetRoot().layouts[layoutId]
+function DB:GetLayer(layerId)
+  return self:GetRoot().layers[layerId]
 end
 
--- Self-heals if the stored pointer is missing (e.g. its layout was deleted).
-function DB:GetSelectedLayoutId()
+-- Self-heals if the stored pointer is missing (e.g. its layer was deleted).
+function DB:GetSelectedLayerId()
   local root = self:GetRoot()
-  if root.ui.selectedLayout and root.layouts[root.ui.selectedLayout] then
-    return root.ui.selectedLayout
+  if root.ui.selectedLayer and root.layers[root.ui.selectedLayer] then
+    return root.ui.selectedLayer
   end
 
-  root.ui.selectedLayout = next(root.layouts)
-  return root.ui.selectedLayout
+  root.ui.selectedLayer = next(root.layers)
+  return root.ui.selectedLayer
 end
 
-function DB:SetSelectedLayoutId(layoutId)
+function DB:SetSelectedLayerId(layerId)
   local root = self:GetRoot()
-  if root.layouts[layoutId] then
-    root.ui.selectedLayout = layoutId
+  if root.layers[layerId] then
+    root.ui.selectedLayer = layerId
   end
 end
 
@@ -228,69 +228,69 @@ function DB:SetSelectedSlot(slot)
   end
 end
 
-function DB:CreateLayout(name)
+function DB:CreateLayer(name)
   local root = self:GetRoot()
-  local layoutId = uniqueId(name, "layout", root.layouts)
+  local layerId = uniqueId(name, "layer", root.layers)
 
-  root.layouts[layoutId] = {
-    name = name or ("Layout " .. tostring(MM.Tables.Count(root.layouts) + 1)),
+  root.layers[layerId] = {
+    name = name or ("Layer " .. tostring(MM.Tables.Count(root.layers) + 1)),
     slots = {},
   }
 
   local profile = self:GetProfile()
   if profile then
-    profile.activeLayouts[layoutId] = {
+    profile.activeLayers[layerId] = {
       enabled = true,
-      order = MM.Tables.Count(profile.activeLayouts) + 1,
+      order = MM.Tables.Count(profile.activeLayers) + 1,
     }
   end
 
-  return layoutId, root.layouts[layoutId]
+  return layerId, root.layers[layerId]
 end
 
-function DB:RenameLayout(layoutId, name)
-  local layout = self:GetLayout(layoutId)
-  if not layout then
-    return false, "unknown layout"
+function DB:RenameLayer(layerId, name)
+  local layer = self:GetLayer(layerId)
+  if not layer then
+    return false, "unknown layer"
   end
 
   name = string.gsub(name or "", "^%s+", "")
   name = string.gsub(name, "%s+$", "")
   if name == "" then
-    return false, "layout name cannot be empty"
+    return false, "layer name cannot be empty"
   end
 
-  layout.name = name
+  layer.name = name
   return true
 end
 
-function DB:DeleteLayout(layoutId)
+function DB:DeleteLayer(layerId)
   local root = self:GetRoot()
-  if not root.layouts[layoutId] then
-    return false, "unknown layout"
+  if not root.layers[layerId] then
+    return false, "unknown layer"
   end
 
-  if MM.Tables.Count(root.layouts or {}) <= 1 then
-    return false, "cannot delete the last layout"
+  if MM.Tables.Count(root.layers or {}) <= 1 then
+    return false, "cannot delete the last layer"
   end
 
-  root.layouts[layoutId] = nil
+  root.layers[layerId] = nil
 
   for _, profile in pairs(root.profiles or {}) do
-    if profile.activeLayouts then
-      profile.activeLayouts[layoutId] = nil
+    if profile.activeLayers then
+      profile.activeLayers[layerId] = nil
     end
   end
 
   return true
 end
 
--- Move `layoutId` to position `toIndex` within `profileId` (defaults to the
+-- Move `layerId` to position `toIndex` within `profileId` (defaults to the
 -- active profile). Explicit inputs, single mutation, no selection state read.
-function DB:MoveLayout(layoutId, toIndex, profileId)
+function DB:MoveLayer(layerId, toIndex, profileId)
   local profile = self:GetProfile(profileId)
-  if not profile or not profile.activeLayouts[layoutId] then
-    return false, "layout is not part of this profile"
+  if not profile or not profile.activeLayers[layerId] then
+    return false, "layer is not part of this profile"
   end
 
   toIndex = tonumber(toIndex)
@@ -298,53 +298,53 @@ function DB:MoveLayout(layoutId, toIndex, profileId)
     return false, "needs a target position"
   end
 
-  local layouts = self:GetProfileLayouts(profileId)
-  toIndex = math.max(1, math.min(toIndex, #layouts))
+  local layers = self:GetProfileLayers(profileId)
+  toIndex = math.max(1, math.min(toIndex, #layers))
 
   local fromIndex
-  for index, entry in ipairs(layouts) do
-    if entry.id == layoutId then
+  for index, entry in ipairs(layers) do
+    if entry.id == layerId then
       fromIndex = index
       break
     end
   end
 
   if not fromIndex or fromIndex == toIndex then
-    return false, "layout is already at that position"
+    return false, "layer is already at that position"
   end
 
-  table.insert(layouts, toIndex, table.remove(layouts, fromIndex))
-  for index, entry in ipairs(layouts) do
-    profile.activeLayouts[entry.id].order = index
+  table.insert(layers, toIndex, table.remove(layers, fromIndex))
+  for index, entry in ipairs(layers) do
+    profile.activeLayers[entry.id].order = index
   end
   return true
 end
 
-function DB:SetSlot(layoutId, slot, assignment)
-  local layout = self:GetLayout(layoutId)
+function DB:SetSlot(layerId, slot, assignment)
+  local layer = self:GetLayer(layerId)
   slot = tonumber(slot)
-  if not layout or not MM.Actions.IsValidSlot(slot) then
+  if not layer or not MM.Actions.IsValidSlot(slot) then
     return false
   end
 
-  layout.slots[slot] = assignment
+  layer.slots[slot] = assignment
   return true
 end
 
-function DB:SetAllLayoutSlots(layoutId, enabled)
-  local layout = self:GetLayout(layoutId)
-  if not layout then
+function DB:SetAllLayerSlots(layerId, enabled)
+  local layer = self:GetLayer(layerId)
+  if not layer then
     return false
   end
 
   if enabled then
     for slot = 1, MM.MAX_ACTION_SLOT do
-      if layout.slots[slot] == nil then
-        layout.slots[slot] = { type = "empty" }
+      if layer.slots[slot] == nil then
+        layer.slots[slot] = { type = "empty" }
       end
     end
   else
-    layout.slots = {}
+    layer.slots = {}
   end
 
   return true

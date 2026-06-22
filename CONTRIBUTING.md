@@ -18,23 +18,25 @@ through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck
 
 ## Data model
 
-- **Profile** — chooses which layouts are active (and in what order) for the current character,
-  plus its auto-apply triggers. A profile is a lightweight selection layer; the slot content
-  lives in the layouts.
-- **Layout** — maps action-bar slots to assignments. Global and reusable across profiles.
+- **Profile** — chooses which layers are active (and in what order) for the current character,
+  plus its auto-apply triggers. A profile is a lightweight selection over layers; the slot
+  content lives in the layers.
+- **Layer** — maps action-bar slots to assignments. Global and reusable across profiles. The
+  active layers are stacked in order, and for each slot the first layer that assigns it wins —
+  hence "layer".
 - **Assignment** — one of `ignore`, `empty`, `spell`, `item`, `macro`, `mount`, `equipmentset`,
   or `group`.
 - **Action Group** — an ordered list of candidates; the first one the current character can use
   wins (e.g. the Interrupt group resolves to Kick, Pummel, Counterspell, … per class).
 
-Standard groups are immutable add-on data. Custom groups and layouts live in SavedVariables
+Standard groups are immutable add-on data. Custom groups and layers live in SavedVariables
 (`MuscleMemoryDB`).
 
 ## Applying
 
 The applier refuses to run during combat lockdown or while the cursor is holding something.
 Unresolved assignments fall back to `keep`, which leaves the existing slot untouched and prints a
-warning. The fallback can be overridden per slot, group, layout, or globally.
+warning. The fallback can be overridden per slot, group, layer, or globally.
 
 ## Verification notes
 

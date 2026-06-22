@@ -14,17 +14,17 @@ function Applier:BuildPlan(profileId)
     profileId = profileId or MM.DB:GetActiveProfileId(),
     slots = {},
     conflicts = {},
-    layouts = MM.DB:GetActiveLayouts(profileId),
+    layers = MM.DB:GetActiveLayers(profileId),
   }
 
-  for _, activeLayout in ipairs(plan.layouts) do
-    for slot in pairs(activeLayout.layout.slots or {}) do
+  for _, activeLayer in ipairs(plan.layers) do
+    for slot in pairs(activeLayer.layer.slots or {}) do
       local numericSlot = tonumber(slot)
       if not MM.Actions.IsValidSlot(numericSlot) then
         plan.conflicts[#plan.conflicts + 1] = {
           slot = tostring(slot),
-          firstLayout = activeLayout.id,
-          secondLayout = "invalid slot",
+          firstLayer = activeLayer.id,
+          secondLayer = "invalid slot",
         }
       end
     end
@@ -34,16 +34,16 @@ function Applier:BuildPlan(profileId)
     local finalEntry
     local terminalEntry
 
-    for _, activeLayout in ipairs(plan.layouts) do
-      local layout = activeLayout.layout
-      local assignment = layout.slots and layout.slots[slot]
+    for _, activeLayer in ipairs(plan.layers) do
+      local layer = activeLayer.layer
+      local assignment = layer.slots and layer.slots[slot]
       if assignment then
         local resolved, reason = MM.Resolver:ResolveAction(assignment)
-        local fallback, fallbackSource = MM.Resolver:GetEffectiveFallback(assignment, layout)
+        local fallback, fallbackSource = MM.Resolver:GetEffectiveFallback(assignment, layer)
         local entry = {
           slot = slot,
-          layoutId = activeLayout.id,
-          layout = layout,
+          layerId = activeLayer.id,
+          layer = layer,
           assignment = assignment,
           resolved = resolved,
           unresolvedReason = reason,
@@ -81,10 +81,10 @@ function Applier:PreviewProfile(profileId)
     for _, conflict in ipairs(plan.conflicts) do
       MM:Warn(
         string.format(
-          "layout %s contains invalid slot %s (%s).",
-          conflict.firstLayout,
+          "layer %s contains invalid slot %s (%s).",
+          conflict.firstLayer,
           tostring(conflict.slot),
-          conflict.secondLayout
+          conflict.secondLayer
         )
       )
     end
@@ -275,7 +275,7 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   if #plan.conflicts > 0 and not options.allowConflicts then
-    MM:Warn("cannot apply because active layouts contain invalid slots. Use /mm preview for details.")
+    MM:Warn("cannot apply because active layers contain invalid slots. Use /mm preview for details.")
     return false
   end
 

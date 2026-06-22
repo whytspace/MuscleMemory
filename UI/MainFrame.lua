@@ -32,7 +32,7 @@ function UI:CreateFrame()
   frame.subtitle:SetText("Bind buttons by purpose, not just spells.")
 
   self.frame = frame
-  self:ShowLayouts()
+  self:ShowLayers()
 end
 
 function UI:ClearContent()
@@ -46,15 +46,15 @@ function UI:ClearContent()
   self.content:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 16)
 end
 
-function UI:ShowLayouts()
+function UI:ShowLayers()
   self:ClearContent()
   MM.ui.SlotGrid:Build(self.content)
 end
 
--- Re-render the layouts view if the window is currently open.
+-- Re-render the layers view if the window is currently open.
 function UI:Refresh()
   if self.frame and self.frame:IsShown() then
-    self:ShowLayouts()
+    self:ShowLayers()
   end
 end
 

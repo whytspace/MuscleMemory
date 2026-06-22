@@ -3,21 +3,21 @@
 **Bind buttons by purpose, not just spell.**
 
 Muscle Memory keeps your action bars consistent across characters. You capture how your bars are
-set up into reusable *layouts*, and Muscle Memory restores them on any character — putting the
+set up into reusable *layers*, and Muscle Memory restores them on any character — putting the
 right spell, item, macro, mount, or equipment set back into each slot.
 
 Slots can also point to purpose-based **action groups** such as Kick / Interrupt, Taunt, or Lust.
-Each character gets whatever ability it actually has for that purpose, so one layout works across
+Each character gets whatever ability it actually has for that purpose, so one layer works across
 many classes.
 
 ![Muscle Memory main window](Assets/screenshot-main.png)
-<!-- TODO: screenshot of the main window — layout grid + sidebar. -->
+<!-- TODO: screenshot of the main window — layer grid + sidebar. -->
 
 ## Getting started
 
 - Type **`/mm`** to open the window.
 - Click a faded slot to capture whatever is on that action bar button right now.
-- Switch character, then press **Apply** (or run `/mm apply`) to restore the layout.
+- Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
 
 ## Commands
 
@@ -27,8 +27,8 @@ type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 - `/mm` — open the window
 - `/mm apply [profile]` — restore your bars from the active (or named) profile
 - `/mm preview [profile]` — show what Apply would change, without touching your bars
-- `/mm layout capture [slot|all]` — capture a live bar slot, or all of them, into the selected layout
-- `/mm profile` · `/mm layout` · `/mm group` — manage profiles, layouts, and action groups
+- `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
+- `/mm profile` · `/mm layer` · `/mm group` — manage profiles, layers, and action groups
 
 ## Screenshots
 
