@@ -10,12 +10,19 @@ function Applier:BuildPlan(profileId)
     return nil, "profile not found"
   end
 
+  -- A muscle whose conditions don't match the current character is skipped, a
+  -- dynamic complement to the per-profile enable toggle.
   local plan = {
     profileId = profileId or MM.DB:GetActiveProfileId(),
     slots = {},
     conflicts = {},
-    muscles = MM.DB:GetActiveMuscles(profileId),
+    muscles = {},
   }
+  for _, activeMuscle in ipairs(MM.DB:GetActiveMuscles(profileId)) do
+    if MM.Conditions.Match(activeMuscle.muscle.conditions) then
+      plan.muscles[#plan.muscles + 1] = activeMuscle
+    end
+  end
 
   for _, activeMuscle in ipairs(plan.muscles) do
     for slot in pairs(activeMuscle.muscle.slots or {}) do

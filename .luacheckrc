@@ -57,6 +57,9 @@ read_globals = {
   "GetNumMacros",
   "GetNumShapeshiftForms",
   "GetRealmName",
+  "GetSpecialization",
+  "GetSpecializationInfo",
+  "GetSpecializationRole",
   "GetSpellInfo",
   "HasAction",
   "InCombatLockdown",
@@ -72,7 +75,10 @@ read_globals = {
   "StaticPopup_Show",
   "UIParent",
   "UnitClass",
+  "UnitFactionGroup",
+  "UnitLevel",
   "UnitName",
+  "UnitRace",
   "print",
   "time"
 }

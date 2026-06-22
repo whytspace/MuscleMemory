@@ -5,18 +5,8 @@ MM.Resolver = Resolver
 MM:RegisterModule("Resolver", Resolver)
 
 local function matchesRequirements(candidate)
-  if candidate.classes then
-    local _, classFile = UnitClass("player")
-    local matched = false
-    for _, class in ipairs(candidate.classes) do
-      if class == classFile then
-        matched = true
-        break
-      end
-    end
-    if not matched then
-      return false
-    end
+  if not MM.Conditions.Match(candidate.conditions) then
+    return false
   end
 
   if candidate.requiresKnownSpell and not MM.Spells.IsKnown(candidate.requiresKnownSpell) then

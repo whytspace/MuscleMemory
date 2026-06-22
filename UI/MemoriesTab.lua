@@ -336,9 +336,10 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(false)
 
-    if candidate.classes then
+    local classes = candidate.conditions and candidate.conditions.classes
+    if classes and #classes > 0 then
       local chips = {}
-      for _, token in ipairs(candidate.classes) do
+      for _, token in ipairs(classes) do
         chips[#chips + 1] = prettyClass(token)
       end
       local condition = Widgets.Label(row, "GameFontDisableSmall", table.concat(chips, " / "))

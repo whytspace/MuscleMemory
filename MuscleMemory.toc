@@ -10,6 +10,7 @@ Defaults.lua
 
 Util/Print.lua
 Util/Tables.lua
+Util/Conditions.lua
 Util/Spells.lua
 Util/Items.lua
 Util/Macros.lua
