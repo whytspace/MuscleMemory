@@ -247,11 +247,15 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
     row:SetSelected(index == selected)
 
-    local handle = Widgets.DragDots(row)
-    handle:SetPoint("LEFT", row, "LEFT", 10, 0)
-
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
-    order:SetPoint("LEFT", handle, "RIGHT", 8, 0)
+    if locked then
+      -- Predefined memories can't be reordered, so there's no drag handle.
+      order:SetPoint("LEFT", row, "LEFT", 12, 0)
+    else
+      local handle = Widgets.DragDots(row)
+      handle:SetPoint("LEFT", row, "LEFT", 10, 0)
+      order:SetPoint("LEFT", handle, "RIGHT", 8, 0)
+    end
     order:SetTextColor(Widgets.unpackColor(colors.goldDim))
 
     local tile = Widgets.Icon(row, 30)
