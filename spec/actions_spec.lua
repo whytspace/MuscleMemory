@@ -30,6 +30,7 @@ describe("Actions", function()
       assert.equals("bar 2 button 1", MM.Actions.GetSlotLabel(61)) -- bottom left
       assert.equals("bar 3 button 12", MM.Actions.GetSlotLabel(60)) -- bottom right
       assert.equals("bar 8 button 12", MM.Actions.GetSlotLabel(180))
+      assert.equals("stance 1 button 1", MM.Actions.GetSlotLabel(73)) -- form/stance page
     end)
 
     it("labels a paging/stance slot that isn't a visible bar", function()

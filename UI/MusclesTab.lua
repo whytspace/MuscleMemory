@@ -12,9 +12,9 @@ local colors = Widgets.colors
 
 local RAIL_WIDTH = 250
 local EDITOR_WIDTH = 330
-local CELL = 32
+local CELL = 30
 local CELL_GAP = 4
-local LABEL_WIDTH = 56
+local LABEL_WIDTH = 64
 
 local function refresh()
   MM.UI:Refresh()
@@ -396,13 +396,13 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
   end
 
   -- Bars (real Edit Mode bars and their scattered slot ranges, not 1..120 linear).
-  local bars = MM.Actions.BARS
+  local bars = MM.Actions.GetGridBars()
   local grid = CreateFrame("Frame", nil, parent)
   grid:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -2)
 
   for barIndex, bar in ipairs(bars) do
     local y = -(barIndex - 1) * (CELL + CELL_GAP)
-    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", "Bar " .. barIndex, colors.parchment)
+    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", bar.label, colors.parchment)
     rowLabel:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, y - (CELL - 12) / 2)
 
     for button = 1, MM.ACTIONS_PER_BAR do

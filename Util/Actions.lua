@@ -3,21 +3,39 @@ local ADDON_NAME, MM = ...
 local Actions = {}
 MM.Actions = Actions
 
--- The eight standard action bars in Edit Mode order, each 12 buttons. WoW's
--- action-slot numbering does NOT run linearly with the visible bar order: only
--- Bar 1 is slots 1-12; the rest map to scattered MultiBar ranges (the slots in
--- between are the main bar's stance/paging pages, not separate bars). `base` is
--- the slot before each bar's first button.
+-- The action bars and their (non-linear) action-slot ranges, each 12 buttons.
+-- WoW's slot numbering does NOT run with the visible bar order: only Bar 1 is
+-- slots 1-12; the standard bars map to scattered MultiBar ranges. The Stance
+-- bars are the main bar's per-form/stance pages (a Druid in Cat Form sees one of
+-- these in place of Bar 1) — only relevant to classes with shapeshift forms.
+-- `base` is the slot before each bar's first button; `stance` marks form pages.
 Actions.BARS = {
-  { base = 0 }, -- Bar 1  · slots 1-12    (main)
-  { base = 60 }, -- Bar 2  · slots 61-72   (bottom left)
-  { base = 48 }, -- Bar 3  · slots 49-60   (bottom right)
-  { base = 24 }, -- Bar 4  · slots 25-36   (right)
-  { base = 36 }, -- Bar 5  · slots 37-48   (left)
-  { base = 144 }, -- Bar 6  · slots 145-156
-  { base = 156 }, -- Bar 7  · slots 157-168
-  { base = 168 }, -- Bar 8  · slots 169-180
+  { label = "Bar 1", base = 0 }, -- slots 1-12    (main)
+  { label = "Bar 2", base = 60 }, -- slots 61-72   (bottom left)
+  { label = "Bar 3", base = 48 }, -- slots 49-60   (bottom right)
+  { label = "Bar 4", base = 24 }, -- slots 25-36   (right)
+  { label = "Bar 5", base = 36 }, -- slots 37-48   (left)
+  { label = "Bar 6", base = 144 }, -- slots 145-156
+  { label = "Bar 7", base = 156 }, -- slots 157-168
+  { label = "Bar 8", base = 168 }, -- slots 169-180
+  { label = "Stance 1", base = 72, stance = true }, -- slots 73-84
+  { label = "Stance 2", base = 84, stance = true }, -- slots 85-96
+  { label = "Stance 3", base = 96, stance = true }, -- slots 97-108
+  { label = "Stance 4", base = 108, stance = true }, -- slots 109-120
 }
+
+-- The bars to show for the current character: the standard bars always, plus the
+-- stance/form pages only for classes that shapeshift.
+function Actions.GetGridBars()
+  local hasForms = GetNumShapeshiftForms and GetNumShapeshiftForms() > 0
+  local bars = {}
+  for _, bar in ipairs(Actions.BARS) do
+    if not bar.stance or hasForms then
+      bars[#bars + 1] = bar
+    end
+  end
+  return bars
+end
 
 local function normalizeText(text)
   return string.lower(tostring(text or ""))
@@ -96,12 +114,12 @@ function Actions.PlaceCursor(slot)
 end
 
 function Actions.GetSlotLabel(slot)
-  for index, bar in ipairs(Actions.BARS) do
+  for _, bar in ipairs(Actions.BARS) do
     if slot > bar.base and slot <= bar.base + MM.ACTIONS_PER_BAR then
-      return string.format("bar %d button %d", index, slot - bar.base)
+      return string.format("%s button %d", string.lower(bar.label), slot - bar.base)
     end
   end
-  -- Stance / paging / vehicle slots that aren't one of the eight visible bars.
+  -- Paging / vehicle slots that aren't one of the listed bars.
   return string.format("slot %d", slot)
 end
 
