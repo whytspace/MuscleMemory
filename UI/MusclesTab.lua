@@ -173,12 +173,17 @@ function MusclesTab:BuildRail(parent, muscleId)
     end)
     check:SetPoint("RIGHT", row, "RIGHT", -4, 0)
 
+    -- A conditioned muscle whose conditions don't match this character won't
+    -- apply, so it reads as inactive (like a disabled one).
+    local conditions = entry.muscle.conditions
+    local inactive = not entry.enabled or (MM.Conditions.Any(conditions) and not MM.Conditions.Match(conditions))
+
     local name = Widgets.Label(row, "GameFontHighlight", entry.name)
     name:SetPoint("LEFT", order, "RIGHT", 8, 0)
     name:SetPoint("RIGHT", check, "LEFT", -4, 0)
     name:SetJustifyH("LEFT")
     name:SetWordWrap(false)
-    if not entry.enabled then
+    if inactive then
       name:SetTextColor(Widgets.unpackColor(colors.faint))
     elseif entry.id == muscleId then
       name:SetTextColor(Widgets.unpackColor(colors.gold))
@@ -308,7 +313,13 @@ function MusclesTab:BuildSlot(parent, muscleId, muscle, slot, x, y)
       return
     end
     if managed then
-      MM.DB:SetSelectedSlot(slot)
+      -- Re-clicking the selected slot deselects it (revealing the muscle's
+      -- condition editor in the sidebar).
+      if MM.DB:GetSelectedSlot() == slot then
+        MM.DB:SetSelectedSlot(nil)
+      else
+        MM.DB:SetSelectedSlot(slot)
+      end
       refresh()
     else
       manageSlot(muscleId, slot)
@@ -479,18 +490,27 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
+    -- No slot selected: the sidebar edits the whole muscle's conditions.
     if MusclesTab.dropZone then
       MusclesTab.dropZone:Detach()
     end
-    local note = Widgets.Label(
-      inset,
-      "GameFontHighlightSmall",
-      "Click a slot in the grid to manage it in this Muscle and edit it here."
-    )
-    note:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -20)
-    note:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -16, -20)
-    note:SetJustifyH("LEFT")
-    note:SetTextColor(Widgets.unpackColor(colors.faint))
+
+    local header = Widgets.SectionHeader(inset, "Muscle Conditions")
+    header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -14)
+
+    local hint = Widgets.Hint(inset, "When should this Muscle apply? Leave everything off to always apply it.")
+    hint:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -8)
+    hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+    hint:SetJustifyH("LEFT")
+
+    if muscle then
+      muscle.conditions = muscle.conditions or {}
+      local editor = MM.ui.ConditionsEditor:Build(inset, muscle.conditions, true, function()
+        refresh()
+      end)
+      editor:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 4, -14)
+      editor:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+    end
     return
   end
 
@@ -604,9 +624,18 @@ function MusclesTab:Build(parent)
   rightGroove:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(EDITOR_WIDTH + 6), -6)
   rightGroove:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(EDITOR_WIDTH + 6), 6)
 
-  local center = CreateFrame("Frame", nil, parent)
+  -- A button behind the grid: clicking empty centre space deselects the slot
+  -- (interactive children handle their own clicks first).
+  local center = CreateFrame("Button", nil, parent)
   center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -10)
   center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(EDITOR_WIDTH + 14), 10)
+  center:RegisterForClicks("LeftButtonUp")
+  center:SetScript("OnClick", function()
+    if MM.DB:GetSelectedSlot() then
+      MM.DB:SetSelectedSlot(nil)
+      refresh()
+    end
+  end)
 
   if #MM.DB:GetProfileMuscles() == 0 then
     self:BuildEmptyGrid(center)

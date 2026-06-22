@@ -81,22 +81,26 @@ local function toggle(conditions, field, value)
 end
 
 local function makeChip(parent, text, active, editable, onClick)
-  local chip = CreateFrame("Button", nil, parent)
+  local chip = CreateFrame("Button", nil, parent, "BackdropTemplate")
   chip:SetHeight(22)
+  chip:SetBackdrop({
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+  })
 
   local label = chip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   label:SetPoint("CENTER")
   label:SetText(text)
   chip:SetWidth(label:GetStringWidth() + 18)
 
-  local bg = chip:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints()
-
   if active then
-    bg:SetColorTexture(Widgets.unpackColor(colors.gold, 0.16))
+    chip:SetBackdropColor(Widgets.unpackColor(colors.gold, 0.16))
+    chip:SetBackdropBorderColor(Widgets.unpackColor(colors.gold, 0.85))
     label:SetTextColor(Widgets.unpackColor(colors.gold))
   else
-    bg:SetColorTexture(0.1, 0.1, 0.12, 0.8)
+    chip:SetBackdropColor(0.08, 0.08, 0.1, 0.6)
+    chip:SetBackdropBorderColor(Widgets.unpackColor(colors.faint, 0.7))
     label:SetTextColor(Widgets.unpackColor(editable and colors.parchment or colors.faint))
   end
 
@@ -164,9 +168,8 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange)
     end
     box:SetScript("OnEnterPressed", box.ClearFocus)
     box:SetScript("OnEscapePressed", box.ClearFocus)
-    box:SetScript("OnEditFocusLost", function(self)
-      local value = tonumber(self:GetText())
-      conditions[field] = value
+    box:SetScript("OnEditFocusLost", function(editBox)
+      conditions[field] = tonumber(editBox:GetText())
       onChange()
     end)
     return box
