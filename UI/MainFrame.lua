@@ -264,7 +264,7 @@ function UI:ShowContent()
   end
 
   local profile = MM.DB:GetProfile()
-  self.profileButton:SetText("Profile:  " .. (profile and profile.name or "\226\128\148") .. "  \226\150\190")
+  self.profileButton:SetText("Profile:  " .. (profile and profile.name or "\226\128\148"))
 
   local description = TAB_DESCRIPTIONS[tab]
   self.description:SetText(description or "")

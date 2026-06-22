@@ -24,6 +24,14 @@ local function unpackColor(color, alpha)
 end
 Widgets.unpackColor = unpackColor
 
+-- Stock Blizzard textures used for the small status symbols the WoW font can't
+-- draw as glyphs (warning, cleared-slot, predefined-lock).
+Widgets.TEX = {
+  warning = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew",
+  empty = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
+  lock = "Interface\\LFGFrame\\UI-LFG-ICON-LOCK",
+}
+
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
 -- object name (e.g. "GameFontNormal").
 function Widgets.Label(parent, font, text, color)
@@ -189,6 +197,19 @@ function Widgets.MemoryBadge(parent, size)
   return badge
 end
 
+-- A small 2x3 dot grid used as a drag handle (the WoW font has no braille).
+function Widgets.DragDots(parent)
+  local dots = CreateFrame("Frame", nil, parent)
+  dots:SetSize(6, 12)
+  for index = 0, 5 do
+    local dot = dots:CreateTexture(nil, "ARTWORK")
+    dot:SetSize(2, 2)
+    dot:SetPoint("TOPLEFT", dots, "TOPLEFT", (index % 2) * 4, -math.floor(index / 2) * 4)
+    dot:SetColorTexture(unpackColor(Widgets.colors.faint))
+  end
+  return dots
+end
+
 -- Four edge textures forming a rectangular border around `parent`.
 local function createBorder(parent)
   local border = {}
@@ -239,8 +260,15 @@ function Widgets.Icon(parent, size)
 
   icon.border = createBorder(icon)
 
+  local function hideSymbol(self)
+    if self.symbol then
+      self.symbol:Hide()
+    end
+  end
+
   function icon:SetTextureImage(texture)
     self.glyph:Hide()
+    hideSymbol(self)
     if texture then
       self.texture:SetTexture(texture)
       self.texture:Show()
@@ -251,9 +279,24 @@ function Widgets.Icon(parent, size)
 
   function icon:SetGlyph(text, color)
     self.texture:Hide()
+    hideSymbol(self)
     self.glyph:SetText(text)
     self.glyph:SetTextColor(unpackColor(color or Widgets.colors.goldDim))
     self.glyph:Show()
+  end
+
+  -- A centred status texture (warning / cleared / lock) at ~60% of the cell.
+  function icon:SetSymbol(texture)
+    self.texture:Hide()
+    self.glyph:Hide()
+    if not self.symbol then
+      self.symbol = self:CreateTexture(nil, "ARTWORK", nil, 1)
+      self.symbol:SetPoint("CENTER")
+      local extent = math.floor(size * 0.6)
+      self.symbol:SetSize(extent, extent)
+    end
+    self.symbol:SetTexture(texture)
+    self.symbol:Show()
   end
 
   function icon:SetBorder(thickness, color, alpha)

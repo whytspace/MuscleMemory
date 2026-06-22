@@ -103,7 +103,7 @@ function MemoriesTab:BuildRail(parent, ref)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "\239\188\139 New Memory", RAIL_WIDTH - 24, nil)
+  local newButton = Widgets.Button(inset, "+ New Memory", RAIL_WIDTH - 24, nil)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
   newButton:Disable()
   newButton:SetScript("OnEnter", function(button)
@@ -143,12 +143,18 @@ function MemoriesTab:BuildRail(parent, ref)
       tile:SetTextureImage(resolved.icon)
       tile:SetBorder(1, colors.managed)
     else
-      tile:SetGlyph("\226\154\160", colors.warn)
+      tile:SetSymbol(Widgets.TEX.warning)
       tile:SetBorder(1, colors.warn, 0.7)
     end
 
-    local lock = Widgets.Label(row, "GameFontDisableSmall", memory.locked and "\240\159\148\146" or "")
+    local lock = row:CreateTexture(nil, "ARTWORK")
+    lock:SetSize(12, 14)
     lock:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    if memory.locked then
+      lock:SetTexture(Widgets.TEX.lock)
+    else
+      lock:Hide()
+    end
 
     local name = Widgets.Label(row, "GameFontHighlight", memory.name)
     name:SetPoint("TOPLEFT", tile, "TOPRIGHT", 9, -1)
@@ -202,7 +208,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -4, -2)
 
     -- Inert editing controls (rename / delete / add) — rendered, disabled.
-    for _, spec in ipairs({ { "Delete", 60 }, { "Rename", 66 }, { "\239\188\139 Add action", 100 } }) do
+    for _, spec in ipairs({ { "Delete", 60 }, { "Rename", 66 }, { "+ Add action", 100 } }) do
       local button = Widgets.Button(center, spec[1], spec[2], nil)
       button:SetPoint("RIGHT", clone, "LEFT", -6, 0)
       button:Disable()
@@ -241,8 +247,8 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
     row:SetSelected(index == selected)
 
-    local handle = Widgets.Label(row, "GameFontNormal", "\226\160\191", colors.faint)
-    handle:SetPoint("LEFT", row, "LEFT", 8, 0)
+    local handle = Widgets.DragDots(row)
+    handle:SetPoint("LEFT", row, "LEFT", 10, 0)
 
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
     order:SetPoint("LEFT", handle, "RIGHT", 8, 0)
@@ -391,7 +397,7 @@ function MemoriesTab:BuildRule(parent, memory)
   soon:SetSpacing(2)
   soon:SetTextColor(Widgets.unpackColor(colors.faint))
 
-  local addCond = Widgets.Button(inset, "\239\188\139 Add a condition (advanced)", RULE_WIDTH - 28, nil)
+  local addCond = Widgets.Button(inset, "+ Add a condition (advanced)", RULE_WIDTH - 28, nil)
   addCond:SetPoint("TOPLEFT", soon, "BOTTOMLEFT", 0, -12)
   addCond:Disable()
 end

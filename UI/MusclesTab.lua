@@ -132,7 +132,7 @@ function MusclesTab:BuildRail(parent, muscleId)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "\239\188\139 New Muscle", RAIL_WIDTH - 24, newMuscle)
+  local newButton = Widgets.Button(inset, "+ New Muscle", RAIL_WIDTH - 24, newMuscle)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
 
   local footer = Widgets.Label(inset, "GameFontDisableSmall", "")
@@ -158,8 +158,8 @@ function MusclesTab:BuildRail(parent, muscleId)
     row.index = index
     self.railRows[index] = row
 
-    local handle = Widgets.Label(row, "GameFontNormal", "\226\160\191", colors.faint)
-    handle:SetPoint("LEFT", row, "LEFT", 6, 0)
+    local handle = Widgets.DragDots(row)
+    handle:SetPoint("LEFT", row, "LEFT", 9, 0)
 
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
     order:SetPoint("LEFT", handle, "RIGHT", 6, 0)
@@ -248,7 +248,7 @@ local function paintSlot(icon, muscle, slot)
       icon:SetBorder(1, colors.faint, 0.28)
     end
   elseif assignment.type == "empty" then
-    icon:SetGlyph("\226\136\133", colors.goldDim)
+    icon:SetSymbol(Widgets.TEX.empty)
     icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
   elseif assignment.type == "ignore" then
     icon:SetTextureImage(MM.Actions.GetLiveSlotIcon(slot))
@@ -261,10 +261,10 @@ local function paintSlot(icon, muscle, slot)
       icon:SetTextureImage(resolved.icon)
       icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
     elseif resolved and resolved.kind == "empty" then
-      icon:SetGlyph("\226\136\133", colors.goldDim)
+      icon:SetSymbol(Widgets.TEX.empty)
       icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
     else
-      icon:SetGlyph("\226\154\160", colors.warn)
+      icon:SetSymbol(Widgets.TEX.warning)
       icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.warn)
     end
   else
@@ -272,7 +272,7 @@ local function paintSlot(icon, muscle, slot)
     if state.kind == "icon" and state.texture then
       icon:SetTextureImage(state.texture)
     elseif state.kind == "empty" then
-      icon:SetGlyph("\226\136\133", colors.goldDim)
+      icon:SetSymbol(Widgets.TEX.empty)
     else
       icon:SetGlyph("?", colors.goldDim)
     end
@@ -338,7 +338,7 @@ function MusclesTab:BuildLegend(parent)
   local entries = {
     { glyph = nil, badge = false, label = "Managed (pinned)" },
     { glyph = nil, badge = true, label = "Memory-driven" },
-    { glyph = "\226\136\133", badge = false, label = "Empty (clears)" },
+    { symbol = Widgets.TEX.empty, badge = false, label = "Empty (clears)" },
     { glyph = nil, badge = false, label = "Selected", selected = true },
   }
 
@@ -346,8 +346,8 @@ function MusclesTab:BuildLegend(parent)
   for _, entry in ipairs(entries) do
     local swatch = Widgets.Icon(strip, 18)
     swatch:SetPoint("LEFT", strip, "LEFT", x, 0)
-    if entry.glyph then
-      swatch:SetGlyph(entry.glyph, colors.goldDim)
+    if entry.symbol then
+      swatch:SetSymbol(entry.symbol)
     else
       swatch:SetTextureImage(nil)
     end
@@ -436,7 +436,7 @@ function MusclesTab:BuildEmptyGrid(parent)
   body:SetJustifyH("CENTER")
   body:SetTextColor(Widgets.unpackColor(colors.faint))
 
-  local button = Widgets.Button(box, "\239\188\139 New Muscle", 140, newMuscle)
+  local button = Widgets.Button(box, "+ New Muscle", 140, newMuscle)
   button:SetPoint("TOP", body, "BOTTOM", 0, -16)
 end
 
@@ -455,7 +455,7 @@ local function statusFor(assignment)
     if resolved then
       return 'Resolves to "' .. resolved.label .. '" for this character.', colors.goldDim
     end
-    return '\226\154\160 No candidate in "'
+    return 'No candidate in "'
       .. (memory and memory.name or assignment.id)
       .. '" is usable by this character \226\128\148 the slot falls through to your live action.',
       colors.warn
@@ -512,7 +512,7 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   local setToHeader = Widgets.SectionHeader(inset, "This slot is set to")
   setToHeader:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -14)
 
-  local emptyButton = Widgets.Button(inset, "\226\136\133 Empty (clear it)", 150, function()
+  local emptyButton = Widgets.Button(inset, "Empty (clear it)", 150, function()
     assignSlot(muscleId, slot, { type = "empty" })
   end)
   emptyButton:SetPoint("TOPLEFT", setToHeader, "BOTTOMLEFT", 0, -8)
@@ -545,7 +545,7 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
       tile:SetTextureImage(resolved.icon)
       tile:SetBorder(1, colors.managed)
     else
-      tile:SetGlyph("\226\154\160", colors.warn)
+      tile:SetSymbol(Widgets.TEX.warning)
       tile:SetBorder(1, colors.warn, 0.7)
     end
 
