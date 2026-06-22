@@ -73,20 +73,17 @@ function DB:FindLayoutId(target)
   return matchByName(self:GetRoot().layouts, target)
 end
 
+-- A new profile is a copy of the active profile's layout selection and
+-- triggers, so it starts as a variation of your current setup.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
-
-  local activeLayouts, order = {}, 1
-  for layoutId in pairs(root.layouts) do
-    activeLayouts[layoutId] = { enabled = true, order = order }
-    order = order + 1
-  end
+  local source = self:GetProfile()
 
   root.profiles[id] = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
-    activeLayouts = activeLayouts,
-    triggers = MM.Tables.DeepCopy(MM.defaults.profiles.Default.triggers),
+    activeLayouts = MM.Tables.DeepCopy(source and source.activeLayouts or {}),
+    triggers = MM.Tables.DeepCopy(source and source.triggers or MM.defaults.profiles.Default.triggers),
   }
   root.activeProfile = id
   return id, root.profiles[id]
