@@ -368,18 +368,18 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
   local title = Widgets.Title(parent, muscle and muscle.name or muscleId)
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, -2)
 
-  local rename = Widgets.Button(parent, "Rename", 66, function()
-    renameMuscle(muscleId, muscle and muscle.name or muscleId)
-  end)
-  rename:SetPoint("LEFT", title, "RIGHT", 14, 0)
-
   local delete = Widgets.Button(parent, "Delete", 60, function()
     deleteMuscle(muscleId, muscle and muscle.name or muscleId)
   end)
-  delete:SetPoint("LEFT", rename, "RIGHT", 6, 0)
+  delete:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, -2)
   if MM.Tables.Count(MM.DB:GetRoot().muscles or {}) <= 1 then
     delete:Disable()
   end
+
+  local rename = Widgets.Button(parent, "Rename", 66, function()
+    renameMuscle(muscleId, muscle and muscle.name or muscleId)
+  end)
+  rename:SetPoint("RIGHT", delete, "LEFT", 6, 0)
 
   local hint =
     Widgets.Hint(parent, "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit")
