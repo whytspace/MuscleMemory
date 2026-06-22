@@ -68,6 +68,31 @@ function Applier:BuildPlan(profileId)
   return plan
 end
 
+-- True if applying the profile would change at least one slot — i.e. a managed
+-- slot whose resolved action differs from what is currently there, or an
+-- unresolved slot that the fallback would clear.
+function Applier:HasUnappliedChanges(profileId)
+  local plan = self:BuildPlan(profileId)
+  if not plan then
+    return false
+  end
+
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local entry = plan.slots[slot]
+    if entry then
+      if entry.resolved then
+        if entry.resolved.pickupAvailable ~= false and not MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
+          return true
+        end
+      elseif entry.fallback == "clear" and HasAction and HasAction(slot) then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
 function Applier:PreviewProfile(profileId)
   local plan, reason = self:BuildPlan(profileId)
   if not plan then
@@ -259,9 +284,6 @@ function Applier:ApplyProfile(profileId, options)
 
   local canApply, reason = self:CanApply()
   if not canApply then
-    if reason == "combat lockdown" then
-      MM.Events:MarkPending(profileId or MM.DB:GetActiveProfileId(), reason)
-    end
     MM:Warn("cannot apply: " .. reason)
     return false
   end
@@ -305,8 +327,6 @@ function Applier:ApplyProfile(profileId, options)
       end
     end
   end
-
-  MM.DB:GetCharacterState().pendingProfiles[plan.profileId] = nil
 
   MM:Print(string.format("applied %d slots, left %d unresolved, failed %d.", applied, unchanged, failed))
   return failed == 0

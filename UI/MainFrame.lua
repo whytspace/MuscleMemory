@@ -62,3 +62,27 @@ function UI:Open()
   self:CreateFrame()
   self.frame:Show()
 end
+
+local APPLY_DIALOG = "MUSCLEMEMORY_APPLY"
+
+-- Offer to apply the active profile (raised by Events when changes are pending).
+function UI:PromptApply()
+  if not (StaticPopupDialogs and StaticPopup_Show) then
+    return
+  end
+
+  StaticPopupDialogs[APPLY_DIALOG] = StaticPopupDialogs[APPLY_DIALOG]
+    or {
+      text = "Muscle Memory: action bar changes are available. Apply them?",
+      button1 = "Apply",
+      button2 = "Close",
+      OnAccept = function()
+        MM.Applier:ApplyProfile()
+      end,
+      timeout = 0,
+      whileDead = true,
+      hideOnEscape = true,
+      preferredIndex = 3,
+    }
+  StaticPopup_Show(APPLY_DIALOG)
+end

@@ -404,6 +404,6 @@ end
 function DB:GetCharacterState()
   local root = self:GetRoot()
   local key = self:GetCharacterKey()
-  root.characterState[key] = root.characterState[key] or { pendingProfiles = {} }
+  root.characterState[key] = root.characterState[key] or {}
   return root.characterState[key]
 end

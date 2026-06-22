@@ -39,6 +39,10 @@ The applier refuses to run during combat lockdown or while the cursor is holding
 managed slot can't resolve an assignment, the global `fallback` setting (`keep` or `clear`, set via
 `/mm config fallback`) decides whether to leave the existing action or clear the slot.
 
+A few events (spec change, spells changed, leaving combat) re-evaluate the active profile. If
+applying it would change a slot, `Events` raises a popup offering to apply — nothing is stored or
+auto-applied; "pending" is just computed live from the current bars.
+
 ## Verification notes
 
 This is an MVP skeleton and should be verified against the current Retail client:
