@@ -14,7 +14,7 @@ local RAIL_WIDTH = 250
 local EDITOR_WIDTH = 330
 local CELL = 32
 local CELL_GAP = 4
-local LABEL_WIDTH = 104
+local LABEL_WIDTH = 56
 
 local function refresh()
   MM.UI:Refresh()
@@ -381,11 +381,8 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
     delete:Disable()
   end
 
-  local hint = Widgets.Label(
-    parent,
-    "GameFontDisableSmall",
-    "your live bars are shown below \226\128\148 click a slot to manage it \194\183 right-click to stop managing \194\183 click a managed slot to edit"
-  )
+  local hint =
+    Widgets.Hint(parent, "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit")
   hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
 
   -- Column headers.
@@ -405,7 +402,7 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
 
   for bar = 1, bars do
     local y = -(bar - 1) * (CELL + CELL_GAP)
-    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", "Action Bar " .. bar, colors.parchment)
+    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", "Bar " .. bar, colors.parchment)
     rowLabel:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, y - (CELL - 12) / 2)
 
     for button = 1, MM.ACTIONS_PER_BAR do

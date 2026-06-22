@@ -225,11 +225,8 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   chip:SetPoint("RIGHT", center, "RIGHT", -4, 0)
   chip:SetJustifyH("LEFT")
 
-  local hint = Widgets.Label(
-    center,
-    "GameFontDisableSmall",
-    (locked and "Priority order" or "Drag to reorder") .. " \194\183 the first usable action wins"
-  )
+  local hint =
+    Widgets.Hint(center, (locked and "Priority order" or "Drag to reorder") .. " \194\183 the first usable action wins")
   hint:SetPoint("TOPLEFT", chip, "BOTTOMLEFT", 0, -10)
 
   -- Candidate rows.

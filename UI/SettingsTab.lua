@@ -35,7 +35,7 @@ function SettingsTab:Build(parent)
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)
   blurb:SetJustifyH("LEFT")
-  blurb:SetTextColor(Widgets.unpackColor(colors.faint))
+  blurb:SetTextColor(Widgets.unpackColor(colors.muted))
 
   local current = MM.DB:GetFallback()
   local radios = {}

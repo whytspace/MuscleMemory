@@ -16,6 +16,7 @@ Widgets.colors = {
   selected = { 1.0, 0.82, 0.0 },
   warn = { 0.82, 0.63, 0.40 },
   faint = { 0.42, 0.40, 0.34 },
+  muted = { 0.56, 0.52, 0.42 },
   danger = { 0.83, 0.40, 0.32 },
 }
 
@@ -41,6 +42,15 @@ function Widgets.Label(parent, font, text, color)
     label:SetTextColor(unpackColor(color))
   end
   return label
+end
+
+-- Secondary description / hint text. One style for every "explainer" line so
+-- they all read the same.
+function Widgets.Hint(parent, text)
+  local hint = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  hint:SetText(text or "")
+  hint:SetTextColor(unpackColor(Widgets.colors.muted))
+  return hint
 end
 
 -- The small gold all-caps section heading used throughout the editor panels

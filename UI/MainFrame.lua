@@ -153,7 +153,7 @@ function UI:CreateFrame()
   end
 
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "PortraitFrameTemplate")
-  frame:SetSize(1180, 720)
+  frame:SetSize(1140, 720)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("HIGH")
   frame:Hide()
@@ -228,11 +228,10 @@ function UI:CreateFrame()
   self.profileButton:SetPoint("RIGHT", preview, "LEFT", -10, 0)
 
   -- Tab description line.
-  self.description = MM.ui.Widgets.Label(frame, "GameFontHighlightSmall", "", MM.ui.Widgets.colors.faint)
+  self.description = MM.ui.Widgets.Hint(frame, "")
   self.description:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -86)
   self.description:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -86)
   self.description:SetJustifyH("LEFT")
-  self.description:SetTextColor(0.56, 0.52, 0.42)
 
   self.divider = MM.ui.Widgets.Hairline(frame, true)
   self.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -106)
