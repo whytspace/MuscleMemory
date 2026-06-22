@@ -37,15 +37,13 @@ function SettingsTab:Build(parent)
   blurb:SetJustifyH("LEFT")
   blurb:SetTextColor(Widgets.unpackColor(colors.muted))
 
-  local current = MM.DB:GetFallback()
-  local radios = {}
+  self.radios = {}
 
   local anchor = blurb
   for _, option in ipairs(OPTIONS) do
     local radio = CreateFrame("CheckButton", nil, column, "UIRadioButtonTemplate")
     radio:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -14)
-    radio:SetChecked(current == option.value)
-    radios[option.value] = radio
+    self.radios[option.value] = radio
 
     local label = Widgets.Label(column, "GameFontHighlight", option.label, colors.parchment)
     label:SetPoint("LEFT", radio, "RIGHT", 6, 0)
@@ -55,11 +53,19 @@ function SettingsTab:Build(parent)
 
     radio:SetScript("OnClick", function()
       MM.DB:SetFallback(option.value)
-      for value, other in pairs(radios) do
-        other:SetChecked(value == option.value)
-      end
+      self:Refresh()
     end)
 
     anchor = radio
+  end
+
+  self:Refresh()
+end
+
+-- Built once; Refresh just re-syncs the radios to the stored fallback.
+function SettingsTab:Refresh()
+  local current = MM.DB:GetFallback()
+  for value, radio in pairs(self.radios or {}) do
+    radio:SetChecked(value == current)
   end
 end

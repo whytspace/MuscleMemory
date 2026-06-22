@@ -85,3 +85,6 @@ function AboutTab:Build(parent)
     editBox:HighlightText()
   end)
 end
+
+-- Static content — built once, nothing to update on refresh.
+function AboutTab:Refresh() end

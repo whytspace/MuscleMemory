@@ -156,7 +156,73 @@ end
 
 -- Left rail ------------------------------------------------------------------
 
-function MemoriesTab:BuildRail(parent, ref)
+-- Initializer for a memory rail row (recycled by Widgets.DataList).
+local function memoryRowInit(row, data)
+  local memory = data.memory
+  if not row.mmInit then
+    row.mmInit = true
+    Widgets.decorateRow(row)
+
+    row.tile = Widgets.Icon(row, 30)
+    row.tile:SetPoint("LEFT", row, "LEFT", 8, 0)
+
+    row.lock = row:CreateTexture(nil, "ARTWORK")
+    row.lock:SetSize(12, 14)
+    row.lock:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+
+    row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
+    row.nameLabel:SetPoint("TOPLEFT", row.tile, "TOPRIGHT", 9, -1)
+    row.nameLabel:SetPoint("RIGHT", row.lock, "LEFT", -4, 0)
+    row.nameLabel:SetJustifyH("LEFT")
+    row.nameLabel:SetWordWrap(false)
+
+    row.sub = Widgets.Label(row, "GameFontDisableSmall", "")
+    row.sub:SetPoint("BOTTOMLEFT", row.nameLabel, "BOTTOMLEFT", 0, -16)
+    row.sub:SetPoint("RIGHT", row.lock, "LEFT", -4, 0)
+    row.sub:SetJustifyH("LEFT")
+    row.sub:SetWordWrap(false)
+
+    row:SetScript("OnClick", function(self)
+      if self.data then
+        selectMemory({ source = self.data.memory.source, id = self.data.memory.id })
+      end
+    end)
+  end
+
+  row.data = data
+  local ref = selectedRef()
+  local active = ref and memory.source == ref.source and memory.id == ref.id
+  row:SetSelected(active)
+
+  local memoryObj = MM.DB:GetMemory({ source = memory.source, id = memory.id })
+  local resolved = resolveMemory(memory)
+  if resolved and resolved.icon then
+    row.tile:SetTextureImage(resolved.icon)
+    row.tile:SetBorder(1, colors.managed)
+  else
+    row.tile:SetSymbol(Widgets.TEX.warning)
+    row.tile:SetBorder(1, colors.warn, 0.7)
+  end
+
+  if memory.locked then
+    row.lock:SetTexture(Widgets.TEX.lock)
+    row.lock:Show()
+  else
+    row.lock:Hide()
+  end
+
+  row.nameLabel:SetText(memory.name)
+  if active then
+    row.nameLabel:SetTextColor(Widgets.unpackColor(colors.gold))
+  else
+    row.nameLabel:SetTextColor(1, 1, 1)
+  end
+
+  local count = memoryObj and memoryObj.candidates and #memoryObj.candidates or 0
+  row.sub:SetText(resolved and ("resolves to " .. resolved.label) or ("no match \194\183 " .. count .. " candidates"))
+end
+
+function MemoriesTab:BuildRail(parent)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
@@ -165,67 +231,143 @@ function MemoriesTab:BuildRail(parent, ref)
   local newButton = Widgets.Button(inset, "+ New Memory", RAIL_WIDTH - 24, newMemory)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
 
-  local scroll, content = Widgets.ScrollList(inset)
-  scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
-  scroll:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -8, 8)
+  local list = Widgets.DataList(inset, "memories.rail", {
+    extent = 44,
+    spacing = 3,
+    initializer = memoryRowInit,
+  })
+  list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -8, 8)
 
-  local y = 0
+  local items = {}
   for _, memory in ipairs(memoryList()) do
-    local active = ref and memory.source == ref.source and memory.id == ref.id
-    local memoryObj = MM.DB:GetMemory({ source = memory.source, id = memory.id })
-    local resolved = resolveMemory(memory)
-
-    local row = Widgets.ListRow(content, 44)
-    row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
-    row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
-    row:SetSelected(active)
-
-    local tile = Widgets.Icon(row, 30)
-    tile:SetPoint("LEFT", row, "LEFT", 8, 0)
-    if resolved and resolved.icon then
-      tile:SetTextureImage(resolved.icon)
-      tile:SetBorder(1, colors.managed)
-    else
-      tile:SetSymbol(Widgets.TEX.warning)
-      tile:SetBorder(1, colors.warn, 0.7)
-    end
-
-    local lock = row:CreateTexture(nil, "ARTWORK")
-    lock:SetSize(12, 14)
-    lock:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    if memory.locked then
-      lock:SetTexture(Widgets.TEX.lock)
-    else
-      lock:Hide()
-    end
-
-    local name = Widgets.Label(row, "GameFontHighlight", memory.name)
-    name:SetPoint("TOPLEFT", tile, "TOPRIGHT", 9, -1)
-    name:SetPoint("RIGHT", lock, "LEFT", -4, 0)
-    name:SetJustifyH("LEFT")
-    name:SetWordWrap(false)
-    if active then
-      name:SetTextColor(Widgets.unpackColor(colors.gold))
-    end
-
-    local count = memoryObj and memoryObj.candidates and #memoryObj.candidates or 0
-    local subText = resolved and ("resolves to " .. resolved.label) or ("no match \194\183 " .. count .. " candidates")
-    local sub = Widgets.Label(row, "GameFontDisableSmall", subText)
-    sub:SetPoint("BOTTOMLEFT", name, "BOTTOMLEFT", 0, -16)
-    sub:SetPoint("RIGHT", lock, "LEFT", -4, 0)
-    sub:SetJustifyH("LEFT")
-    sub:SetWordWrap(false)
-
-    row:SetScript("OnClick", function()
-      selectMemory({ source = memory.source, id = memory.id })
-    end)
-
-    y = y - 47
+    items[#items + 1] = { memory = memory }
   end
-  content:SetHeight(math.max(1, -y))
+  list:SetItems(items)
 end
 
 -- Centre: candidate list -----------------------------------------------------
+
+-- Initializer for a candidate row. Widgets.DataList recycles these Buttons, so
+-- the children are built once (guarded by mmInit) and refreshed each call, and
+-- the click/drag handlers read row.data live rather than closing over an index.
+local function candidateRowInit(row, data)
+  if not row.mmInit then
+    row.mmInit = true
+    Widgets.decorateRow(row)
+    row:RegisterForDrag("LeftButton")
+
+    row.handle = Widgets.DragDots(row)
+    row.order = Widgets.Label(row, "GameFontNormalSmall", "")
+    row.order:SetWidth(16)
+    row.order:SetJustifyH("LEFT")
+    row.order:SetTextColor(Widgets.unpackColor(colors.goldDim))
+    row.tile = Widgets.Icon(row, 30)
+    row.tile:SetBorder(1, colors.managed, 0.7)
+    row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
+    row.nameLabel:SetJustifyH("LEFT")
+    row.nameLabel:SetWordWrap(false)
+    row.condLabel = Widgets.Label(row, "GameFontDisableSmall", "")
+    row.condLabel:SetTextColor(Widgets.unpackColor(colors.goldDim))
+
+    row:SetScript("OnClick", function(self, mouseButton)
+      local ref = selectedRef()
+      local index = self.data and self.data.index
+      if not ref or not index then
+        return
+      end
+      if mouseButton == "RightButton" then
+        if ref.source ~= "standard" then
+          local ok, err = MM.DB:RemoveCandidate(ref.id, index)
+          if not ok then
+            MM:Warn(err)
+          end
+          refresh()
+        end
+        return
+      end
+      selectCandidate(index)
+    end)
+
+    -- Drag a candidate onto another to reorder (the target is whichever row the
+    -- cursor is over on release).
+    row:SetScript("OnDragStart", function(self)
+      local ref = selectedRef()
+      if not self.data or not ref or ref.source == "standard" then
+        return
+      end
+      self:SetAlpha(0.5)
+      MemoriesTab._dragCandidate = self.data.index
+    end)
+    row:SetScript("OnDragStop", function(self)
+      self:SetAlpha(1)
+      local from = MemoriesTab._dragCandidate
+      MemoriesTab._dragCandidate = nil
+      local ref = selectedRef()
+      if not from or not ref or not MemoriesTab.candidateList then
+        return
+      end
+      local target
+      MemoriesTab.candidateList:ForEachFrame(function(frame)
+        if frame.data and frame:IsMouseOver() then
+          target = frame.data.index
+        end
+      end)
+      if target and target ~= from then
+        MM.DB:MoveCandidate(ref.id, from, target)
+        refresh()
+      end
+    end)
+  end
+
+  row.data = data
+  local index, candidate = data.index, data.candidate
+  local locked = (selectedRef() or {}).source == "standard"
+
+  row:SetSelected(index == (MM.ui.state.candidate or 1))
+
+  row.order:SetText(tostring(index))
+  row.order:ClearAllPoints()
+  if locked then
+    -- Predefined memories can't be reordered, so there's no drag handle.
+    row.handle:Hide()
+    row.order:SetPoint("LEFT", row, "LEFT", 12, 0)
+  else
+    row.handle:ClearAllPoints()
+    row.handle:SetPoint("LEFT", row, "LEFT", 10, 0)
+    row.handle:Show()
+    row.order:SetPoint("LEFT", row.handle, "RIGHT", 8, 0)
+  end
+
+  local name, icon = candidateInfo(candidate)
+  row.tile:ClearAllPoints()
+  row.tile:SetPoint("LEFT", row.order, "RIGHT", 8, 0)
+  if icon then
+    row.tile:SetTextureImage(icon)
+  else
+    row.tile:SetGlyph("?", colors.faint)
+  end
+
+  row.nameLabel:SetText(name)
+  row.nameLabel:ClearAllPoints()
+  row.nameLabel:SetPoint("LEFT", row.tile, "RIGHT", 9, 0)
+
+  local classes = candidate.conditions and candidate.conditions.classes
+  if classes and #classes > 0 then
+    local chips = {}
+    for _, token in ipairs(classes) do
+      chips[#chips + 1] = prettyClass(token)
+    end
+    row.condLabel:SetText(table.concat(chips, " / "))
+    row.condLabel:ClearAllPoints()
+    row.condLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.condLabel:Show()
+    row.nameLabel:SetPoint("RIGHT", row.condLabel, "LEFT", -6, 0)
+  else
+    row.condLabel:Hide()
+    row.nameLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+  end
+end
 
 function MemoriesTab:BuildCenter(parent, ref, memory)
   local center = CreateFrame("Frame", nil, parent)
@@ -275,104 +417,28 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   local hint = Widgets.Hint(center, hintText)
   hint:SetPoint("TOPLEFT", chip, "BOTTOMLEFT", 0, -10)
 
-  -- Candidate rows.
-  local scroll, content = Widgets.ScrollList(center)
-  scroll:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
-  scroll:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -22, 4)
-
+  -- Candidate rows — a retained DataProvider list, so selecting/removing a
+  -- candidate no longer snaps the scroll to the top and the rows aren't leaked.
   local candidates = memory and memory.candidates or {}
-  local selected = MM.ui.state.candidate or 1
-  MemoriesTab.candidateRows = {}
-  local y = 0
+  local list = Widgets.DataList(center, "memories.candidates", {
+    extent = 40,
+    spacing = 3,
+    initializer = candidateRowInit,
+  })
+  MemoriesTab.candidateList = list
+  list.scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -22, 4)
+
+  local items = {}
   for index, candidate in ipairs(candidates) do
-    local name, icon = candidateInfo(candidate)
-    local row = Widgets.ListRow(content, 40)
-    row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
-    row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
-    row:SetSelected(index == selected)
-    row.candidateIndex = index
-    MemoriesTab.candidateRows[index] = row
-
-    local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
-    order:SetWidth(16)
-    order:SetJustifyH("LEFT")
-    if locked then
-      -- Predefined memories can't be reordered, so there's no drag handle.
-      order:SetPoint("LEFT", row, "LEFT", 12, 0)
-    else
-      local handle = Widgets.DragDots(row)
-      handle:SetPoint("LEFT", row, "LEFT", 10, 0)
-      order:SetPoint("LEFT", handle, "RIGHT", 8, 0)
-
-      -- Drag a candidate onto another to reorder (same pattern as the muscle rail).
-      row:RegisterForDrag("LeftButton")
-      row:SetScript("OnDragStart", function(frame)
-        frame:SetAlpha(0.5)
-        MemoriesTab._dragCandidate = index
-      end)
-      row:SetScript("OnDragStop", function(frame)
-        frame:SetAlpha(1)
-        local from = MemoriesTab._dragCandidate
-        MemoriesTab._dragCandidate = nil
-        if not from then
-          return
-        end
-        for _, candidateRow in ipairs(MemoriesTab.candidateRows) do
-          if candidateRow:IsMouseOver() then
-            MM.DB:MoveCandidate(ref.id, from, candidateRow.candidateIndex)
-            refresh()
-            return
-          end
-        end
-      end)
-    end
-    order:SetTextColor(Widgets.unpackColor(colors.goldDim))
-
-    local tile = Widgets.Icon(row, 30)
-    tile:SetPoint("LEFT", order, "RIGHT", 8, 0)
-    if icon then
-      tile:SetTextureImage(icon)
-    else
-      tile:SetGlyph("?", colors.faint)
-    end
-    tile:SetBorder(1, colors.managed, 0.7)
-
-    local label = Widgets.Label(row, "GameFontHighlight", name)
-    label:SetPoint("LEFT", tile, "RIGHT", 9, 0)
-    label:SetJustifyH("LEFT")
-    label:SetWordWrap(false)
-
-    local classes = candidate.conditions and candidate.conditions.classes
-    if classes and #classes > 0 then
-      local chips = {}
-      for _, token in ipairs(classes) do
-        chips[#chips + 1] = prettyClass(token)
-      end
-      local condition = Widgets.Label(row, "GameFontDisableSmall", table.concat(chips, " / "))
-      condition:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-      condition:SetTextColor(Widgets.unpackColor(colors.goldDim))
-      label:SetPoint("RIGHT", condition, "LEFT", -6, 0)
-    else
-      label:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    end
-
-    row:SetScript("OnClick", function(_, mouseButton)
-      if mouseButton == "RightButton" then
-        if not locked then
-          local ok, err = MM.DB:RemoveCandidate(ref.id, index)
-          if not ok then
-            MM:Warn(err)
-          end
-          refresh()
-        end
-        return
-      end
-      selectCandidate(index)
-    end)
-
-    y = y - 43
+    items[#items + 1] = { index = index, candidate = candidate }
   end
-  content:SetHeight(math.max(1, -y))
+
+  -- Keep the scroll offset while browsing one memory; reset to the top when the
+  -- selected memory changes (its candidate list is unrelated).
+  local memoryKey = ref.source .. ":" .. tostring(ref.id)
+  list:SetItems(items, MemoriesTab._candidateKey == memoryKey)
+  MemoriesTab._candidateKey = memoryKey
 
   if #candidates == 0 then
     local emptyText = locked and "This memory has no candidates."
@@ -475,7 +541,7 @@ function MemoriesTab:Build(parent)
     MM.ui.state.candidate = 1
   end
 
-  self:BuildRail(parent, ref)
+  self:BuildRail(parent)
   self:BuildCenter(parent, ref, memory)
   self:BuildRule(parent, memory)
 

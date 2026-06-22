@@ -181,6 +181,95 @@ function Widgets.ScrollList(parent)
   return scrollBox, content
 end
 
+-- A retained, recycling list: one WowScrollBox kept alive (cached by `key`) plus
+-- a pool of row frames, re-parented onto each fresh container on a tab rebuild.
+-- Because the scroll box itself is never recreated, the scroll offset is kept
+-- across updates for free, and rows are reused rather than orphaned. (WoW's
+-- DataProvider ScrollBox needs an XML row template per row type, which this
+-- Lua-only add-on doesn't define, so we pool rows by hand on the same scroll-box
+-- API that ScrollList already uses.) `opts` is read only the first time a key is
+-- seen: { extent = rowHeight, spacing = gap, initializer = fn(row, elementData) }.
+-- The initializer builds the row's children once (guard on a flag) and updates
+-- them from the element data on every call.
+local dataLists = {}
+
+function Widgets.DataList(parent, key, opts)
+  local list = dataLists[key]
+  if not list then
+    local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBox")
+    local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
+
+    local content = CreateFrame("Frame", nil, scrollBox)
+    content.scrollable = true
+    content:SetScript("OnSizeChanged", function()
+      scrollBox:FullUpdate()
+    end)
+
+    local view = CreateScrollBoxLinearView()
+    view:SetPanExtent(opts.extent)
+    ScrollUtil.InitScrollBoxWithScrollBar(scrollBox, scrollBar, view)
+
+    list = {
+      scrollBox = scrollBox,
+      scrollBar = scrollBar,
+      content = content,
+      rows = {},
+      extent = opts.extent,
+      spacing = opts.spacing or 0,
+      initializer = opts.initializer,
+    }
+
+    -- `retain` (default true) leaves the scroll offset alone; pass false to jump
+    -- back to the top (e.g. when the list's subject changed).
+    function list:SetItems(items, retain)
+      items = items or {}
+      local gap = self.extent + self.spacing
+      for index, data in ipairs(items) do
+        local row = self.rows[index]
+        if not row then
+          row = CreateFrame("Button", nil, self.content)
+          row:SetHeight(self.extent)
+          self.rows[index] = row
+        end
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, -(index - 1) * gap)
+        row:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, -(index - 1) * gap)
+        row:Show()
+        self.initializer(row, data)
+      end
+      for index = #items + 1, #self.rows do
+        self.rows[index]:Hide()
+      end
+      self.content:SetHeight(math.max(1, #items * gap - self.spacing))
+      if retain == false and self.scrollBox.ScrollToBegin then
+        self.scrollBox:ScrollToBegin()
+      end
+    end
+
+    function list:ForEachFrame(fn)
+      for _, row in ipairs(self.rows) do
+        if row:IsShown() then
+          fn(row)
+        end
+      end
+    end
+
+    dataLists[key] = list
+  end
+
+  -- Re-attach onto the current container — a legacy tab rebuild makes a fresh one.
+  list.scrollBox:SetParent(parent)
+  list.scrollBox:ClearAllPoints()
+  list.scrollBar:SetParent(parent)
+  list.scrollBar:ClearAllPoints()
+  list.scrollBar:SetPoint("TOPLEFT", list.scrollBox, "TOPRIGHT", 6, 0)
+  list.scrollBar:SetPoint("BOTTOMLEFT", list.scrollBox, "BOTTOMRIGHT", 6, 0)
+  list.scrollBox:Show()
+  list.scrollBar:Show()
+
+  return list
+end
+
 -- The little three-bar "priority list" badge that marks a memory-driven slot.
 -- Pinned to the bottom-right corner of `parent`.
 function Widgets.MemoryBadge(parent, size)
@@ -330,11 +419,10 @@ function Widgets.Icon(parent, size)
   return icon
 end
 
--- A selectable list row (muscle rail, memory rail, slot-editor memory options).
--- Returns a Button with a highlight, a left accent bar, and a `.label`.
-function Widgets.ListRow(parent, height)
-  local row = CreateFrame("Button", nil, parent)
-  row:SetHeight(height or 30)
+-- Apply the shared list-row visuals (selection background, hover, left accent
+-- bar + a :SetSelected method) to an existing Button. Used by ListRow and by
+-- DataList row initializers, which receive a pooled bare Button to dress.
+local function decorateRow(row)
   row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
   row.selectedBg = row:CreateTexture(nil, "BACKGROUND")
@@ -363,7 +451,15 @@ function Widgets.ListRow(parent, height)
     self.selectedBg:SetColorTexture(0.13, 0.11, 0.05, selected and 1 or 0)
     self.accent:SetColorTexture(unpackColor(Widgets.colors.gold, selected and 0.95 or 0))
   end
+end
+Widgets.decorateRow = decorateRow
 
+-- A selectable list row (muscle rail, memory rail, slot-editor memory options).
+-- Returns a Button with a highlight, a left accent bar, and a `.label`.
+function Widgets.ListRow(parent, height)
+  local row = CreateFrame("Button", nil, parent)
+  row:SetHeight(height or 30)
+  decorateRow(row)
   return row
 end
 

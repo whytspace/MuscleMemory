@@ -126,7 +126,102 @@ end
 
 -- Left rail ------------------------------------------------------------------
 
-function MusclesTab:BuildRail(parent, muscleId)
+-- Initializer for a muscle rail row (recycled by Widgets.DataList).
+local function muscleRowInit(row, data)
+  local entry = data.entry
+  if not row.mmInit then
+    row.mmInit = true
+    Widgets.decorateRow(row)
+    row:RegisterForDrag("LeftButton")
+
+    row.handle = Widgets.DragDots(row)
+    row.handle:SetPoint("LEFT", row, "LEFT", 9, 0)
+
+    row.order = Widgets.Label(row, "GameFontNormalSmall", "")
+    row.order:SetPoint("LEFT", row.handle, "RIGHT", 6, 0)
+    row.order:SetWidth(16)
+    row.order:SetJustifyH("LEFT")
+
+    row.check = Widgets.Checkbox(row, false)
+    row.check:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+    row.check:SetScript("OnClick", function()
+      local e = row.data and row.data.entry
+      if e then
+        MM.DB:SetMuscleEnabled(e.id, not e.enabled)
+        refresh()
+      end
+    end)
+
+    row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
+    row.nameLabel:SetPoint("LEFT", row.order, "RIGHT", 8, 0)
+    row.nameLabel:SetPoint("RIGHT", row.check, "LEFT", -4, 0)
+    row.nameLabel:SetJustifyH("LEFT")
+    row.nameLabel:SetWordWrap(false)
+
+    row:SetScript("OnClick", function(self, mouseButton)
+      if mouseButton == "RightButton" then
+        return
+      end
+      local e = self.data and self.data.entry
+      if e then
+        MM.DB:SetSelectedMuscleId(e.id)
+        MM.DB:SetSelectedSlot(nil)
+        refresh()
+      end
+    end)
+
+    -- Drag a row onto another to reorder; the target is whichever row the cursor
+    -- is over on release.
+    row:SetScript("OnDragStart", function(self)
+      self:SetAlpha(0.5)
+      MusclesTab._dragFrom = self.data and self.data.entry.id
+    end)
+    row:SetScript("OnDragStop", function(self)
+      self:SetAlpha(1)
+      local fromId = MusclesTab._dragFrom
+      MusclesTab._dragFrom = nil
+      if not fromId or not MusclesTab.railList then
+        return
+      end
+      local target
+      MusclesTab.railList:ForEachFrame(function(frame)
+        if frame.data and frame:IsMouseOver() then
+          target = frame.data.index
+        end
+      end)
+      if target then
+        MM.DB:MoveMuscle(fromId, target)
+        refresh()
+      end
+    end)
+  end
+
+  row.data = data
+  local active = entry.id == MM.DB:GetSelectedMuscleId()
+
+  row.order:SetText(tostring(data.index))
+  row.order:SetTextColor(Widgets.unpackColor(active and colors.gold or colors.faint))
+
+  row.check:SetChecked(entry.enabled)
+
+  -- A conditioned muscle whose conditions don't match this character won't apply,
+  -- so it reads as inactive (like a disabled one).
+  local conditions = entry.muscle.conditions
+  local inactive = not entry.enabled or (MM.Conditions.Any(conditions) and not MM.Conditions.Match(conditions))
+
+  row.nameLabel:SetText(entry.name)
+  if inactive then
+    row.nameLabel:SetTextColor(Widgets.unpackColor(colors.faint))
+  elseif active then
+    row.nameLabel:SetTextColor(Widgets.unpackColor(colors.gold))
+  else
+    row.nameLabel:SetTextColor(1, 1, 1)
+  end
+
+  row:SetSelected(active)
+end
+
+function MusclesTab:BuildRail(parent)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
@@ -142,88 +237,21 @@ function MusclesTab:BuildRail(parent, muscleId)
   local profile = MM.DB:GetProfile()
   footer:SetText("checked = applied in profile " .. (profile and profile.name or ""))
 
-  local scroll, content = Widgets.ScrollList(inset)
-  scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
-  scroll:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -8, 6)
+  local list = Widgets.DataList(inset, "muscles.rail", {
+    extent = 32,
+    spacing = 4,
+    initializer = muscleRowInit,
+  })
+  MusclesTab.railList = list
+  list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -8, 6)
 
   local muscles = MM.DB:GetProfileMuscles()
-  self.railRows = {}
-
-  local y = 0
+  local items = {}
   for index, entry in ipairs(muscles) do
-    local row = Widgets.ListRow(content, 32)
-    row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
-    row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
-    row:SetSelected(entry.id == muscleId)
-    row.index = index
-    self.railRows[index] = row
-
-    local handle = Widgets.DragDots(row)
-    handle:SetPoint("LEFT", row, "LEFT", 9, 0)
-
-    local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
-    order:SetPoint("LEFT", handle, "RIGHT", 6, 0)
-    order:SetWidth(16)
-    order:SetJustifyH("LEFT")
-    order:SetTextColor(Widgets.unpackColor(entry.id == muscleId and colors.gold or colors.faint))
-
-    local check = Widgets.Checkbox(row, entry.enabled, function()
-      MM.DB:SetMuscleEnabled(entry.id, not entry.enabled)
-      refresh()
-    end)
-    check:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-
-    -- A conditioned muscle whose conditions don't match this character won't
-    -- apply, so it reads as inactive (like a disabled one).
-    local conditions = entry.muscle.conditions
-    local inactive = not entry.enabled or (MM.Conditions.Any(conditions) and not MM.Conditions.Match(conditions))
-
-    local name = Widgets.Label(row, "GameFontHighlight", entry.name)
-    name:SetPoint("LEFT", order, "RIGHT", 8, 0)
-    name:SetPoint("RIGHT", check, "LEFT", -4, 0)
-    name:SetJustifyH("LEFT")
-    name:SetWordWrap(false)
-    if inactive then
-      name:SetTextColor(Widgets.unpackColor(colors.faint))
-    elseif entry.id == muscleId then
-      name:SetTextColor(Widgets.unpackColor(colors.gold))
-    end
-
-    row:SetScript("OnClick", function(_, mouseButton)
-      if mouseButton == "RightButton" then
-        return
-      end
-      MM.DB:SetSelectedMuscleId(entry.id)
-      MM.DB:SetSelectedSlot(nil)
-      refresh()
-    end)
-
-    -- Drag a row onto another to reorder. Both scripts fire on the source, so
-    -- the drop target is whichever row the cursor is over on release.
-    row:RegisterForDrag("LeftButton")
-    row:SetScript("OnDragStart", function(frame)
-      frame:SetAlpha(0.5)
-      MusclesTab._dragFrom = entry.id
-    end)
-    row:SetScript("OnDragStop", function(frame)
-      frame:SetAlpha(1)
-      local fromId = MusclesTab._dragFrom
-      MusclesTab._dragFrom = nil
-      if not fromId then
-        return
-      end
-      for _, candidate in ipairs(MusclesTab.railRows) do
-        if candidate:IsMouseOver() then
-          MM.DB:MoveMuscle(fromId, candidate.index)
-          refresh()
-          return
-        end
-      end
-    end)
-
-    y = y - 36
+    items[#items + 1] = { index = index, entry = entry }
   end
-  content:SetHeight(math.max(1, -y))
+  list:SetItems(items)
 
   if #muscles == 0 then
     local note = Widgets.Label(inset, "GameFontDisableSmall", "No Muscles in this profile yet.")
@@ -287,12 +315,13 @@ local function paintSlot(icon, muscle, slot)
   end
 end
 
-function MusclesTab:BuildSlot(parent, muscleId, muscle, slot, x, y)
+-- Build one reusable grid cell for a fixed slot. The cell is pooled (kept across
+-- rebuilds and repainted), so its handlers read the live selected muscle rather
+-- than closing over a per-build one. `slot` never changes for a given cell.
+function MusclesTab:BuildSlotCell(parent, slot)
   local icon = Widgets.Icon(parent, CELL)
-  icon:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
   icon:EnableMouse(true)
   icon:RegisterForDrag("LeftButton")
-  paintSlot(icon, muscle, slot)
 
   -- Hit area / click handling lives on a button overlay so the Icon stays a
   -- pure visual.
@@ -301,6 +330,8 @@ function MusclesTab:BuildSlot(parent, muscleId, muscle, slot, x, y)
   hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
   hit:SetScript("OnClick", function(_, mouseButton)
+    local muscleId = MM.DB:GetSelectedMuscleId()
+    local muscle = MM.DB:GetMuscle(muscleId)
     if GetCursorInfo and GetCursorInfo() then
       assignFromCursor(muscleId, slot)
       return
@@ -326,9 +357,10 @@ function MusclesTab:BuildSlot(parent, muscleId, muscle, slot, x, y)
     end
   end)
   hit:SetScript("OnReceiveDrag", function()
-    assignFromCursor(muscleId, slot)
+    assignFromCursor(MM.DB:GetSelectedMuscleId(), slot)
   end)
   hit:SetScript("OnEnter", function(frame)
+    local muscle = MM.DB:GetMuscle(MM.DB:GetSelectedMuscleId())
     GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
     GameTooltip:SetText(MM.Actions.GetSlotLabel(slot))
     local assignment = muscle and muscle.slots and muscle.slots[slot]
@@ -342,6 +374,8 @@ function MusclesTab:BuildSlot(parent, muscleId, muscle, slot, x, y)
   hit:SetScript("OnLeave", function()
     GameTooltip:Hide()
   end)
+
+  return { icon = icon, hit = hit }
 end
 
 function MusclesTab:BuildLegend(parent)
@@ -375,57 +409,115 @@ function MusclesTab:BuildLegend(parent)
   return strip
 end
 
+-- The grid is built once into a persistent, pooled structure and re-attached to
+-- the current centre on each rebuild; cells (keyed by slot) and bar-row labels
+-- are reused and repainted rather than recreated, so a Muscles refresh no longer
+-- orphans ~150 icon frames.
 function MusclesTab:BuildGrid(parent, muscleId, muscle)
-  local title = Widgets.Title(parent, muscle and muscle.name or muscleId)
-  title:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, -2)
+  local grid = MusclesTab.grid
+  if not grid then
+    grid = { cells = {}, rowLabels = {} }
+    MusclesTab.grid = grid
 
-  local delete = Widgets.Button(parent, "Delete", 60, function()
-    deleteMuscle(muscleId, muscle and muscle.name or muscleId)
-  end)
-  delete:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, -2)
-  if MM.Tables.Count(MM.DB:GetRoot().muscles or {}) <= 1 then
-    delete:Disable()
+    grid.frame = CreateFrame("Frame", nil, parent)
+
+    grid.title = Widgets.Title(grid.frame, "")
+    grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 4, -2)
+
+    grid.delete = Widgets.Button(grid.frame, "Delete", 60, function()
+      local id = MM.DB:GetSelectedMuscleId()
+      local m = MM.DB:GetMuscle(id)
+      deleteMuscle(id, m and m.name or id)
+    end)
+    grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -4, -2)
+
+    grid.rename = Widgets.Button(grid.frame, "Rename", 66, function()
+      local id = MM.DB:GetSelectedMuscleId()
+      local m = MM.DB:GetMuscle(id)
+      renameMuscle(id, m and m.name or id)
+    end)
+    grid.rename:SetPoint("RIGHT", grid.delete, "LEFT", 6, 0)
+
+    local hint = Widgets.Hint(
+      grid.frame,
+      "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit"
+    )
+    hint:SetPoint("TOPLEFT", grid.title, "BOTTOMLEFT", 0, -8)
+
+    -- Column headers.
+    grid.headerRow = CreateFrame("Frame", nil, grid.frame)
+    grid.headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
+    grid.headerRow:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), 16)
+    for column = 1, MM.ACTIONS_PER_BAR do
+      local label = Widgets.Label(grid.headerRow, "GameFontDisableSmall", tostring(column))
+      label:SetPoint("LEFT", grid.headerRow, "LEFT", LABEL_WIDTH + (column - 1) * (CELL + CELL_GAP) + CELL / 2, 0)
+      label:SetJustifyH("CENTER")
+    end
+
+    grid.area = CreateFrame("Frame", nil, grid.frame)
+    grid.area:SetPoint("TOPLEFT", grid.headerRow, "BOTTOMLEFT", 0, -2)
+
+    grid.legend = self:BuildLegend(grid.frame)
   end
 
-  local rename = Widgets.Button(parent, "Rename", 66, function()
-    renameMuscle(muscleId, muscle and muscle.name or muscleId)
-  end)
-  rename:SetPoint("RIGHT", delete, "LEFT", 6, 0)
+  -- Re-attach onto the current centre (recreated each rebuild) and refresh chrome.
+  grid.frame:SetParent(parent)
+  grid.frame:ClearAllPoints()
+  grid.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+  grid.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+  grid.frame:Show()
 
-  local hint =
-    Widgets.Hint(parent, "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit")
-  hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-
-  -- Column headers.
-  local headerRow = CreateFrame("Frame", nil, parent)
-  headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
-  headerRow:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), 16)
-  for column = 1, MM.ACTIONS_PER_BAR do
-    local label = Widgets.Label(headerRow, "GameFontDisableSmall", tostring(column))
-    label:SetPoint("LEFT", headerRow, "LEFT", LABEL_WIDTH + (column - 1) * (CELL + CELL_GAP) + CELL / 2, 0)
-    label:SetJustifyH("CENTER")
+  grid.title:SetText(muscle and muscle.name or muscleId)
+  if MM.Tables.Count(MM.DB:GetRoot().muscles or {}) <= 1 then
+    grid.delete:Disable()
+  else
+    grid.delete:Enable()
   end
 
   -- Bars (real Edit Mode bars and their scattered slot ranges, not 1..120 linear).
   local bars = MM.Actions.GetGridBars()
-  local grid = CreateFrame("Frame", nil, parent)
-  grid:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -2)
-
+  local active = {}
   for barIndex, bar in ipairs(bars) do
     local y = -(barIndex - 1) * (CELL + CELL_GAP)
-    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", bar.label, colors.parchment)
-    rowLabel:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, y - (CELL - 12) / 2)
+
+    local rowLabel = grid.rowLabels[barIndex]
+    if not rowLabel then
+      rowLabel = Widgets.Label(grid.area, "GameFontHighlightSmall", "", colors.parchment)
+      grid.rowLabels[barIndex] = rowLabel
+    end
+    rowLabel:ClearAllPoints()
+    rowLabel:SetPoint("TOPLEFT", grid.area, "TOPLEFT", 0, y - (CELL - 12) / 2)
+    rowLabel:SetText(bar.label)
+    rowLabel:Show()
 
     for button = 1, MM.ACTIONS_PER_BAR do
       local slot = bar.base + button
-      local x = LABEL_WIDTH + (button - 1) * (CELL + CELL_GAP)
-      self:BuildSlot(grid, muscleId, muscle, slot, x, y)
+      active[slot] = true
+      local cell = grid.cells[slot]
+      if not cell then
+        cell = self:BuildSlotCell(grid.area, slot)
+        grid.cells[slot] = cell
+      end
+      cell.icon:ClearAllPoints()
+      cell.icon:SetPoint("TOPLEFT", grid.area, "TOPLEFT", LABEL_WIDTH + (button - 1) * (CELL + CELL_GAP), y)
+      cell.icon:Show()
+      paintSlot(cell.icon, muscle, slot)
     end
   end
-  grid:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), #bars * (CELL + CELL_GAP))
 
-  local legend = self:BuildLegend(parent)
-  legend:SetPoint("TOPLEFT", grid, "BOTTOMLEFT", 0, -14)
+  -- Hide cells and row labels left over from a previous (larger) bar layout.
+  for slot, cell in pairs(grid.cells) do
+    if not active[slot] then
+      cell.icon:Hide()
+    end
+  end
+  for index = #bars + 1, #grid.rowLabels do
+    grid.rowLabels[index]:Hide()
+  end
+
+  grid.area:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), #bars * (CELL + CELL_GAP))
+  grid.legend:ClearAllPoints()
+  grid.legend:SetPoint("TOPLEFT", grid.area, "BOTTOMLEFT", 0, -14)
 end
 
 function MusclesTab:BuildEmptyGrid(parent)
@@ -480,6 +572,49 @@ local function dropZone()
     MusclesTab.dropZone = Widgets.DropZone("Drop to pin this action")
   end
   return MusclesTab.dropZone
+end
+
+-- Initializer for a "Bind to a Memory" row (recycled by Widgets.DataList). The
+-- click reads the live selected muscle/slot, since the list outlives any rebuild.
+local function memoryBindRowInit(row, data)
+  local memory = data.memory
+  if not row.mmInit then
+    row.mmInit = true
+    Widgets.decorateRow(row)
+
+    row.tile = Widgets.Icon(row, 24)
+    row.tile:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.tile:SetBadge(true)
+
+    row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
+    row.nameLabel:SetPoint("LEFT", row.tile, "RIGHT", 8, 0)
+
+    row.resolution = Widgets.Label(row, "GameFontDisableSmall", "")
+    row.resolution:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+
+    row:SetScript("OnClick", function(self)
+      local m = self.data and self.data.memory
+      local muscleId = MM.DB:GetSelectedMuscleId()
+      local slot = MM.DB:GetSelectedSlot()
+      if m and muscleId and slot then
+        assignSlot(muscleId, slot, { type = "memory", source = m.source, id = m.id })
+      end
+    end)
+  end
+
+  row.data = data
+  local resolved = resolveMemory(memory.source, memory.id)
+  if resolved and resolved.icon then
+    row.tile:SetTextureImage(resolved.icon)
+    row.tile:SetBorder(1, colors.managed)
+  else
+    row.tile:SetSymbol(Widgets.TEX.warning)
+    row.tile:SetBorder(1, colors.warn, 0.7)
+  end
+
+  row.nameLabel:SetText(memory.name)
+  row.resolution:SetText(resolved and resolved.label or "no match")
+  row.resolution:SetTextColor(Widgets.unpackColor(resolved and colors.goldDim or colors.danger))
 end
 
 function MusclesTab:BuildEditor(parent, muscleId, muscle)
@@ -564,43 +699,19 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   dropHint:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
   dropHint:SetJustifyH("LEFT")
 
-  local scroll, content = Widgets.ScrollList(inset)
-  scroll:SetPoint("TOPLEFT", memoryHeader, "BOTTOMLEFT", 0, -8)
-  scroll:SetPoint("BOTTOMRIGHT", dropHint, "TOPRIGHT", -14, -10)
+  local list = Widgets.DataList(inset, "muscles.memorybind", {
+    extent = 34,
+    spacing = 3,
+    initializer = memoryBindRowInit,
+  })
+  list.scrollBox:SetPoint("TOPLEFT", memoryHeader, "BOTTOMLEFT", 0, -8)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", dropHint, "TOPRIGHT", -14, -10)
 
-  local y = 0
+  local items = {}
   for _, memory in ipairs(memoryList()) do
-    local row = Widgets.ListRow(content, 34)
-    row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
-    row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
-
-    local resolved = resolveMemory(memory.source, memory.id)
-    local tile = Widgets.Icon(row, 24)
-    tile:SetPoint("LEFT", row, "LEFT", 6, 0)
-    tile:SetBadge(true)
-    if resolved and resolved.icon then
-      tile:SetTextureImage(resolved.icon)
-      tile:SetBorder(1, colors.managed)
-    else
-      tile:SetSymbol(Widgets.TEX.warning)
-      tile:SetBorder(1, colors.warn, 0.7)
-    end
-
-    local name = Widgets.Label(row, "GameFontHighlight", memory.name)
-    name:SetPoint("LEFT", tile, "RIGHT", 8, 0)
-
-    local resolutionText = resolved and resolved.label or "no match"
-    local resolution = Widgets.Label(row, "GameFontDisableSmall", resolutionText)
-    resolution:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    resolution:SetTextColor(Widgets.unpackColor(resolved and colors.goldDim or colors.danger))
-
-    row:SetScript("OnClick", function()
-      assignSlot(muscleId, slot, { type = "memory", source = memory.source, id = memory.id })
-    end)
-
-    y = y - 37
+    items[#items + 1] = { memory = memory }
   end
-  content:SetHeight(math.max(1, -y))
+  list:SetItems(items)
 
   dropZone():Attach(inset, function()
     assignFromCursor(muscleId, slot)
@@ -613,7 +724,7 @@ function MusclesTab:Build(parent)
   local muscleId = MM.DB:GetSelectedMuscleId()
   local muscle = MM.DB:GetMuscle(muscleId)
 
-  self:BuildRail(parent, muscleId)
+  self:BuildRail(parent)
   self:BuildEditor(parent, muscleId, muscle)
 
   local leftGroove = Widgets.VGroove(parent)

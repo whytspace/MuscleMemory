@@ -246,18 +246,19 @@ function UI:CreateFrame()
   self.frame = frame
 end
 
--- Rebuild the active tab into a fresh content frame.
+local function anchorContent(frame, inset)
+  frame:SetPoint("TOPLEFT", inset, "TOPLEFT", 5, -5)
+  frame:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -5, 5)
+end
+
+-- Show the active tab. Tabs that expose :Refresh are *retained* — built once
+-- into a persistent frame and updated in place, so their state (scroll, focus)
+-- and frames survive a refresh. Tabs without :Refresh still use the legacy path,
+-- which destroys and rebuilds a shared content frame each time. (Legacy frames
+-- can't truly be freed, so that path leaks; it's being migrated away.)
 function UI:ShowContent()
-  if self.content then
-    self.content:Hide()
-    self.content:SetParent(nil)
-  end
-
-  self.content = CreateFrame("Frame", nil, self.frame)
-  self.content:SetPoint("TOPLEFT", self.contentInset, "TOPLEFT", 5, -5)
-  self.content:SetPoint("BOTTOMRIGHT", self.contentInset, "BOTTOMRIGHT", -5, 5)
-
   local tab = MM.ui.state.tab
+
   for id, button in pairs(self.tabButtons) do
     button:SetActive(id == tab)
   end
@@ -269,9 +270,37 @@ function UI:ShowContent()
   self.description:SetText(description or "")
   self.description:SetShown(description ~= nil)
 
+  self.tabFrames = self.tabFrames or {}
+  for id, frame in pairs(self.tabFrames) do
+    if id ~= tab then
+      frame:Hide()
+    end
+  end
+
   local builder = tabBuilder(tab)
-  if builder then
-    builder:Build(self.content)
+  if builder and builder.Refresh then
+    if self.content then
+      self.content:Hide()
+    end
+    local frame = self.tabFrames[tab]
+    if not frame then
+      frame = CreateFrame("Frame", nil, self.frame)
+      anchorContent(frame, self.contentInset)
+      self.tabFrames[tab] = frame
+      builder:Build(frame)
+    end
+    frame:Show()
+    builder:Refresh()
+  else
+    if self.content then
+      self.content:Hide()
+      self.content:SetParent(nil)
+    end
+    self.content = CreateFrame("Frame", nil, self.frame)
+    anchorContent(self.content, self.contentInset)
+    if builder then
+      builder:Build(self.content)
+    end
   end
 end
 
