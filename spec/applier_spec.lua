@@ -153,12 +153,28 @@ describe("Applier", function()
     end)
 
     it("restores a mount via its summon spell and stays idempotent", function()
-      stubs:setMount(219, { name = "Strider", spellId = 17453, collected = true })
-      MM.DB:SetSlot("Core", 10, { type = "mount", id = 219 })
+      -- Capture stores the id the bar reports for a mount, which is its summon
+      -- spellId (253007), not the journal mountId (219). GetInfo maps it back, so
+      -- the mount resolves and applies via that spell.
+      stubs:setMount(219, { name = "Strider", spellId = 253007, collected = true })
+      MM.DB:SetSlot("Core", 10, { type = "mount", id = 253007 })
       assert.is_true(MM.Applier:ApplyProfile())
       assert.equals("spell", stubs.world.slots[10].actionType)
-      assert.equals(17453, stubs.world.slots[10].id)
-      -- the placed spell form is recognised as the mount, so nothing re-applies
+      assert.equals(253007, stubs.world.slots[10].id)
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+    end)
+
+    it("recognises a mount captured from a companion slot", function()
+      -- The bar reports a mount as companion/MOUNT with its summon spellId as the
+      -- id; capture stores that id. It must still resolve and read as in-slot
+      -- rather than re-applying every time.
+      stubs:setMount(219, { name = "Strider", spellId = 253007, collected = true })
+      stubs.world.slots[10] = { actionType = "companion", id = 253007, subType = "MOUNT" }
+      local assignment = MM.Capture:FromSlot(10)
+      assert.same({ type = "mount", id = 253007 }, assignment)
+      -- It must resolve (no "mount not found") and read as already in-slot.
+      assert.equals("Strider", (MM.Resolver:ResolveAction(assignment)).label)
+      MM.DB:SetSlot("Core", 10, assignment)
       assert.is_false(MM.Applier:HasUnappliedChanges())
     end)
 

@@ -377,6 +377,9 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "mount" then
+    -- A captured mount keeps the id the bar reported, which isn't a journal
+    -- mountID: a companion/MOUNT slot reports the mount's summon spellID. Capture
+    -- and the bar agree on that id, so match the mount-action forms by it directly.
     if
       (
         info.actionType == "mount"
@@ -386,10 +389,20 @@ local function slotMatches(slot, target)
     then
       return true
     end
-    -- Restored mounts are placed via their summon spell, so also match the
-    -- spell form by the mount's spellId.
-    local mount = MM.Mounts.GetInfo(target.id)
-    return info.actionType == "spell" and mount ~= nil and info.id == mount.spellId
+    -- Applying picks a mount up via its summon spell, so it can also land as a
+    -- plain "spell" action. Match that by the mount's journal spellId, then by the
+    -- button's text (the mount's name). GetInfo maps a summon-spellID target back
+    -- to its mount, so this holds whichever id the capture stored.
+    if info.actionType == "spell" then
+      local mount = MM.Mounts.GetInfo(target.id)
+      if mount and info.id == mount.spellId then
+        return true
+      end
+      if GetActionText and target.name then
+        return normalizeText(GetActionText(slot)) == normalizeText(target.name)
+      end
+    end
+    return false
   end
 
   if target.kind == "battlepet" then

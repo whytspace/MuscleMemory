@@ -20,6 +20,16 @@ describe("Mounts", function()
       assert.equals(132248, info.icon)
       assert.is_true(info.isCollected)
     end)
+
+    it("resolves a summon spellId to its mount", function()
+      -- A mount captured from a companion/MOUNT slot stores the bar's id, which is
+      -- the summon spellId, not the journal mountId. GetInfo maps it back.
+      stubs:setMount(219, { name = "Mechanostrider", spellId = 253007, collected = true })
+      local info = MM.Mounts.GetInfo(253007)
+      assert.equals("Mechanostrider", info.name)
+      assert.equals(253007, info.spellId)
+      assert.is_true(info.isCollected)
+    end)
   end)
 
   describe("IsKnown", function()

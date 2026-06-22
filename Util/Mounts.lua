@@ -27,6 +27,13 @@ function Mounts.GetInfo(mountId)
 
   local name, spellId, icon, _, _, _, _, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountId)
   if not name then
+    -- A captured mount keeps whatever id the action bar reported, and a
+    -- companion/MOUNT slot reports the mount's summon spellID, not a journal
+    -- mountID. Map that spell back to its mount and resolve from there.
+    local mapped = C_MountJournal.GetMountFromSpell and C_MountJournal.GetMountFromSpell(mountId)
+    if mapped and mapped ~= mountId then
+      return Mounts.GetInfo(mapped)
+    end
     return nil
   end
 

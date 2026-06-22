@@ -160,6 +160,17 @@ function Stubs.new()
         -- reports under the sentinel mount id 268435455.
         world.cursor = { type = "mount", id = index == 0 and 268435455 or index }
       end,
+      -- Maps a mount's summon spellId back to its mountID, the inverse of
+      -- GetMountInfoByID's spellId. A companion/MOUNT slot reports that summon
+      -- spellId as its action id, so this is how GetInfo recovers the mount.
+      GetMountFromSpell = function(spellId)
+        for mountId, mount in pairs(world.mounts) do
+          if mount.spellId == spellId then
+            return mountId
+          end
+        end
+        return nil
+      end,
     },
 
     -- Battle pets ----------------------------------------------------------
