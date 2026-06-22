@@ -10,7 +10,7 @@ MM.ui.MemoriesTab = MemoriesTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local RAIL_WIDTH = 268
+local RAIL_WIDTH = 250
 local RULE_WIDTH = 330
 
 local function refresh()
@@ -371,11 +371,11 @@ end
 
 function MemoriesTab:BuildCenter(parent, ref, memory)
   local center = CreateFrame("Frame", nil, parent)
-  center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -6)
-  center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 14), 6)
+  center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -14)
+  center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 14), 10)
 
   local title = Widgets.Title(center, memory and memory.name or "\226\128\148")
-  title:SetPoint("TOPLEFT", center, "TOPLEFT", 4, -2)
+  title:SetPoint("TOPLEFT", center, "TOPLEFT", 12, -2)
 
   local locked = ref.source == "standard"
   if locked then
@@ -385,12 +385,12 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     local clone = Widgets.Button(center, "Clone to edit", 110, function()
       cloneMemory(ref)
     end)
-    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -4, -2)
+    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
   else
     local clone = Widgets.Button(center, "Clone", 60, function()
       cloneMemory(ref)
     end)
-    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -4, -2)
+    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
 
     local del = Widgets.Button(center, "Delete", 64, function()
       deleteMemory(ref)
@@ -408,8 +408,8 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   local chipText = resolved and ('On this character resolves to "' .. resolved.label .. '".')
     or "No candidate is usable by this character \226\128\148 slots bound here fall through."
   local chip = Widgets.Label(center, "GameFontHighlightSmall", chipText, resolved and colors.parchment or colors.warn)
-  chip:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-  chip:SetPoint("RIGHT", center, "RIGHT", -4, 0)
+  chip:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -14)
+  chip:SetPoint("RIGHT", center, "RIGHT", -12, 0)
   chip:SetJustifyH("LEFT")
 
   local hintText = locked and "Priority order \194\183 the first usable action wins"
@@ -427,7 +427,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   })
   MemoriesTab.candidateList = list
   list.scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
-  list.scrollBox:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -22, 4)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -30, 4)
 
   local items = {}
   for index, candidate in ipairs(candidates) do
@@ -445,7 +445,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
       or "No candidates yet \226\128\148 drag a spell, item, macro, mount or equipment set here to add one."
     local note = Widgets.Hint(center, emptyText)
     note:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -16)
-    note:SetPoint("RIGHT", center, "RIGHT", -4, 0)
+    note:SetPoint("RIGHT", center, "RIGHT", -12, 0)
     note:SetJustifyH("LEFT")
   end
 
@@ -470,7 +470,7 @@ function MemoriesTab:BuildRule(parent, memory)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-  inset:SetWidth(RULE_WIDTH)
+  inset:SetWidth(RULE_WIDTH + 2)
 
   local candidates = memory and memory.candidates or {}
   local candidate = candidates[MM.ui.state.candidate or 1]
@@ -518,11 +518,16 @@ function MemoriesTab:BuildRule(parent, memory)
   hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   hint:SetJustifyH("LEFT")
 
-  local editor = MM.ui.ConditionsEditor:Build(inset, candidate.conditions or {}, editable, function()
+  -- Scrollable so an all-expanded editor doesn't overflow the panel.
+  local scrollBox, content = Widgets.ScrollList(inset, "memories.conditions")
+  scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
+  scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
+  local editor = MM.ui.ConditionsEditor:Build(content, candidate.conditions or {}, editable, function()
     refresh()
   end)
-  editor:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 4, -14)
-  editor:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
+  editor:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, 0)
+  content:SetHeight(editor:GetHeight())
 end
 
 -- Assembly -------------------------------------------------------------------

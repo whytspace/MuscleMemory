@@ -159,26 +159,54 @@ end
 -- A vertically scrolling region using the modern thin scrollbar
 -- (Guild/Communities/Settings look): a WowScrollBox scrolling a single child,
 -- paired with a MinimalScrollBar to its right. Returns (scrollBox, content); add
--- rows to `content` and set its height. The scrollbar sits just to the region's
--- right, so the caller leaves a little room there.
-function Widgets.ScrollList(parent)
-  local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBox")
+-- content to `content` and set its height. The scrollbar sits just to the
+-- region's right, so the caller leaves a little room there.
+--
+-- Pass a `key` to cache and reuse the frames across tab rebuilds, so the scroll
+-- offset survives a refresh (the same trick DataList uses). On reuse the previous
+-- child is detached — the caller rebuilds a fresh one each time.
+local scrollLists = {}
 
-  local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
-  scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 6, 0)
-  scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 6, 0)
+function Widgets.ScrollList(parent, key)
+  local list = key and scrollLists[key]
+  if not list then
+    local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBox")
+    local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
 
-  local content = CreateFrame("Frame", nil, scrollBox)
-  content.scrollable = true
-  content:SetScript("OnSizeChanged", function()
-    scrollBox:FullUpdate()
-  end)
+    local content = CreateFrame("Frame", nil, scrollBox)
+    content.scrollable = true
+    content:SetScript("OnSizeChanged", function()
+      scrollBox:FullUpdate()
+    end)
 
-  local view = CreateScrollBoxLinearView()
-  view:SetPanExtent(40)
-  ScrollUtil.InitScrollBoxWithScrollBar(scrollBox, scrollBar, view)
+    local view = CreateScrollBoxLinearView()
+    view:SetPanExtent(40)
+    ScrollUtil.InitScrollBoxWithScrollBar(scrollBox, scrollBar, view)
 
-  return scrollBox, content
+    list = { scrollBox = scrollBox, scrollBar = scrollBar, content = content }
+    if key then
+      scrollLists[key] = list
+    end
+  else
+    -- Detach the previous child so the caller's fresh one is the only thing in
+    -- the kept-alive (still-scrolled) box.
+    for _, child in ipairs({ list.content:GetChildren() }) do
+      child:Hide()
+      child:ClearAllPoints()
+      child:SetParent(nil)
+    end
+  end
+
+  list.scrollBox:SetParent(parent)
+  list.scrollBox:ClearAllPoints()
+  list.scrollBar:SetParent(parent)
+  list.scrollBar:ClearAllPoints()
+  list.scrollBar:SetPoint("TOPLEFT", list.scrollBox, "TOPRIGHT", 6, 0)
+  list.scrollBar:SetPoint("BOTTOMLEFT", list.scrollBox, "BOTTOMRIGHT", 6, 0)
+  list.scrollBox:Show()
+  list.scrollBar:Show()
+
+  return list.scrollBox, list.content
 end
 
 -- A retained, recycling list: one WowScrollBox kept alive (cached by `key`) plus

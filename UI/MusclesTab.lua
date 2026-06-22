@@ -244,7 +244,7 @@ function MusclesTab:BuildRail(parent)
   })
   MusclesTab.railList = list
   list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
-  list.scrollBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -8, 6)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -6, 6)
 
   local muscles = MM.DB:GetProfileMuscles()
   local items = {}
@@ -422,34 +422,34 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
     grid.frame = CreateFrame("Frame", nil, parent)
 
     grid.title = Widgets.Title(grid.frame, "")
-    grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 4, -2)
+    grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 12, -2)
 
     grid.delete = Widgets.Button(grid.frame, "Delete", 60, function()
       local id = MM.DB:GetSelectedMuscleId()
       local m = MM.DB:GetMuscle(id)
       deleteMuscle(id, m and m.name or id)
     end)
-    grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -4, -2)
+    grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -12, -2)
 
     grid.rename = Widgets.Button(grid.frame, "Rename", 66, function()
       local id = MM.DB:GetSelectedMuscleId()
       local m = MM.DB:GetMuscle(id)
       renameMuscle(id, m and m.name or id)
     end)
-    grid.rename:SetPoint("RIGHT", grid.delete, "LEFT", 6, 0)
+    grid.rename:SetPoint("RIGHT", grid.delete, "LEFT", -6, 0)
 
     local hint = Widgets.Hint(
       grid.frame,
       "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit"
     )
-    hint:SetPoint("TOPLEFT", grid.title, "BOTTOMLEFT", 0, -8)
+    hint:SetPoint("TOPLEFT", grid.title, "BOTTOMLEFT", 0, -14)
 
     -- Column headers.
     grid.headerRow = CreateFrame("Frame", nil, grid.frame)
-    grid.headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
+    grid.headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -12)
     grid.headerRow:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), 16)
     for column = 1, MM.ACTIONS_PER_BAR do
-      local label = Widgets.Label(grid.headerRow, "GameFontDisableSmall", tostring(column))
+      local label = Widgets.Label(grid.headerRow, "GameFontHighlightSmall", tostring(column), colors.parchment)
       label:SetPoint("LEFT", grid.headerRow, "LEFT", LABEL_WIDTH + (column - 1) * (CELL + CELL_GAP) + CELL / 2, 0)
       label:SetJustifyH("CENTER")
     end
@@ -644,7 +644,7 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-  inset:SetWidth(EDITOR_WIDTH)
+  inset:SetWidth(EDITOR_WIDTH + 2)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
@@ -663,11 +663,17 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
 
     if muscle then
       muscle.conditions = muscle.conditions or {}
-      local editor = MM.ui.ConditionsEditor:Build(inset, muscle.conditions, true, function()
+      -- The editor outgrows the panel once several sections are expanded, so it
+      -- lives in a scroll region; the scrollbar appears only when it overflows.
+      local scrollBox, content = Widgets.ScrollList(inset, "muscles.conditions")
+      scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
+      scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
+      local editor = MM.ui.ConditionsEditor:Build(content, muscle.conditions, true, function()
         refresh()
       end)
-      editor:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 4, -14)
-      editor:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+      editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
+      editor:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, 0)
+      content:SetHeight(editor:GetHeight())
     end
     return
   end
@@ -761,7 +767,7 @@ function MusclesTab:Build(parent)
   -- A button behind the grid: clicking empty centre space deselects the slot
   -- (interactive children handle their own clicks first).
   local center = CreateFrame("Button", nil, parent)
-  center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -10)
+  center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -14)
   center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(EDITOR_WIDTH + 14), 10)
   center:RegisterForClicks("LeftButtonUp")
   center:SetScript("OnClick", function()

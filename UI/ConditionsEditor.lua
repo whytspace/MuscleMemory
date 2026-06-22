@@ -142,7 +142,7 @@ local function makeChip(parent, text, active, editable, onClick)
   local label = chip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   label:SetPoint("CENTER")
   label:SetText(text)
-  chip:SetWidth(label:GetStringWidth() + 18)
+  chip:SetWidth(label:GetStringWidth() + 24)
 
   if active then
     chip:SetBackdropColor(Widgets.unpackColor(colors.gold, 0.16))
@@ -161,9 +161,10 @@ local function makeChip(parent, text, active, editable, onClick)
   return chip
 end
 
--- A wrap-flow row of toggle chips for a list-valued dimension.
+-- A wrap-flow row of toggle chips for a list-valued dimension. Returns the y at
+-- the bottom of the last chip row.
 local function chipGroup(parent, top, conditions, field, options, editable, onChange)
-  local x, y, rowHeight, right = 0, 0, 22, 296
+  local x, y, rowHeight, right = 0, 0, 22, 290
   for _, option in ipairs(options) do
     local active = listHas(conditions[field], option.token)
     local chip = makeChip(parent, option.name, active, editable, function()
@@ -176,64 +177,140 @@ local function chipGroup(parent, top, conditions, field, options, editable, onCh
     chip:SetPoint("TOPLEFT", parent, "TOPLEFT", x, top + y)
     x = x + chip:GetWidth() + 5
   end
-  return top + y - (rowHeight + 8)
+  return top + y - rowHeight
 end
 
-local function section(parent, top, title)
-  local header = Widgets.SectionHeader(parent, title)
-  header:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, top)
-  return top - 18
+-- Per-section expand state, keyed by title. nil = follow the default (open when
+-- the section already has a selection); true/false = the user's explicit choice.
+-- Persisted on the module because Build re-runs on every edit (the tabs rebuild
+-- rather than retain), so a local wouldn't survive a toggle.
+ConditionsEditor.open = ConditionsEditor.open or {}
+
+local function isExpanded(title, active)
+  local override = ConditionsEditor.open[title]
+  if override ~= nil then
+    return override
+  end
+  return active
+end
+
+-- Breathing room above each section header.
+local SECTION_GAP = 14
+
+local CHEVRON = {
+  [true] = "Interface\\Buttons\\UI-MinusButton-Up",
+  [false] = "Interface\\Buttons\\UI-PlusButton-Up",
+}
+
+-- A clickable section header that toggles its body. Label sits flush-left (lined
+-- up with the chips); the expand/collapse glyph sits on the right. `active` tints
+-- it gold and, with a count, shows "(n)" so usage reads even when collapsed.
+local function sectionHeader(parent, top, title, count, active, expanded, onToggle)
+  local button = CreateFrame("Button", nil, parent)
+  button:SetHeight(22)
+  button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, top)
+  button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, top)
+  button:SetScript("OnClick", onToggle)
+
+  -- Subtle hover wash matching the left-side rail rows; the bright additive
+  -- highlight reads as harsh across a header this wide.
+  local hover = button:CreateTexture(nil, "BACKGROUND")
+  hover:SetAllPoints()
+  hover:SetColorTexture(1, 1, 1, 0.06)
+  hover:Hide()
+  button:SetScript("OnEnter", function()
+    hover:Show()
+  end)
+  button:SetScript("OnLeave", function()
+    hover:Hide()
+  end)
+
+  local label = Widgets.SectionHeader(button, count > 0 and (title .. " (" .. count .. ")") or title)
+  label:SetPoint("LEFT", button, "LEFT", 0, 0)
+  if active then
+    label:SetTextColor(Widgets.unpackColor(colors.gold))
+  end
+
+  local glyph = button:CreateTexture(nil, "ARTWORK")
+  glyph:SetSize(16, 16)
+  glyph:SetPoint("RIGHT", button, "RIGHT", 0, 0)
+  glyph:SetTexture(CHEVRON[expanded])
+
+  return top - 26
 end
 
 -- Builds into a frame the caller anchors (top-left + a width via a right anchor).
+-- Each dimension is a collapsible section: only the headers show until one is
+-- opened, and a section with selections opens itself so it's visible "in use".
 function ConditionsEditor:Build(parent, conditions, editable, onChange)
   local frame = CreateFrame("Frame", nil, parent)
   local y = 0
 
-  y = section(frame, y, "Class")
-  y = chipGroup(frame, y, conditions, "classes", CLASSES, editable, onChange)
-
+  local sections = {
+    { title = "Class", field = "classes", options = CLASSES },
+  }
   local specs = playerSpecs()
   if #specs > 0 then
-    y = section(frame, y, "Specialization")
-    y = chipGroup(frame, y, conditions, "specs", specs, editable, onChange)
+    sections[#sections + 1] = { title = "Specialization", field = "specs", options = specs }
   end
+  sections[#sections + 1] = { title = "Role", field = "roles", options = ROLES }
+  sections[#sections + 1] = { title = "Faction", field = "factions", options = FACTIONS }
+  sections[#sections + 1] = { title = "Race", field = "races", options = raceOptions() }
 
-  y = section(frame, y, "Role")
-  y = chipGroup(frame, y, conditions, "roles", ROLES, editable, onChange)
-
-  y = section(frame, y, "Faction")
-  y = chipGroup(frame, y, conditions, "factions", FACTIONS, editable, onChange)
-
-  y = section(frame, y, "Race")
-  y = chipGroup(frame, y, conditions, "races", raceOptions(), editable, onChange)
-
-  -- Level range.
-  y = section(frame, y, "Level range")
-  local function levelBox(field)
-    local box = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-    box:SetSize(54, 22)
-    box:SetAutoFocus(false)
-    box:SetNumeric(true)
-    box:SetText(conditions[field] and tostring(conditions[field]) or "")
-    if box.SetEnabled then
-      box:SetEnabled(editable)
+  for index, sec in ipairs(sections) do
+    if index > 1 then
+      y = y - SECTION_GAP
     end
-    box:SetScript("OnEnterPressed", box.ClearFocus)
-    box:SetScript("OnEscapePressed", box.ClearFocus)
-    box:SetScript("OnEditFocusLost", function(editBox)
-      conditions[field] = tonumber(editBox:GetText())
+    local count = conditions[sec.field] and #conditions[sec.field] or 0
+    local expanded = isExpanded(sec.title, count > 0)
+    y = sectionHeader(frame, y, sec.title, count, count > 0, expanded, function()
+      ConditionsEditor.open[sec.title] = not expanded
       onChange()
     end)
-    return box
+    if expanded then
+      -- Toggling a chip pins the section open, so clearing its last selection
+      -- doesn't yank the section closed mid-edit.
+      y = chipGroup(frame, y, conditions, sec.field, sec.options, editable, function()
+        ConditionsEditor.open[sec.title] = true
+        onChange()
+      end)
+    end
   end
-  local minBox = levelBox("levelMin")
-  minBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, y - 2)
-  local dash = Widgets.Label(frame, "GameFontDisableSmall", "to")
-  dash:SetPoint("LEFT", minBox, "RIGHT", 8, 0)
-  local maxBox = levelBox("levelMax")
-  maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)
-  y = y - 30
+
+  -- Level range — collapsible like the rest, with two numeric inputs as its body.
+  y = y - SECTION_GAP
+  local levelActive = conditions.levelMin ~= nil or conditions.levelMax ~= nil
+  local levelExpanded = isExpanded("Level range", levelActive)
+  y = sectionHeader(frame, y, "Level range", 0, levelActive, levelExpanded, function()
+    ConditionsEditor.open["Level range"] = not levelExpanded
+    onChange()
+  end)
+  if levelExpanded then
+    local function levelBox(field)
+      local box = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+      box:SetSize(54, 22)
+      box:SetAutoFocus(false)
+      box:SetNumeric(true)
+      box:SetText(conditions[field] and tostring(conditions[field]) or "")
+      if box.SetEnabled then
+        box:SetEnabled(editable)
+      end
+      box:SetScript("OnEnterPressed", box.ClearFocus)
+      box:SetScript("OnEscapePressed", box.ClearFocus)
+      box:SetScript("OnEditFocusLost", function(editBox)
+        conditions[field] = tonumber(editBox:GetText())
+        onChange()
+      end)
+      return box
+    end
+    local minBox = levelBox("levelMin")
+    minBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, y - 2)
+    local dash = Widgets.Label(frame, "GameFontDisableSmall", "to")
+    dash:SetPoint("LEFT", minBox, "RIGHT", 8, 0)
+    local maxBox = levelBox("levelMax")
+    maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)
+    y = y - 30
+  end
 
   frame:SetHeight(-y + 4)
   return frame
