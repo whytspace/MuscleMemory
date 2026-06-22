@@ -55,6 +55,7 @@ read_globals = {
   "GetItemCount",
   "GetMacroInfo",
   "GetNumMacros",
+  "GetNumSpecializations",
   "GetNumShapeshiftForms",
   "GetRealmName",
   "GetSpecialization",

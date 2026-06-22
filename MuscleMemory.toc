@@ -30,6 +30,7 @@ SlashCommands.lua
 
 UI/Widgets.lua
 UI/Modals.lua
+UI/ConditionsEditor.lua
 UI/MainFrame.lua
 UI/MusclesTab.lua
 UI/MemoriesTab.lua

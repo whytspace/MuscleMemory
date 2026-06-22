@@ -429,74 +429,28 @@ function MemoriesTab:BuildRule(parent, memory)
   local sub = Widgets.Label(inset, "GameFontDisableSmall", "when to use this candidate")
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
-  -- "No conditions" info box.
-  local box = CreateFrame("Frame", nil, inset, "BackdropTemplate")
-  box:SetPoint("TOPLEFT", tile, "BOTTOMLEFT", 0, -14)
-  box:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
-  box:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Buttons\\WHITE8X8",
-    edgeSize = 1,
-  })
-  box:SetBackdropColor(0.08, 0.075, 0.05, 0.6)
-  box:SetBackdropBorderColor(0.16, 0.15, 0.12, 1)
-
-  local dot = box:CreateTexture(nil, "ARTWORK")
-  dot:SetSize(8, 8)
-  dot:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -12)
-  dot:SetColorTexture(0.5, 0.78, 0.63, 1)
-
-  local heading = Widgets.Label(box, "GameFontHighlightSmall", "No conditions", colors.parchment)
-  heading:SetPoint("LEFT", dot, "RIGHT", 8, 0)
-
-  local body = Widgets.Label(
-    box,
-    "GameFontDisableSmall",
-    "Used whenever this character can cast it. The built-in check already handles class, race, and whether the action is learned \226\128\148 most candidates need nothing more."
-  )
-  body:SetPoint("TOPLEFT", dot, "BOTTOMLEFT", 0, -8)
-  body:SetPoint("RIGHT", box, "RIGHT", -12, 0)
-  body:SetJustifyH("LEFT")
-  body:SetSpacing(2)
-  box:SetHeight(body:GetStringHeight() + 44)
-
-  local anchor = box
-
-  -- Any class restriction already in the data, shown read-only.
-  if candidate.classes then
-    local classHead = Widgets.Label(inset, "GameFontNormalSmall", "Class", colors.goldDim)
-    classHead:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 0, -14)
-
-    local x = 0
-    local previous = classHead
-    for _, token in ipairs(candidate.classes) do
-      local chip = Widgets.Label(inset, "GameFontHighlightSmall", "  " .. prettyClass(token) .. "  ", colors.parchment)
-      if previous == classHead then
-        chip:SetPoint("TOPLEFT", classHead, "BOTTOMLEFT", 0, -6)
-      else
-        chip:SetPoint("LEFT", previous, "RIGHT", 8, 0)
-      end
-      previous = chip
-      x = x + 1
-    end
-    anchor = classHead
+  -- Live condition editor: custom memories are editable, predefined ones show
+  -- their conditions read-only.
+  local ref = selectedRef()
+  local editable = ref and ref.source == "custom"
+  if editable then
+    candidate.conditions = candidate.conditions or {}
   end
 
-  -- The advanced condition controls the design shows are not wired yet.
-  local soon = Widgets.Label(
+  local hint = Widgets.Hint(
     inset,
-    "GameFontDisableSmall",
-    "Specialization, role, level and faction conditions are coming soon \226\128\148 the editor below is a preview."
+    editable and "Leave everything off to use this whenever the character can cast it."
+      or "Predefined memory \226\128\148 conditions are read-only."
   )
-  soon:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, candidate.classes and -28 or -16)
-  soon:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
-  soon:SetJustifyH("LEFT")
-  soon:SetSpacing(2)
-  soon:SetTextColor(Widgets.unpackColor(colors.faint))
+  hint:SetPoint("TOPLEFT", tile, "BOTTOMLEFT", 0, -14)
+  hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  hint:SetJustifyH("LEFT")
 
-  local addCond = Widgets.Button(inset, "+ Add a condition (advanced)", RULE_WIDTH - 28, nil)
-  addCond:SetPoint("TOPLEFT", soon, "BOTTOMLEFT", 0, -12)
-  addCond:Disable()
+  local editor = MM.ui.ConditionsEditor:Build(inset, candidate.conditions or {}, editable, function()
+    refresh()
+  end)
+  editor:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 4, -14)
+  editor:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
 end
 
 -- Assembly -------------------------------------------------------------------
