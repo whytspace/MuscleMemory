@@ -34,8 +34,9 @@ describe("Actions", function()
       assert.equals("skyriding button 1", MM.Actions.GetSlotLabel(121)) -- skyriding page
     end)
 
-    it("labels a paging/stance slot that isn't a visible bar", function()
-      assert.equals("slot 13", MM.Actions.GetSlotLabel(13))
+    it("labels a slot that isn't on any managed bar", function()
+      assert.equals("page 2 button 1", MM.Actions.GetSlotLabel(13))
+      assert.equals("slot 133", MM.Actions.GetSlotLabel(133)) -- leftover override range
     end)
   end)
 

@@ -18,6 +18,7 @@ Actions.BARS = {
   { label = "Bar 6", base = 144 }, -- slots 145-156
   { label = "Bar 7", base = 156 }, -- slots 157-168
   { label = "Bar 8", base = 168 }, -- slots 169-180
+  { label = "Page 2", base = 12 }, -- slots 13-24 (main bar's second page)
   { label = "Stance 1", base = 72, stance = true }, -- slots 73-84
   { label = "Stance 2", base = 84, stance = true }, -- slots 85-96
   { label = "Stance 3", base = 96, stance = true }, -- slots 97-108

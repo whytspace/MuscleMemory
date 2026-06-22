@@ -12,7 +12,7 @@ local colors = Widgets.colors
 
 local RAIL_WIDTH = 250
 local EDITOR_WIDTH = 330
-local CELL = 30
+local CELL = 28
 local CELL_GAP = 4
 local LABEL_WIDTH = 64
 
