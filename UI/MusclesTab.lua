@@ -520,6 +520,29 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
   grid.legend:SetPoint("TOPLEFT", grid.area, "BOTTOMLEFT", 0, -14)
 end
 
+-- Repaint the changed grid cell(s) in place (slot; 0/nil = bulk); no-ops when the grid is hidden.
+function MusclesTab:OnBarsChanged(slot)
+  local grid = MusclesTab.grid
+  if not grid or not grid.frame:IsVisible() then
+    return
+  end
+
+  local muscle = MM.DB:GetMuscle(MM.DB:GetSelectedMuscleId())
+  if slot and slot ~= 0 then
+    local cell = grid.cells[slot]
+    if cell and cell.icon:IsShown() then
+      paintSlot(cell.icon, muscle, slot)
+    end
+    return
+  end
+
+  for cellSlot, cell in pairs(grid.cells) do
+    if cell.icon:IsShown() then
+      paintSlot(cell.icon, muscle, cellSlot)
+    end
+  end
+end
+
 function MusclesTab:BuildEmptyGrid(parent)
   local box = CreateFrame("Frame", nil, parent)
   box:SetPoint("CENTER")
