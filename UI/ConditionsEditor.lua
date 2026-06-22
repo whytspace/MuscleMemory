@@ -38,6 +38,38 @@ local FACTIONS = {
   { token = "Horde", name = "Horde" },
 }
 
+-- Tokens are the *race file* string (UnitRace's second return), which is what
+-- Conditions.Match compares against. Curated rather than enumerated so the names
+-- read nicely and stay grouped by faction; any race missing here (e.g. a brand
+-- new allied race) is still covered because the player's own race is merged in
+-- live from the API below.
+local RACES = {
+  { token = "Human", name = "Human" },
+  { token = "Dwarf", name = "Dwarf" },
+  { token = "NightElf", name = "Night Elf" },
+  { token = "Gnome", name = "Gnome" },
+  { token = "Draenei", name = "Draenei" },
+  { token = "Worgen", name = "Worgen" },
+  { token = "VoidElf", name = "Void Elf" },
+  { token = "LightforgedDraenei", name = "Lightforged Draenei" },
+  { token = "DarkIronDwarf", name = "Dark Iron Dwarf" },
+  { token = "KulTiran", name = "Kul Tiran" },
+  { token = "Mechagnome", name = "Mechagnome" },
+  { token = "Orc", name = "Orc" },
+  { token = "Scourge", name = "Undead" },
+  { token = "Tauren", name = "Tauren" },
+  { token = "Troll", name = "Troll" },
+  { token = "BloodElf", name = "Blood Elf" },
+  { token = "Goblin", name = "Goblin" },
+  { token = "Nightborne", name = "Nightborne" },
+  { token = "HighmountainTauren", name = "Highmountain Tauren" },
+  { token = "MagharOrc", name = "Mag'har Orc" },
+  { token = "ZandalariTroll", name = "Zandalari Troll" },
+  { token = "Vulpera", name = "Vulpera" },
+  { token = "Pandaren", name = "Pandaren" },
+  { token = "Dracthyr", name = "Dracthyr" },
+}
+
 -- The player's current class specs (spec conditions can only be set for your own
 -- class, which is the realistic case — you configure on the character you play).
 local function playerSpecs()
@@ -52,6 +84,24 @@ local function playerSpecs()
     end
   end
   return specs
+end
+
+-- The curated race list plus the player's own race (with its real token straight
+-- from the API), so the character you're configuring is always selectable even
+-- if it predates this list.
+local function raceOptions()
+  local options, seen = {}, {}
+  for _, race in ipairs(RACES) do
+    options[#options + 1] = race
+    seen[race.token] = true
+  end
+  if UnitRace then
+    local name, token = UnitRace("player")
+    if token and not seen[token] then
+      options[#options + 1] = { token = token, name = name or token }
+    end
+  end
+  return options
 end
 
 local function listHas(list, value)
@@ -154,6 +204,9 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange)
 
   y = section(frame, y, "Faction")
   y = chipGroup(frame, y, conditions, "factions", FACTIONS, editable, onChange)
+
+  y = section(frame, y, "Race")
+  y = chipGroup(frame, y, conditions, "races", raceOptions(), editable, onChange)
 
   -- Level range.
   y = section(frame, y, "Level range")
