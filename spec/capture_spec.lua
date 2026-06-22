@@ -51,6 +51,19 @@ describe("Capture", function()
       assert.equals(MM.Macros.HashBody("/cast Heal"), assignment.bodyHash)
     end)
 
+    it("captures a slot macro by name and icon when the action id isn't a macro index", function()
+      stubs:addGlobalMacro({ name = "Dup", icon = 11, body = "/one" })
+      stubs:addGlobalMacro({ name = "Dup", icon = 22, body = "/two" })
+      -- A bogus action id that GetMacroInfo can't resolve, so capture falls back
+      -- to the slot's name + icon.
+      stubs:setSlot(7, { actionType = "macro", id = 999, text = "Dup", texture = 22 })
+
+      local assignment = MM.Capture:FromSlot(7)
+      assert.equals("macro", assignment.type)
+      assert.equals("Dup", assignment.nameHint)
+      assert.equals(MM.Macros.HashBody("/two"), assignment.bodyHash)
+    end)
+
     it("treats a flyout as ignore", function()
       stubs:setSlot(1, { actionType = "flyout", id = 1 })
       assert.same({ type = "ignore" }, MM.Capture:FromSlot(1))

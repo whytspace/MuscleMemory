@@ -92,6 +92,39 @@ function Macros.FindUniqueByName(name)
   return nil, "macro name not found"
 end
 
+-- Best-effort lookup of the macro shown on `slot`. The slot's action id isn't a
+-- reliable macro index, so match by name and disambiguate same-named macros by
+-- the slot's icon, falling back to the first match.
+function Macros.FindForSlot(name, slot)
+  if not name then
+    return nil, "macro name unavailable"
+  end
+
+  local matches = {}
+  for _, macro in ipairs(Macros.Scan()) do
+    if macro.name == name then
+      matches[#matches + 1] = macro
+    end
+  end
+
+  if #matches == 0 then
+    return nil, "macro name not found"
+  end
+  if #matches == 1 then
+    return matches[1]
+  end
+
+  local texture = slot and GetActionTexture and GetActionTexture(slot)
+  if texture then
+    for _, macro in ipairs(matches) do
+      if macro.icon == texture then
+        return macro
+      end
+    end
+  end
+  return matches[1]
+end
+
 function Macros.Resolve(reference)
   if not reference or not reference.bodyHash then
     return nil, "macro reference has no body hash"

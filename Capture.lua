@@ -18,7 +18,7 @@ local function macroAssignment(index, slot)
   if not name and slot and GetActionText then
     name = GetActionText(slot)
     if name then
-      local macro, reason = MM.Macros.FindUniqueByName(name)
+      local macro, reason = MM.Macros.FindForSlot(name, slot)
       if not macro then
         return nil, reason
       end
