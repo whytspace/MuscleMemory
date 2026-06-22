@@ -37,6 +37,7 @@ read_globals = {
   "CreateScrollBoxLinearView",
   "DELETE",
   "DONE",
+  "Enum",
   "MenuUtil",
   "ScrollUtil",
   "UISpecialFrames",

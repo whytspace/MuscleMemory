@@ -74,21 +74,56 @@ local fromSlot = {
   end,
 }
 
+-- A spell dragged from the spellbook puts its book *slot index* on the cursor,
+-- not its spellID (e.g. Counterspell drags as index 68, not 147362). Resolve the
+-- index back to a real spellID; older clients (and the test harness) put the
+-- spellID on the cursor directly, in which case the index isn't a valid book
+-- slot and we fall back to the raw value.
+local function cursorSpellId(index, bank, legacyId)
+  if C_SpellBook and C_SpellBook.GetSpellBookItemInfo and type(index) == "number" then
+    local banks = {}
+    if bank ~= nil then
+      banks[#banks + 1] = bank
+    end
+    if Enum and Enum.SpellBookSpellBank then
+      banks[#banks + 1] = Enum.SpellBookSpellBank.Player
+    end
+    banks[#banks + 1] = 0
+
+    for _, spellBank in ipairs(banks) do
+      local ok, info = pcall(C_SpellBook.GetSpellBookItemInfo, index, spellBank)
+      if ok and info and info.spellID and info.spellID > 0 then
+        return info.spellID
+      end
+    end
+  end
+
+  return legacyId or index
+end
+
 function Capture:FromCursor()
   if not GetCursorInfo then
     return nil, "cursor API unavailable"
   end
 
-  local cursorType, id = GetCursorInfo()
+  local cursorType, info1, info2, info3 = GetCursorInfo()
   if not cursorType then
     return nil, "cursor is empty"
+  end
+
+  if cursorType == "spell" then
+    local spellId = cursorSpellId(info1, info2, info3)
+    if not spellId then
+      return nil, "could not read a spell from the cursor"
+    end
+    return { type = "spell", id = spellId }
   end
 
   local builder = fromCursor[cursorType]
   if not builder then
     return nil, "unsupported cursor type " .. tostring(cursorType)
   end
-  return builder(id)
+  return builder(info1)
 end
 
 function Capture:FromSlot(slot)

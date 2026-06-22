@@ -462,6 +462,74 @@ local function statusFor(assignment)
   return "Managed \226\128\148 pins this exact action into the slot.", colors.goldDim
 end
 
+-- A drop overlay covering the whole Slot Editor. It appears only while a
+-- pinnable action sits on the cursor, so dropping anywhere on the sidebar pins
+-- that action to the selected slot.
+local PINNABLE = { spell = true, item = true, mount = true, macro = true, equipmentset = true }
+
+local function updateDropOverlay()
+  local overlay = MusclesTab.dropOverlay
+  if not overlay then
+    return
+  end
+  local cursorType = GetCursorInfo and GetCursorInfo()
+  local parent = overlay:GetParent()
+  local show = MusclesTab.dropTarget and cursorType and PINNABLE[cursorType] and parent and parent:IsVisible()
+  overlay:SetShown(show and true or false)
+end
+
+local function pinFromCursor()
+  local target = MusclesTab.dropTarget
+  if target and GetCursorInfo and GetCursorInfo() then
+    assignFromCursor(target.muscleId, target.slot)
+  end
+end
+
+local function getDropOverlay()
+  if MusclesTab.dropOverlay then
+    return MusclesTab.dropOverlay
+  end
+
+  local overlay = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  overlay:Hide()
+  overlay:EnableMouse(true)
+  overlay:SetBackdrop({
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 2,
+  })
+  overlay:SetBackdropColor(Widgets.unpackColor(colors.gold, 0.1))
+  overlay:SetBackdropBorderColor(Widgets.unpackColor(colors.gold, 0.85))
+
+  overlay.label = Widgets.Label(overlay, "GameFontHighlight", "Drop to pin this action", colors.gold)
+  overlay.label:SetPoint("CENTER")
+
+  overlay:SetScript("OnReceiveDrag", pinFromCursor)
+  overlay:SetScript("OnMouseUp", pinFromCursor)
+  overlay:RegisterEvent("CURSOR_CHANGED")
+  overlay:SetScript("OnEvent", updateDropOverlay)
+
+  MusclesTab.dropOverlay = overlay
+  return overlay
+end
+
+local function attachDropOverlay(inset, muscleId, slot)
+  local overlay = getDropOverlay()
+  overlay:SetParent(inset)
+  overlay:ClearAllPoints()
+  overlay:SetAllPoints(inset)
+  overlay:SetFrameLevel(inset:GetFrameLevel() + 20)
+  MusclesTab.dropTarget = { muscleId = muscleId, slot = slot }
+  updateDropOverlay()
+end
+
+local function detachDropOverlay()
+  MusclesTab.dropTarget = nil
+  if MusclesTab.dropOverlay then
+    MusclesTab.dropOverlay:Hide()
+  end
+end
+
 function MusclesTab:BuildEditor(parent, muscleId, muscle)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
@@ -470,6 +538,7 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
+    detachDropOverlay()
     local note = Widgets.Label(
       inset,
       "GameFontHighlightSmall",
@@ -525,10 +594,16 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   local memoryHeader = Widgets.SectionHeader(inset, "Bind to a Memory")
   memoryHeader:SetPoint("TOPLEFT", emptyButton, "BOTTOMLEFT", 0, -16)
 
+  -- The whole panel is a drop target (see the overlay); a hint sits at the foot.
+  local dropHint =
+    Widgets.Hint(inset, "Drag a spell, item, macro, mount or equipment set onto this panel to pin it to the slot.")
+  dropHint:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 14, 12)
+  dropHint:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
+  dropHint:SetJustifyH("LEFT")
+
   local scroll, content = Widgets.ScrollList(inset)
   scroll:SetPoint("TOPLEFT", memoryHeader, "BOTTOMLEFT", 0, -8)
-  scroll:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -28, 0)
-  scroll:SetHeight(220)
+  scroll:SetPoint("BOTTOMRIGHT", dropHint, "TOPRIGHT", -14, -10)
 
   local y = 0
   for _, memory in ipairs(memoryList()) do
@@ -564,34 +639,7 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   end
   content:SetHeight(math.max(1, -y))
 
-  -- "Or pin a specific action"
-  local pinHeader = Widgets.SectionHeader(inset, "Or pin a specific action")
-  pinHeader:SetPoint("TOPLEFT", scroll, "BOTTOMLEFT", 0, -14)
-
-  local drop = CreateFrame("Button", nil, inset)
-  drop:SetPoint("TOPLEFT", pinHeader, "BOTTOMLEFT", 0, -8)
-  drop:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
-  drop:SetHeight(58)
-
-  local dropBg = drop:CreateTexture(nil, "BACKGROUND")
-  dropBg:SetAllPoints()
-  dropBg:SetColorTexture(0.06, 0.06, 0.07, 0.6)
-
-  local dropBorder =
-    Widgets.Label(drop, "GameFontDisableSmall", "Drag a spell, item, macro, mount\nor equipment set here")
-  dropBorder:SetPoint("CENTER")
-  dropBorder:SetJustifyH("CENTER")
-  dropBorder:SetTextColor(Widgets.unpackColor(colors.faint))
-
-  drop:RegisterForClicks("LeftButtonUp")
-  drop:SetScript("OnClick", function()
-    if GetCursorInfo and GetCursorInfo() then
-      assignFromCursor(muscleId, slot)
-    end
-  end)
-  drop:SetScript("OnReceiveDrag", function()
-    assignFromCursor(muscleId, slot)
-  end)
+  attachDropOverlay(inset, muscleId, slot)
 end
 
 -- Assembly -------------------------------------------------------------------
