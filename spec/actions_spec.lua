@@ -98,6 +98,13 @@ describe("Actions", function()
       local assignment = { type = "macro", indexHint = 2, bodyHash = MM.Macros.HashBody("/cast M") }
       assert.is_true(MM.Actions.IsAssignmentInSlot(assignment, 7))
     end)
+
+    it("matches a macro by name and body hash when the slot id isn't a macro index", function()
+      stubs:addGlobalMacro({ name = "Foo", icon = 5, body = "/cast Foo" })
+      stubs:setSlot(7, { actionType = "macro", id = 999, text = "Foo" })
+      local assignment = { type = "macro", indexHint = 1, nameHint = "Foo", bodyHash = MM.Macros.HashBody("/cast Foo") }
+      assert.is_true(MM.Actions.IsAssignmentInSlot(assignment, 7))
+    end)
   end)
 
   describe("GetAssignmentIconState", function()

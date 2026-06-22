@@ -284,9 +284,24 @@ local function slotMatches(slot, target)
     if target.macroIndex and info.id == target.macroIndex then
       return true
     end
-    if GetMacroInfo and target.bodyHash then
+    if not target.bodyHash then
+      return false
+    end
+    -- info.id may not be a usable macro index in this client: try it directly,
+    -- then fall back to the slot's macro name + the stored body hash via a scan.
+    if GetMacroInfo then
       local _, _, body = GetMacroInfo(info.id)
-      return body and MM.Macros.HashBody(body) == target.bodyHash
+      if body and MM.Macros.HashBody(body) == target.bodyHash then
+        return true
+      end
+    end
+    local name = GetActionText and GetActionText(slot)
+    if name then
+      for _, macro in ipairs(MM.Macros.Scan()) do
+        if macro.name == name and macro.bodyHash == target.bodyHash then
+          return true
+        end
+      end
     end
     return false
   end
