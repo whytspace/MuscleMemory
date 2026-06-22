@@ -322,11 +322,19 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "mount" then
-    return (
-      info.actionType == "mount"
-      or info.actionType == "summonmount"
-      or (info.actionType == "companion" and info.subType == "MOUNT")
-    ) and info.id == target.id
+    if
+      (
+        info.actionType == "mount"
+        or info.actionType == "summonmount"
+        or (info.actionType == "companion" and info.subType == "MOUNT")
+      ) and info.id == target.id
+    then
+      return true
+    end
+    -- Restored mounts are placed via their summon spell, so also match the
+    -- spell form by the mount's spellId.
+    local mount = MM.Mounts.GetInfo(target.id)
+    return info.actionType == "spell" and mount ~= nil and info.id == mount.spellId
   end
 
   if target.kind == "battlepet" then

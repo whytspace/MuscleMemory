@@ -129,8 +129,10 @@ function Stubs.new()
         end
         return mount.name, mount.spellId, mount.icon, 1, 1, 1, 1, 1, 1, 1, mount.collected
       end,
-      Pickup = function(id)
-        world.cursor = { type = "mount", id = id }
+      Pickup = function(index)
+        -- Index 0 is the "Summon Random Favorite Mount" button, which the client
+        -- reports under the sentinel mount id 268435455.
+        world.cursor = { type = "mount", id = index == 0 and 268435455 or index }
       end,
     },
 

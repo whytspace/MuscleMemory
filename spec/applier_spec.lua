@@ -140,6 +140,24 @@ describe("Applier", function()
       assert.equals(1766, stubs.world.slots[10].id)
     end)
 
+    it("restores a mount via its summon spell and stays idempotent", function()
+      stubs:setMount(219, { name = "Strider", spellId = 17453, collected = true })
+      MM.DB:SetSlot("Core", 10, { type = "mount", id = 219 })
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals("spell", stubs.world.slots[10].actionType)
+      assert.equals(17453, stubs.world.slots[10].id)
+      -- the placed spell form is recognised as the mount, so nothing re-applies
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+    end)
+
+    it("restores the Summon Random Favorite Mount button and stays idempotent", function()
+      stubs:setSpell(150544, { name = "Summon Random Favorite Mount", icon = 413588, known = true })
+      MM.DB:SetSlot("Core", 10, { type = "mount", id = 268435455 })
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(268435455, stubs.world.slots[10].id)
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+    end)
+
     it("refuses to apply during combat", function()
       MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
       stubs.world.inCombat = true
