@@ -85,11 +85,11 @@ function DB:FindProfileId(target)
   return matchByName(self:GetRoot().profiles, target)
 end
 
-function DB:FindLayerId(target)
-  return matchByName(self:GetRoot().layers, target)
+function DB:FindMuscleId(target)
+  return matchByName(self:GetRoot().muscles, target)
 end
 
--- A new profile copies the active profile's layer selection, so it starts as a
+-- A new profile copies the active profile's muscle selection, so it starts as a
 -- variation of your current setup.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
@@ -98,7 +98,7 @@ function DB:CreateProfile(name)
 
   root.profiles[id] = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
-    activeLayers = MM.Tables.DeepCopy(source and source.activeLayers or {}),
+    activeMuscles = MM.Tables.DeepCopy(source and source.activeMuscles or {}),
   }
   return id, root.profiles[id]
 end
@@ -142,24 +142,24 @@ function DB:SetActiveProfile(profileId)
   return true
 end
 
--- Layers -------------------------------------------------------------------
+-- Muscles -------------------------------------------------------------------
 
--- Every layer in the profile, in stored order, each tagged with its enabled
+-- Every muscle in the profile, in stored order, each tagged with its enabled
 -- state. Position in the list is the order.
-function DB:GetProfileLayers(profileId)
+function DB:GetProfileMuscles(profileId)
   local profile = self:GetProfile(profileId)
   local list = {}
   if not profile then
     return list
   end
 
-  for _, entry in ipairs(profile.activeLayers or {}) do
-    local layer = self:GetLayer(entry.id)
-    if layer then
+  for _, entry in ipairs(profile.activeMuscles or {}) do
+    local muscle = self:GetMuscle(entry.id)
+    if muscle then
       list[#list + 1] = {
         id = entry.id,
-        layer = layer,
-        name = layer.name or entry.id,
+        muscle = muscle,
+        name = muscle.name or entry.id,
         enabled = entry.enabled ~= false,
       }
     end
@@ -169,9 +169,9 @@ function DB:GetProfileLayers(profileId)
 end
 
 -- The enabled subset, in order. This is what gets applied.
-function DB:GetActiveLayers(profileId)
+function DB:GetActiveMuscles(profileId)
   local active = {}
-  for _, entry in ipairs(self:GetProfileLayers(profileId)) do
+  for _, entry in ipairs(self:GetProfileMuscles(profileId)) do
     if entry.enabled then
       active[#active + 1] = entry
     end
@@ -179,70 +179,70 @@ function DB:GetActiveLayers(profileId)
   return active
 end
 
-function DB:SetLayerEnabled(layerId, enabled, profileId)
+function DB:SetMuscleEnabled(muscleId, enabled, profileId)
   local profile = self:GetProfile(profileId)
-  for _, entry in ipairs(profile and profile.activeLayers or {}) do
-    if entry.id == layerId then
+  for _, entry in ipairs(profile and profile.activeMuscles or {}) do
+    if entry.id == muscleId then
       entry.enabled = enabled and true or false
       return true
     end
   end
-  return false, "layer is not part of this profile"
+  return false, "muscle is not part of this profile"
 end
 
-function DB:GetLayer(layerId)
-  return self:GetRoot().layers[layerId]
+function DB:GetMuscle(muscleId)
+  return self:GetRoot().muscles[muscleId]
 end
 
-function DB:CreateLayer(name)
+function DB:CreateMuscle(name)
   local root = self:GetRoot()
-  local layerId = uniqueId(name, "layer", root.layers)
+  local muscleId = uniqueId(name, "muscle", root.muscles)
 
-  root.layers[layerId] = {
-    name = name or ("Layer " .. tostring(MM.Tables.Count(root.layers) + 1)),
+  root.muscles[muscleId] = {
+    name = name or ("Muscle " .. tostring(MM.Tables.Count(root.muscles) + 1)),
     slots = {},
   }
 
   local profile = self:GetProfile()
   if profile then
-    profile.activeLayers = profile.activeLayers or {}
-    profile.activeLayers[#profile.activeLayers + 1] = { id = layerId, enabled = true }
+    profile.activeMuscles = profile.activeMuscles or {}
+    profile.activeMuscles[#profile.activeMuscles + 1] = { id = muscleId, enabled = true }
   end
 
-  return layerId, root.layers[layerId]
+  return muscleId, root.muscles[muscleId]
 end
 
-function DB:RenameLayer(layerId, name)
-  local layer = self:GetLayer(layerId)
-  if not layer then
-    return false, "unknown layer"
+function DB:RenameMuscle(muscleId, name)
+  local muscle = self:GetMuscle(muscleId)
+  if not muscle then
+    return false, "unknown muscle"
   end
 
   name = string.gsub(name or "", "^%s+", "")
   name = string.gsub(name, "%s+$", "")
   if name == "" then
-    return false, "layer name cannot be empty"
+    return false, "muscle name cannot be empty"
   end
 
-  layer.name = name
+  muscle.name = name
   return true
 end
 
-function DB:DeleteLayer(layerId)
+function DB:DeleteMuscle(muscleId)
   local root = self:GetRoot()
-  if not root.layers[layerId] then
-    return false, "unknown layer"
+  if not root.muscles[muscleId] then
+    return false, "unknown muscle"
   end
-  if MM.Tables.Count(root.layers or {}) <= 1 then
-    return false, "cannot delete the last layer"
+  if MM.Tables.Count(root.muscles or {}) <= 1 then
+    return false, "cannot delete the last muscle"
   end
 
-  root.layers[layerId] = nil
+  root.muscles[muscleId] = nil
 
   for _, profile in pairs(root.profiles or {}) do
-    for index = #(profile.activeLayers or {}), 1, -1 do
-      if profile.activeLayers[index].id == layerId then
-        table.remove(profile.activeLayers, index)
+    for index = #(profile.activeMuscles or {}), 1, -1 do
+      if profile.activeMuscles[index].id == muscleId then
+        table.remove(profile.activeMuscles, index)
       end
     end
   end
@@ -250,12 +250,12 @@ function DB:DeleteLayer(layerId)
   return true
 end
 
--- Move `layerId` to position `toIndex` within `profileId` (defaults to the
+-- Move `muscleId` to position `toIndex` within `profileId` (defaults to the
 -- active profile). Explicit inputs, single array splice, no selection read.
-function DB:MoveLayer(layerId, toIndex, profileId)
+function DB:MoveMuscle(muscleId, toIndex, profileId)
   local profile = self:GetProfile(profileId)
-  local layers = profile and profile.activeLayers
-  if not layers then
+  local muscles = profile and profile.activeMuscles
+  if not muscles then
     return false, "unknown profile"
   end
 
@@ -263,52 +263,52 @@ function DB:MoveLayer(layerId, toIndex, profileId)
   if not toIndex then
     return false, "needs a target position"
   end
-  toIndex = math.max(1, math.min(toIndex, #layers))
+  toIndex = math.max(1, math.min(toIndex, #muscles))
 
   local fromIndex
-  for index, entry in ipairs(layers) do
-    if entry.id == layerId then
+  for index, entry in ipairs(muscles) do
+    if entry.id == muscleId then
       fromIndex = index
       break
     end
   end
 
   if not fromIndex then
-    return false, "layer is not part of this profile"
+    return false, "muscle is not part of this profile"
   end
   if fromIndex == toIndex then
-    return false, "layer is already at that position"
+    return false, "muscle is already at that position"
   end
 
-  table.insert(layers, toIndex, table.remove(layers, fromIndex))
+  table.insert(muscles, toIndex, table.remove(muscles, fromIndex))
   return true
 end
 
-function DB:SetSlot(layerId, slot, assignment)
-  local layer = self:GetLayer(layerId)
+function DB:SetSlot(muscleId, slot, assignment)
+  local muscle = self:GetMuscle(muscleId)
   slot = tonumber(slot)
-  if not layer or not MM.Actions.IsValidSlot(slot) then
+  if not muscle or not MM.Actions.IsValidSlot(slot) then
     return false
   end
 
-  layer.slots[slot] = assignment
+  muscle.slots[slot] = assignment
   return true
 end
 
-function DB:SetAllLayerSlots(layerId, enabled)
-  local layer = self:GetLayer(layerId)
-  if not layer then
+function DB:SetAllMuscleSlots(muscleId, enabled)
+  local muscle = self:GetMuscle(muscleId)
+  if not muscle then
     return false
   end
 
   if enabled then
     for slot = 1, MM.MAX_ACTION_SLOT do
-      if layer.slots[slot] == nil then
-        layer.slots[slot] = { type = "empty" }
+      if muscle.slots[slot] == nil then
+        muscle.slots[slot] = { type = "empty" }
       end
     end
   else
-    layer.slots = {}
+    muscle.slots = {}
   end
 
   return true
@@ -316,18 +316,18 @@ end
 
 -- Selection (runtime only) -------------------------------------------------
 
-function DB:GetSelectedLayerId()
+function DB:GetSelectedMuscleId()
   local root = self:GetRoot()
-  if session.layer and root.layers[session.layer] then
-    return session.layer
+  if session.muscle and root.muscles[session.muscle] then
+    return session.muscle
   end
-  session.layer = next(root.layers)
-  return session.layer
+  session.muscle = next(root.muscles)
+  return session.muscle
 end
 
-function DB:SetSelectedLayerId(layerId)
-  if self:GetRoot().layers[layerId] then
-    session.layer = layerId
+function DB:SetSelectedMuscleId(muscleId)
+  if self:GetRoot().muscles[muscleId] then
+    session.muscle = muscleId
   end
 end
 
@@ -354,42 +354,42 @@ function DB:SetFallback(value)
   return true
 end
 
--- Groups -------------------------------------------------------------------
+-- Memories -------------------------------------------------------------------
 
-function DB:GetCustomGroup(groupId)
-  return self:GetRoot().customGroups[groupId]
+function DB:GetCustomMemory(memoryId)
+  return self:GetRoot().customMemories[memoryId]
 end
 
-function DB:GetGroup(reference)
+function DB:GetMemory(reference)
   if not reference then
     return nil
   end
 
   if reference.source == "custom" then
-    return self:GetCustomGroup(reference.id)
+    return self:GetCustomMemory(reference.id)
   end
 
-  return MM.StandardGroups[reference.id]
+  return MM.StandardMemories[reference.id]
 end
 
--- Copy a standard group into an editable custom group. Returns the new key
--- (groups are identified by key, so duplicate names are fine).
-function DB:CopyStandardGroup(groupId, newId, newName)
-  local source = MM.StandardGroups[groupId]
+-- Copy a standard memory into an editable custom memory. Returns the new key
+-- (memories are identified by key, so duplicate names are fine).
+function DB:CopyStandardMemory(memoryId, newId, newName)
+  local source = MM.StandardMemories[memoryId]
   if not source then
-    return nil, "unknown standard group"
+    return nil, "unknown standard memory"
   end
 
   local root = self:GetRoot()
   local name = newName or (source.name .. " Copy")
-  local key = newId or uniqueId(name, groupId .. "_copy", root.customGroups)
-  if root.customGroups[key] then
-    return nil, "custom group already exists"
+  local key = newId or uniqueId(name, memoryId .. "_copy", root.customMemories)
+  if root.customMemories[key] then
+    return nil, "custom memory already exists"
   end
 
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  root.customGroups[key] = copy
+  root.customMemories[key] = copy
   return key
 end
 

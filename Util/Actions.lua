@@ -98,9 +98,9 @@ function Actions.GetAssignmentLabel(assignment)
     return "Empty"
   end
 
-  if assignment.type == "group" then
-    local group = MM.DB:GetGroup({ source = assignment.source, id = assignment.id })
-    return group and group.name or ("Group: " .. tostring(assignment.id))
+  if assignment.type == "memory" then
+    local memory = MM.DB:GetMemory({ source = assignment.source, id = assignment.id })
+    return memory and memory.name or ("Memory: " .. tostring(assignment.id))
   end
 
   if assignment.type == "spell" then
@@ -168,7 +168,7 @@ function Actions.GetAssignmentIcon(assignment, slot)
     return nil
   end
 
-  if assignment.type == "group" then
+  if assignment.type == "memory" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     return resolved and resolved.icon or nil
   end
@@ -211,7 +211,7 @@ function Actions.GetAssignmentIconState(assignment, slot)
     return { kind = "ignore" }
   end
 
-  if assignment.type == "group" then
+  if assignment.type == "memory" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     if resolved then
       if resolved.kind == "empty" then

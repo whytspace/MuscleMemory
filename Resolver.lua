@@ -99,8 +99,8 @@ local resolvers = {
     return { kind = "equipmentset", name = assignment.name, label = assignment.name }
   end,
 
-  group = function(assignment)
-    return Resolver:ResolveGroupAssignment(assignment)
+  memory = function(assignment)
+    return Resolver:ResolveMemoryAssignment(assignment)
   end,
 }
 
@@ -117,25 +117,25 @@ function Resolver:ResolveAction(assignment, options)
   return resolve(assignment, options or {})
 end
 
-function Resolver:ResolveGroupAssignment(assignment)
-  local group = MM.DB:GetGroup({
+function Resolver:ResolveMemoryAssignment(assignment)
+  local memory = MM.DB:GetMemory({
     source = assignment.source,
     id = assignment.id,
   })
 
-  if not group then
-    return nil, "group not found"
+  if not memory then
+    return nil, "memory not found"
   end
 
-  for _, candidate in ipairs(group.candidates or {}) do
+  for _, candidate in ipairs(memory.candidates or {}) do
     if matchesRequirements(candidate) then
       local resolved = self:ResolveAction(candidate, { requireAvailable = true })
       if resolved then
-        resolved.group = group
+        resolved.memory = memory
         return resolved
       end
     end
   end
 
-  return nil, "group " .. tostring(group.name or assignment.id) .. " had no matching candidate"
+  return nil, "memory " .. tostring(memory.name or assignment.id) .. " had no matching candidate"
 end

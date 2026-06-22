@@ -18,7 +18,7 @@ Util/EquipmentSets.lua
 Util/Actions.lua
 
 Data/SpellIds.lua
-Data/StandardGroups.lua
+Data/StandardMemories.lua
 
 Database.lua
 Resolver.lua

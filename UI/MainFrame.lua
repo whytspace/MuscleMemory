@@ -32,7 +32,7 @@ function UI:CreateFrame()
   frame.subtitle:SetText("Bind buttons by purpose, not just spells.")
 
   self.frame = frame
-  self:ShowLayers()
+  self:ShowMuscles()
 end
 
 function UI:ClearContent()
@@ -46,15 +46,15 @@ function UI:ClearContent()
   self.content:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 16)
 end
 
-function UI:ShowLayers()
+function UI:ShowMuscles()
   self:ClearContent()
   MM.ui.SlotGrid:Build(self.content)
 end
 
--- Re-render the layers view if the window is currently open.
+-- Re-render the muscles view if the window is currently open.
 function UI:Refresh()
   if self.frame and self.frame:IsShown() then
-    self:ShowLayers()
+    self:ShowMuscles()
   end
 end
 

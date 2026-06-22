@@ -14,17 +14,17 @@ function Applier:BuildPlan(profileId)
     profileId = profileId or MM.DB:GetActiveProfileId(),
     slots = {},
     conflicts = {},
-    layers = MM.DB:GetActiveLayers(profileId),
+    muscles = MM.DB:GetActiveMuscles(profileId),
   }
 
-  for _, activeLayer in ipairs(plan.layers) do
-    for slot in pairs(activeLayer.layer.slots or {}) do
+  for _, activeMuscle in ipairs(plan.muscles) do
+    for slot in pairs(activeMuscle.muscle.slots or {}) do
       local numericSlot = tonumber(slot)
       if not MM.Actions.IsValidSlot(numericSlot) then
         plan.conflicts[#plan.conflicts + 1] = {
           slot = tostring(slot),
-          firstLayer = activeLayer.id,
-          secondLayer = "invalid slot",
+          firstMuscle = activeMuscle.id,
+          secondMuscle = "invalid slot",
         }
       end
     end
@@ -34,15 +34,15 @@ function Applier:BuildPlan(profileId)
     local finalEntry
     local terminalEntry
 
-    for _, activeLayer in ipairs(plan.layers) do
-      local layer = activeLayer.layer
-      local assignment = layer.slots and layer.slots[slot]
+    for _, activeMuscle in ipairs(plan.muscles) do
+      local muscle = activeMuscle.muscle
+      local assignment = muscle.slots and muscle.slots[slot]
       if assignment then
         local resolved, reason = MM.Resolver:ResolveAction(assignment)
         local entry = {
           slot = slot,
-          layerId = activeLayer.id,
-          layer = layer,
+          muscleId = activeMuscle.id,
+          muscle = muscle,
           assignment = assignment,
           resolved = resolved,
           unresolvedReason = reason,
@@ -104,10 +104,10 @@ function Applier:PreviewProfile(profileId)
     for _, conflict in ipairs(plan.conflicts) do
       MM:Warn(
         string.format(
-          "layer %s contains invalid slot %s (%s).",
-          conflict.firstLayer,
+          "muscle %s contains invalid slot %s (%s).",
+          conflict.firstMuscle,
           tostring(conflict.slot),
-          conflict.secondLayer
+          conflict.secondMuscle
         )
       )
     end
@@ -295,7 +295,7 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   if #plan.conflicts > 0 and not options.allowConflicts then
-    MM:Warn("cannot apply because active layers contain invalid slots. Use /mm preview for details.")
+    MM:Warn("cannot apply because active muscles contain invalid slots. Use /mm preview for details.")
     return false
   end
 

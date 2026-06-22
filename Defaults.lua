@@ -6,17 +6,17 @@ MM.defaults = {
   profiles = {
     Default = {
       name = "Default",
-      activeLayers = {
+      activeMuscles = {
         { id = "Core", enabled = true },
       },
     },
   },
-  layers = {
+  muscles = {
     Core = {
       name = "Core",
       slots = {},
     },
   },
-  customGroups = {},
+  customMemories = {},
   characterState = {},
 }

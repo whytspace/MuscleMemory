@@ -3,21 +3,21 @@
 **Bind buttons by purpose, not just spell.**
 
 Muscle Memory keeps your action bars consistent across characters. You capture how your bars are
-set up into reusable *layers*, and Muscle Memory restores them on any character — putting the
+set up into reusable *muscles*, and Muscle Memory restores them on any character — putting the
 right spell, item, macro, mount, or equipment set back into each slot.
 
-Slots can also point to purpose-based **action groups** such as Kick / Interrupt, Taunt, or Lust.
-Each character gets whatever ability it actually has for that purpose, so one layer works across
+Slots can also point to purpose-based **memories** such as Kick / Interrupt, Taunt, or Lust.
+Each character gets whatever ability it actually has for that purpose, so one muscle works across
 many classes.
 
 ![Muscle Memory main window](Assets/screenshot-main.png)
-<!-- TODO: screenshot of the main window — layer grid + sidebar. -->
+<!-- TODO: screenshot of the main window — muscle grid + sidebar. -->
 
 ## Getting started
 
 - Type **`/mm`** to open the window.
 - Click a faded slot to capture whatever is on that action bar button right now.
-- Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
+- Switch character, then press **Apply** (or run `/mm apply`) to restore the muscle.
 
 ## Commands
 
@@ -27,13 +27,13 @@ type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 - `/mm` — open the window
 - `/mm apply [profile]` — restore your bars from the active (or named) profile
 - `/mm preview [profile]` — show what Apply would change, without touching your bars
-- `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
-- `/mm profile` · `/mm layer` · `/mm group` — manage profiles, layers, and action groups
+- `/mm muscle capture [slot|all]` — capture a live bar slot, or all of them, into the selected muscle
+- `/mm profile` · `/mm muscle` · `/mm memory` — manage profiles, muscles, and memories
 
 ## Screenshots
 
 <!-- TODO: screenshot of the slot editor sidebar. -->
-<!-- TODO: screenshot of the action groups list. -->
+<!-- TODO: screenshot of the memories list. -->
 
 ## Notes
 

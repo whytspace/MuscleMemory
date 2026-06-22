@@ -117,23 +117,23 @@ function Capture:FromSlot(slot)
   return builder(info.id, slot)
 end
 
-function Capture:CaptureSlot(layerId, slot)
+function Capture:CaptureSlot(muscleId, slot)
   local assignment, reason = self:FromSlot(slot)
   if not assignment then
     return false, reason
   end
 
-  MM.DB:SetSlot(layerId, slot, assignment)
+  MM.DB:SetSlot(muscleId, slot, assignment)
   return true, assignment.type
 end
 
-function Capture:CaptureFilledSlots(layerId)
+function Capture:CaptureFilledSlots(muscleId)
   local captured = 0
   local failures = {}
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     if HasAction and HasAction(slot) then
-      local ok, reason = self:CaptureSlot(layerId, slot)
+      local ok, reason = self:CaptureSlot(muscleId, slot)
       if ok then
         captured = captured + 1
       else

@@ -18,19 +18,19 @@ through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck
 
 ## Data model
 
-- **Profile** — an ordered selection of which layers are active. A profile is a lightweight
-  selection over layers; the slot content lives in the layers. Profiles are account-wide; each
+- **Profile** — an ordered selection of which muscles are active. A profile is a lightweight
+  selection over muscles; the slot content lives in the muscles. Profiles are account-wide; each
   character either inherits the account-default profile or picks its own (`/mm profile select`),
   stored under `characterState`.
-- **Layer** — maps action-bar slots to assignments. Global and reusable across profiles. The
-  active layers are stacked in order, and for each slot the first layer that assigns it wins —
-  hence "layer".
+- **Muscle** — maps action-bar slots to assignments. Global and reusable across profiles. The
+  active muscles are stacked in order, and for each slot the first muscle that assigns it wins —
+  hence "muscle".
 - **Assignment** — one of `ignore`, `empty`, `spell`, `item`, `macro`, `mount`, `equipmentset`,
-  or `group`.
-- **Action Group** — an ordered list of candidates; the first one the current character can use
-  wins (e.g. the Interrupt group resolves to Kick, Pummel, Counterspell, … per class).
+  or `memory`.
+- **Memory** — an ordered list of candidates; the first one the current character can use
+  wins (e.g. the Interrupt memory resolves to Kick, Pummel, Counterspell, … per class).
 
-Standard groups are immutable add-on data. Custom groups and layers live in SavedVariables
+Standard memories are immutable add-on data. Custom memories and muscles live in SavedVariables
 (`MuscleMemoryDB`).
 
 ## Applying
@@ -49,5 +49,5 @@ This is an MVP skeleton and should be verified against the current Retail client
 
 - The `.toc` interface version should track the live client.
 - Action-slot range is conservatively 1–120.
-- Standard group spell IDs need a Retail pass before release.
+- Standard memory spell IDs need a Retail pass before release.
 - Warlock interrupt and Death Knight mounted-movement candidates need current-client verification.

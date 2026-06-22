@@ -8,27 +8,27 @@ local CELL_GAP = 6
 local LEFT_WIDTH = 174
 local RIGHT_WIDTH = 250
 local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local DELETE_LAYER_DIALOG = "MUSCLEMEMORY_DELETE_LAYER"
+local DELETE_MUSCLE_DIALOG = "MUSCLEMEMORY_DELETE_MUSCLE"
 
-local function sortedLayers()
-  return MM.DB:GetProfileLayers()
+local function sortedMuscles()
+  return MM.DB:GetProfileMuscles()
 end
 
-local function sortedGroups()
-  local groups = {}
-  for groupId, group in pairs(MM.StandardGroups or {}) do
-    groups[#groups + 1] = { source = "standard", id = groupId, name = group.name or groupId }
+local function sortedMemories()
+  local memories = {}
+  for memoryId, memory in pairs(MM.StandardMemories or {}) do
+    memories[#memories + 1] = { source = "standard", id = memoryId, name = memory.name or memoryId }
   end
 
-  for groupId, group in pairs(MM.DB:GetRoot().customGroups or {}) do
-    groups[#groups + 1] = { source = "custom", id = groupId, name = group.name or groupId }
+  for memoryId, memory in pairs(MM.DB:GetRoot().customMemories or {}) do
+    memories[#memories + 1] = { source = "custom", id = memoryId, name = memory.name or memoryId }
   end
 
-  table.sort(groups, function(left, right)
+  table.sort(memories, function(left, right)
     return left.name < right.name
   end)
 
-  return groups
+  return memories
 end
 
 local function makeButton(parent, text, width, onClick)
@@ -166,54 +166,54 @@ local function makeEmptyMarker(parent)
   return marker
 end
 
-local function getLayerSlot(layer, slot)
-  return layer and layer.slots and layer.slots[slot] or nil
+local function getMuscleSlot(muscle, slot)
+  return muscle and muscle.slots and muscle.slots[slot] or nil
 end
 
 local function refresh()
-  MM.UI:ShowLayers()
+  MM.UI:ShowMuscles()
 end
 
-local function deleteLayer(layerId)
-  local ok, reason = MM.DB:DeleteLayer(layerId)
+local function deleteMuscle(muscleId)
+  local ok, reason = MM.DB:DeleteMuscle(muscleId)
   if not ok then
-    MM:Warn(reason or "could not delete layer")
+    MM:Warn(reason or "could not delete muscle")
   end
   refresh()
 end
 
-local function confirmDeleteLayer(layerId, layerName)
+local function confirmDeleteMuscle(muscleId, muscleName)
   if StaticPopupDialogs and StaticPopup_Show then
-    StaticPopupDialogs[DELETE_LAYER_DIALOG] = StaticPopupDialogs[DELETE_LAYER_DIALOG]
+    StaticPopupDialogs[DELETE_MUSCLE_DIALOG] = StaticPopupDialogs[DELETE_MUSCLE_DIALOG]
       or {
-        text = "Delete layer %s?",
+        text = "Delete muscle %s?",
         button1 = "Delete",
         button2 = "Cancel",
         OnAccept = function(_, data)
-          deleteLayer(data.layerId)
+          deleteMuscle(data.muscleId)
         end,
         timeout = 0,
         whileDead = true,
         hideOnEscape = true,
         preferredIndex = 3,
       }
-    StaticPopup_Show(DELETE_LAYER_DIALOG, layerName, nil, { layerId = layerId })
+    StaticPopup_Show(DELETE_MUSCLE_DIALOG, muscleName, nil, { muscleId = muscleId })
     return
   end
 
-  deleteLayer(layerId)
+  deleteMuscle(muscleId)
 end
 
-local function assignSlot(layerId, slot, assignment)
-  MM.DB:SetSlot(layerId, slot, assignment)
+local function assignSlot(muscleId, slot, assignment)
+  MM.DB:SetSlot(muscleId, slot, assignment)
   MM.DB:SetSelectedSlot(slot)
   refresh()
 end
 
-local function enableSlotFromBar(layerId, slot)
-  local ok, reason = MM.Capture:CaptureSlot(layerId, slot)
+local function enableSlotFromBar(muscleId, slot)
+  local ok, reason = MM.Capture:CaptureSlot(muscleId, slot)
   if not ok then
-    MM.DB:SetSlot(layerId, slot, { type = "empty" })
+    MM.DB:SetSlot(muscleId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
       MM:Warn(reason or "could not capture slot")
     end
@@ -223,42 +223,42 @@ local function enableSlotFromBar(layerId, slot)
   refresh()
 end
 
-local function assignCursor(layerId, slot)
+local function assignCursor(muscleId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(reason or "could not read cursor")
     return
   end
 
-  assignSlot(layerId, slot, assignment)
+  assignSlot(muscleId, slot, assignment)
   if ClearCursor then
     ClearCursor()
   end
 end
 
-function SlotGrid:BuildLayersPane(parent, layerId)
-  local title = makeSectionLabel(parent, "Layers")
+function SlotGrid:BuildMusclesPane(parent, muscleId)
+  local title = makeSectionLabel(parent, "Muscles")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
 
   local create = makeButton(parent, "New", 58, function()
-    local nextNumber = MM.Tables.Count(MM.DB:GetRoot().layers or {}) + 1
-    local id = MM.DB:CreateLayer("Layer " .. tostring(nextNumber))
-    MM.DB:SetSelectedLayerId(id)
+    local nextNumber = MM.Tables.Count(MM.DB:GetRoot().muscles or {}) + 1
+    local id = MM.DB:CreateMuscle("Muscle " .. tostring(nextNumber))
+    MM.DB:SetSelectedMuscleId(id)
     MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
   create:SetPoint("TOPRIGHT", parent, "TOPLEFT", LEFT_WIDTH, 2)
 
-  local layers = sortedLayers()
+  local muscles = sortedMuscles()
   local y = -30
-  for index, layer in ipairs(layers) do
+  for index, muscle in ipairs(muscles) do
     local button = makeListRow(
       parent,
-      tostring(index) .. ". " .. layer.name,
+      tostring(index) .. ". " .. muscle.name,
       LEFT_WIDTH,
-      layer.id == layerId,
+      muscle.id == muscleId,
       function()
-        MM.DB:SetSelectedLayerId(layer.id)
+        MM.DB:SetSelectedMuscleId(muscle.id)
         MM.DB:SetSelectedSlot(nil)
         refresh()
       end,
@@ -267,23 +267,23 @@ function SlotGrid:BuildLayersPane(parent, layerId)
     )
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
 
-    local check = makeCheckbox(button, layer.enabled, function()
-      MM.DB:SetLayerEnabled(layer.id, not layer.enabled)
+    local check = makeCheckbox(button, muscle.enabled, function()
+      MM.DB:SetMuscleEnabled(muscle.id, not muscle.enabled)
       refresh()
     end)
     check:SetPoint("LEFT", button, "LEFT", 2, 0)
-    if not layer.enabled then
+    if not muscle.enabled then
       button.label:SetTextColor(0.5, 0.5, 0.5)
     end
 
     local up = makeArrowButton(button, "up", index > 1, function()
-      MM.DB:MoveLayer(layer.id, index - 1)
+      MM.DB:MoveMuscle(muscle.id, index - 1)
       refresh()
     end)
     up:SetPoint("RIGHT", button, "RIGHT", -25, 0)
 
-    local down = makeArrowButton(button, "down", index < #layers, function()
-      MM.DB:MoveLayer(layer.id, index + 1)
+    local down = makeArrowButton(button, "down", index < #muscles, function()
+      MM.DB:MoveMuscle(muscle.id, index + 1)
       refresh()
     end)
     down:SetPoint("RIGHT", button, "RIGHT", -1, 0)
@@ -292,7 +292,7 @@ function SlotGrid:BuildLayersPane(parent, layerId)
   end
 end
 
-function SlotGrid:BuildToolbar(parent, layerId)
+function SlotGrid:BuildToolbar(parent, muscleId)
   local preview = makeButton(parent, "Preview", 78, function()
     MM.Applier:PreviewProfile()
   end)
@@ -304,21 +304,21 @@ function SlotGrid:BuildToolbar(parent, layerId)
   apply:SetPoint("RIGHT", preview, "LEFT", -8, 0)
 
   local enableAll = makeButton(parent, "Enable All", 90, function()
-    MM.DB:SetAllLayerSlots(layerId, true)
+    MM.DB:SetAllMuscleSlots(muscleId, true)
     refresh()
   end)
   enableAll:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
   local disableAll = makeButton(parent, "Disable All", 90, function()
-    MM.DB:SetAllLayerSlots(layerId, false)
+    MM.DB:SetAllMuscleSlots(muscleId, false)
     MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
   disableAll:SetPoint("RIGHT", enableAll, "LEFT", -8, 0)
 end
 
-function SlotGrid:BuildSlotButton(parent, layerId, layer, slot, point, relativeTo, x, y)
-  local assignment = getLayerSlot(layer, slot)
+function SlotGrid:BuildSlotButton(parent, muscleId, muscle, slot, point, relativeTo, x, y)
+  local assignment = getMuscleSlot(muscle, slot)
   local configured = assignment ~= nil
   local selected = MM.DB:GetSelectedSlot() == slot
 
@@ -374,7 +374,7 @@ function SlotGrid:BuildSlotButton(parent, layerId, layer, slot, point, relativeT
     if configured then
       GameTooltip:AddLine(frame.tooltipText, 1, 1, 1)
     else
-      GameTooltip:AddLine("Disabled in this layer", 0.75, 0.75, 0.75)
+      GameTooltip:AddLine("Disabled in this muscle", 0.75, 0.75, 0.75)
     end
     GameTooltip:Show()
   end)
@@ -383,58 +383,58 @@ function SlotGrid:BuildSlotButton(parent, layerId, layer, slot, point, relativeT
   end)
   button:SetScript("OnClick", function(_, mouseButton)
     if GetCursorInfo and GetCursorInfo() then
-      assignCursor(layerId, slot)
+      assignCursor(muscleId, slot)
       return
     end
 
     if mouseButton == "RightButton" then
-      assignSlot(layerId, slot, nil)
+      assignSlot(muscleId, slot, nil)
       return
     end
 
     if not configured then
-      enableSlotFromBar(layerId, slot)
+      enableSlotFromBar(muscleId, slot)
     else
       MM.DB:SetSelectedSlot(slot)
       refresh()
     end
   end)
   button:SetScript("OnReceiveDrag", function()
-    assignCursor(layerId, slot)
+    assignCursor(muscleId, slot)
   end)
 end
 
-function SlotGrid:BuildGrid(parent, layerId, layer)
+function SlotGrid:BuildGrid(parent, muscleId, muscle)
   local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
-  title:SetText("Layer")
+  title:SetText("Muscle")
 
   local nameBox = makeEditBox(parent, 170)
   nameBox:SetPoint("LEFT", title, "RIGHT", 12, 0)
-  nameBox:SetText(layer and layer.name or layerId)
+  nameBox:SetText(muscle and muscle.name or muscleId)
   nameBox:SetCursorPosition(0)
 
   local delete = makeButton(parent, "Delete", 66, function()
-    confirmDeleteLayer(layerId, layer and layer.name or layerId)
+    confirmDeleteMuscle(muscleId, muscle and muscle.name or muscleId)
   end)
   delete:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
-  if MM.Tables.Count(MM.DB:GetRoot().layers or {}) <= 1 then
+  if MM.Tables.Count(MM.DB:GetRoot().muscles or {}) <= 1 then
     delete:Disable()
   end
 
-  local originalName = layer and layer.name or layerId
+  local originalName = muscle and muscle.name or muscleId
   local function saveName()
     local value = nameBox:GetText()
     if value == originalName then
       return
     end
 
-    local ok, reason = MM.DB:RenameLayer(layerId, value)
+    local ok, reason = MM.DB:RenameMuscle(muscleId, value)
     if ok then
       refresh()
     else
       nameBox:SetText(originalName)
-      MM:Warn(reason or "could not rename layer")
+      MM:Warn(reason or "could not rename muscle")
     end
   end
 
@@ -447,7 +447,7 @@ function SlotGrid:BuildGrid(parent, layerId, layer)
   end)
   nameBox:SetScript("OnEditFocusLost", saveName)
 
-  self:BuildToolbar(parent, layerId)
+  self:BuildToolbar(parent, muscleId)
 
   local grid = CreateFrame("Frame", nil, parent)
   grid:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -42)
@@ -468,8 +468,8 @@ function SlotGrid:BuildGrid(parent, layerId, layer)
       local slot = ((bar - 1) * MM.ACTIONS_PER_BAR) + buttonIndex
       self:BuildSlotButton(
         grid,
-        layerId,
-        layer,
+        muscleId,
+        muscle,
         slot,
         "TOPLEFT",
         grid,
@@ -480,7 +480,7 @@ function SlotGrid:BuildGrid(parent, layerId, layer)
   end
 end
 
-function SlotGrid:BuildSlotPane(parent, layerId, layer)
+function SlotGrid:BuildSlotPane(parent, muscleId, muscle)
   local selectedSlot = MM.DB:GetSelectedSlot()
   local title = makeSectionLabel(parent, "Selected Slot")
   title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
@@ -494,7 +494,7 @@ function SlotGrid:BuildSlotPane(parent, layerId, layer)
     return
   end
 
-  local assignment = getLayerSlot(layer, selectedSlot)
+  local assignment = getMuscleSlot(muscle, selectedSlot)
   local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   label:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
   label:SetWidth(RIGHT_WIDTH)
@@ -502,7 +502,7 @@ function SlotGrid:BuildSlotPane(parent, layerId, layer)
   label:SetText(MM.Actions.GetSlotLabel(selectedSlot) .. ": " .. MM.Actions.GetAssignmentLabel(assignment))
 
   local capture = makeButton(parent, "Capture Current", 118, function()
-    local ok, reason = MM.Capture:CaptureSlot(layerId, selectedSlot)
+    local ok, reason = MM.Capture:CaptureSlot(muscleId, selectedSlot)
     if not ok then
       MM:Warn(reason or "could not capture slot")
     end
@@ -511,12 +511,12 @@ function SlotGrid:BuildSlotPane(parent, layerId, layer)
   capture:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -12)
 
   local empty = makeButton(parent, "Empty", 62, function()
-    assignSlot(layerId, selectedSlot, { type = "empty" })
+    assignSlot(muscleId, selectedSlot, { type = "empty" })
   end)
   empty:SetPoint("LEFT", capture, "RIGHT", 8, 0)
 
   local disable = makeButton(parent, "Disable", 70, function()
-    assignSlot(layerId, selectedSlot, nil)
+    assignSlot(muscleId, selectedSlot, nil)
   end)
   disable:SetPoint("LEFT", empty, "RIGHT", 8, 0)
 
@@ -535,7 +535,7 @@ function SlotGrid:BuildSlotPane(parent, layerId, layer)
   local function setSpell()
     local spellId = tonumber(spellInput:GetText())
     if spellId then
-      assignSlot(layerId, selectedSlot, { type = "spell", id = spellId })
+      assignSlot(muscleId, selectedSlot, { type = "spell", id = spellId })
     else
       MM:Warn("enter a spell ID first.")
     end
@@ -546,44 +546,44 @@ function SlotGrid:BuildSlotPane(parent, layerId, layer)
   local setSpellButton = makeButton(parent, "Set", 44, setSpell)
   setSpellButton:SetPoint("LEFT", spellInput, "RIGHT", 8, 0)
 
-  local groupsLabel = makeSectionLabel(parent, "Action Groups")
-  groupsLabel:SetPoint("TOPLEFT", spellLabel, "BOTTOMLEFT", 0, -22)
+  local memoriesLabel = makeSectionLabel(parent, "Memories")
+  memoriesLabel:SetPoint("TOPLEFT", spellLabel, "BOTTOMLEFT", 0, -22)
 
   local y = -26
-  for _, group in ipairs(sortedGroups()) do
-    local button = makeButton(parent, group.name, RIGHT_WIDTH, function()
-      assignSlot(layerId, selectedSlot, {
-        type = "group",
-        source = group.source,
-        id = group.id,
+  for _, memory in ipairs(sortedMemories()) do
+    local button = makeButton(parent, memory.name, RIGHT_WIDTH, function()
+      assignSlot(muscleId, selectedSlot, {
+        type = "memory",
+        source = memory.source,
+        id = memory.id,
       })
     end)
-    button:SetPoint("TOPLEFT", groupsLabel, "BOTTOMLEFT", 0, y)
+    button:SetPoint("TOPLEFT", memoriesLabel, "BOTTOMLEFT", 0, y)
     y = y - 24
   end
 end
 
 function SlotGrid:Build(parent)
-  local layerId = MM.DB:GetSelectedLayerId()
-  local layer = MM.DB:GetLayer(layerId)
+  local muscleId = MM.DB:GetSelectedMuscleId()
+  local muscle = MM.DB:GetMuscle(muscleId)
 
   local left = CreateFrame("Frame", nil, parent)
   left:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   left:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   left:SetWidth(LEFT_WIDTH)
-  self:BuildLayersPane(left, layerId)
+  self:BuildMusclesPane(left, muscleId)
 
   makeVerticalDivider(parent, left, "RIGHT", 9)
 
   local center = CreateFrame("Frame", nil, parent)
   center:SetPoint("TOPLEFT", left, "TOPRIGHT", 18, 0)
   center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RIGHT_WIDTH + 18), 0)
-  self:BuildGrid(center, layerId, layer)
+  self:BuildGrid(center, muscleId, muscle)
 
   local right = CreateFrame("Frame", nil, parent)
   right:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   right:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   right:SetWidth(RIGHT_WIDTH)
   makeVerticalDivider(parent, right, "LEFT", -9)
-  self:BuildSlotPane(right, layerId, layer)
+  self:BuildSlotPane(right, muscleId, muscle)
 end
