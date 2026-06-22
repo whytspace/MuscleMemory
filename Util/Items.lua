@@ -59,8 +59,14 @@ function Items.IsEquipped(itemId)
   return IsEquippedItem(itemId) == true
 end
 
+-- A learned toy lives in the Toy Box, not the bags, so GetItemCount reports 0.
+-- PlayerHasToy answers ownership for those.
+function Items.IsToy(itemId)
+  return itemId ~= nil and PlayerHasToy ~= nil and PlayerHasToy(itemId) == true
+end
+
 function Items.IsOwned(itemId)
-  return Items.GetCount(itemId) > 0 or Items.IsEquipped(itemId)
+  return Items.GetCount(itemId) > 0 or Items.IsEquipped(itemId) or Items.IsToy(itemId)
 end
 
 function Items.Pickup(itemId)

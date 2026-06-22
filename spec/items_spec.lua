@@ -48,7 +48,12 @@ describe("Items", function()
       assert.is_true(MM.Items.IsOwned(6948))
     end)
 
-    it("is false when neither owned nor equipped", function()
+    it("is true for a learned toy with a zero bag count", function()
+      stubs:setItem(119210, { count = 0, equipped = false, isToy = true })
+      assert.is_true(MM.Items.IsOwned(119210))
+    end)
+
+    it("is false when neither owned, equipped nor a known toy", function()
       stubs:setItem(6948, { count = 0, equipped = false })
       assert.is_false(MM.Items.IsOwned(6948))
     end)

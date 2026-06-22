@@ -77,6 +77,7 @@ read_globals = {
   "PickupMacro",
   "PickupSpell",
   "PlaceAction",
+  "PlayerHasToy",
   "StaticPopup_Hide",
   "StaticPopup_Show",
   "UIParent",

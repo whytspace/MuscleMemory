@@ -145,6 +145,10 @@ function Stubs.new()
       local item = world.items[id]
       return item ~= nil and item.equipped == true
     end,
+    PlayerHasToy = function(id)
+      local item = world.items[id]
+      return item ~= nil and item.isToy == true
+    end,
 
     -- Mounts ---------------------------------------------------------------
     C_MountJournal = {
@@ -359,6 +363,7 @@ function Stubs:setItem(id, opts)
     icon = opts.icon or (2000 + id),
     count = opts.count or 0,
     equipped = opts.equipped == true,
+    isToy = opts.isToy == true,
   }
   return self
 end
