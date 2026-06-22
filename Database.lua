@@ -45,8 +45,15 @@ function DB:GetRoot()
   return self.root or MuscleMemoryDB or {}
 end
 
+-- Self-heals if the stored pointer is missing (e.g. its profile was deleted).
 function DB:GetActiveProfileId()
-  return self:GetRoot().activeProfile or "Default"
+  local root = self:GetRoot()
+  if root.activeProfile and root.profiles[root.activeProfile] then
+    return root.activeProfile
+  end
+
+  root.activeProfile = next(root.profiles)
+  return root.activeProfile
 end
 
 function DB:GetProfile(profileId)
@@ -85,7 +92,6 @@ function DB:CreateProfile(name)
     activeLayouts = MM.Tables.DeepCopy(source and source.activeLayouts or {}),
     triggers = MM.Tables.DeepCopy(source and source.triggers or MM.defaults.profiles.Default.triggers),
   }
-  root.activeProfile = id
   return id, root.profiles[id]
 end
 
@@ -115,9 +121,6 @@ function DB:DeleteProfile(profileId)
   end
 
   root.profiles[profileId] = nil
-  if root.activeProfile == profileId then
-    root.activeProfile = next(root.profiles)
-  end
   return true
 end
 
@@ -193,13 +196,14 @@ function DB:GetLayout(layoutId)
   return self:GetRoot().layouts[layoutId]
 end
 
+-- Self-heals if the stored pointer is missing (e.g. its layout was deleted).
 function DB:GetSelectedLayoutId()
   local root = self:GetRoot()
   if root.ui.selectedLayout and root.layouts[root.ui.selectedLayout] then
     return root.ui.selectedLayout
   end
 
-  root.ui.selectedLayout = "Core"
+  root.ui.selectedLayout = next(root.layouts)
   return root.ui.selectedLayout
 end
 
@@ -233,7 +237,7 @@ function DB:CreateLayout(name)
     slots = {},
   }
 
-  local profile = self:GetProfile(root.activeProfile)
+  local profile = self:GetProfile()
   if profile then
     profile.activeLayouts[layoutId] = {
       enabled = true,
@@ -241,8 +245,6 @@ function DB:CreateLayout(name)
     }
   end
 
-  root.ui.selectedLayout = layoutId
-  root.ui.selectedSlot = nil
   return layoutId, root.layouts[layoutId]
 end
 
@@ -278,12 +280,6 @@ function DB:DeleteLayout(layoutId)
     if profile.activeLayouts then
       profile.activeLayouts[layoutId] = nil
     end
-  end
-
-  if root.ui.selectedLayout == layoutId then
-    local remaining = self:GetProfileLayouts()[1]
-    root.ui.selectedLayout = remaining and remaining.id or next(root.layouts)
-    root.ui.selectedSlot = nil
   end
 
   return true

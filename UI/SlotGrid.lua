@@ -242,7 +242,9 @@ function SlotGrid:BuildLayoutsPane(parent, layoutId)
 
   local create = makeButton(parent, "New", 58, function()
     local nextNumber = MM.Tables.Count(MM.DB:GetRoot().layouts or {}) + 1
-    MM.DB:CreateLayout("Layout " .. tostring(nextNumber))
+    local id = MM.DB:CreateLayout("Layout " .. tostring(nextNumber))
+    MM.DB:SetSelectedLayoutId(id)
+    MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
   create:SetPoint("TOPRIGHT", parent, "TOPLEFT", LEFT_WIDTH, 2)

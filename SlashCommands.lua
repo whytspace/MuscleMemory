@@ -75,6 +75,7 @@ end
 local function profileNew(args)
   local name = table.concat(args, " ")
   local id = MM.DB:CreateProfile(name ~= "" and name or nil)
+  MM.DB:SetActiveProfile(id)
   refresh()
   MM:Print("created and activated profile " .. MM.DB:GetProfile(id).name .. ".")
 end
@@ -130,9 +131,11 @@ end
 
 local function layoutNew(args)
   local name = table.concat(args, " ")
-  MM.DB:CreateLayout(name ~= "" and name or nil)
+  local id = MM.DB:CreateLayout(name ~= "" and name or nil)
+  MM.DB:SetSelectedLayoutId(id)
+  MM.DB:SetSelectedSlot(nil)
   refresh()
-  MM:Print("created layout " .. layoutName(selectedLayout()) .. ".")
+  MM:Print("created layout " .. layoutName(id) .. ".")
 end
 
 -- Resolve a layout by profile-list index or by id/name.
