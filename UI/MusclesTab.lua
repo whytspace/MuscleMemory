@@ -163,6 +163,8 @@ function MusclesTab:BuildRail(parent, muscleId)
 
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
     order:SetPoint("LEFT", handle, "RIGHT", 6, 0)
+    order:SetWidth(16)
+    order:SetJustifyH("LEFT")
     order:SetTextColor(Widgets.unpackColor(entry.id == muscleId and colors.gold or colors.faint))
 
     local check = Widgets.Checkbox(row, entry.enabled, function()

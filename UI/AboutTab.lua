@@ -8,7 +8,7 @@ MM.ui.AboutTab = AboutTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local GITHUB_URL = "https://github.com/Whytspace/MuscleMemory"
+local GITHUB_URL = "https://github.com/whytspace/MuscleMemory"
 
 local function metadata(key, fallback)
   if C_AddOns and C_AddOns.GetAddOnMetadata then
@@ -37,7 +37,7 @@ function AboutTab:Build(parent)
   local meta = Widgets.Label(
     column,
     "GameFontDisableSmall",
-    "v" .. metadata("Version", "0.1.0") .. "  \194\183  by " .. metadata("Author", "Whytspace")
+    "v" .. metadata("Version", "0.1.0") .. "  \194\183  by " .. metadata("Author", "whytspace")
   )
   meta:SetPoint("TOP", tagline, "BOTTOM", 0, -10)
 

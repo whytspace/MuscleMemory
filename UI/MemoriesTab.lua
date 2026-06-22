@@ -248,6 +248,8 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     row:SetSelected(index == selected)
 
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
+    order:SetWidth(16)
+    order:SetJustifyH("LEFT")
     if locked then
       -- Predefined memories can't be reordered, so there's no drag handle.
       order:SetPoint("LEFT", row, "LEFT", 12, 0)

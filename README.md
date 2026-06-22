@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Assets/logo.png" alt="Muscle Memory" width="160">
+</p>
+
 # Muscle Memory
 
 **Bind buttons by purpose, not just spell.**

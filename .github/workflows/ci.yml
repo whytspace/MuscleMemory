@@ -24,8 +24,10 @@ jobs:
           luarocks install luacheck
           luarocks install busted
 
+      # Lint/format only tracked source — the Lua/LuaRocks install lands in the
+      # workspace and must not be scanned.
       - name: Luacheck
-        run: luacheck .
+        run: luacheck $(git ls-files '*.lua')
 
       - name: Busted
         run: busted
@@ -35,4 +37,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
-          args: --check .
+          args: --check Applier.lua Capture.lua Core.lua Database.lua Defaults.lua Events.lua Resolver.lua SlashCommands.lua Data UI Util spec
