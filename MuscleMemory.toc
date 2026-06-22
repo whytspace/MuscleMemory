@@ -27,5 +27,10 @@ Applier.lua
 Events.lua
 SlashCommands.lua
 
+UI/Widgets.lua
+UI/Modals.lua
 UI/MainFrame.lua
-UI/SlotGrid.lua
+UI/MusclesTab.lua
+UI/MemoriesTab.lua
+UI/SettingsTab.lua
+UI/AboutTab.lua
