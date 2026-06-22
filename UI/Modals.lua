@@ -101,7 +101,9 @@ local function show(opts)
   else
     box.message:SetText(opts.message or "")
     box.editBox:Hide()
-    box:SetHeight(186)
+    -- Size to content: the message starts 52px down, then a gap plus the
+    -- button row (24) and bottom inset (18) so short confirmations aren't tall.
+    box:SetHeight(52 + box.message:GetStringHeight() + 22 + 42)
   end
 
   box.accept:SetScript("OnClick", function()
