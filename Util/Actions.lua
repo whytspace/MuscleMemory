@@ -22,6 +22,7 @@ Actions.BARS = {
   { label = "Stance 2", base = 84, stance = true }, -- slots 85-96
   { label = "Stance 3", base = 96, stance = true }, -- slots 97-108
   { label = "Stance 4", base = 108, stance = true }, -- slots 109-120
+  { label = "Skyriding", base = 120 }, -- slots 121-132 (bonus bar while skyriding)
 }
 
 -- The bars to show for the current character: the standard bars always, plus the
