@@ -16,6 +16,39 @@ WoW embeds a Lua 5.1-family runtime with Blizzard-specific globals, so Luacheck 
 through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck .` and
 `devc stylua .` before committing — both should be clean.
 
+## Testing
+
+Unit tests run under [Busted](https://lunarmodules.github.io/busted/) in the dev container:
+
+```sh
+devc busted              # run the suite
+devc busted --coverage   # also write luacov.report.out
+```
+
+The WoW client API isn't available outside the game, so `spec/helpers/wow_stubs.lua` provides a
+controllable fake of it — a mutable `world` (known spells, bag contents, mounts, macros, action-bar
+slots, the cursor) that every stub reads from. Pickups move things onto the cursor and `PlaceAction`
+drops the cursor into a slot, so capture/apply round-trips are fully simulated.
+
+`spec/helpers/addon.lua` loads the add-on the way WoW does: each non-UI file from the `.toc` is run
+with its `("MuscleMemory", MM)` varargs inside a shared sandbox whose globals are the fake API.
+A spec typically starts from `addon.fresh()`, which returns `(MM, stubs, env)` with a clean DB.
+
+```lua
+local addon = require("spec.helpers.addon")
+local MM, stubs = addon.fresh()
+stubs:setSpell(1766, { name = "Kick", known = true })
+-- exercise MM.* and assert on the result or on stubs.world
+```
+
+What's tested and what isn't:
+
+- **Covered:** the pure logic and API-boundary modules — `Util/*`, `Database`, `Resolver`,
+  `Capture`, `Applier`, and the event-driven apply prompt in `Events`.
+- **Not unit-tested:** `UI/*` (real frames) and most of `SlashCommands`/`Core` (command dispatch and
+  frame wiring). Verify those in-game with `/reload`; an error display add-on such as
+  BugGrabber/BugSack helps surface runtime errors.
+
 ## Data model
 
 - **Profile** — an ordered selection of which muscles are active. A profile is a lightweight

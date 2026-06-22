@@ -1,0 +1,63 @@
+local addon = require("spec.helpers.addon")
+
+describe("Items", function()
+  local MM, stubs
+  before_each(function()
+    MM, stubs = addon.load()
+  end)
+
+  describe("GetInfo", function()
+    it("returns nil for a nil id", function()
+      assert.is_nil(MM.Items.GetInfo(nil))
+    end)
+
+    it("reads name, link and icon", function()
+      stubs:setItem(6948, { name = "Hearthstone", link = "|hearth|", icon = 134414 })
+      local info = MM.Items.GetInfo(6948)
+      assert.equals("Hearthstone", info.name)
+      assert.equals("|hearth|", info.link)
+      assert.equals(134414, info.icon)
+      assert.equals(6948, info.id)
+    end)
+
+    it("returns nil for an unknown item", function()
+      assert.is_nil(MM.Items.GetInfo(123))
+    end)
+  end)
+
+  describe("GetCount", function()
+    it("returns 0 for nil or unknown items", function()
+      assert.equals(0, MM.Items.GetCount(nil))
+      assert.equals(0, MM.Items.GetCount(6948))
+    end)
+
+    it("returns the configured count", function()
+      stubs:setItem(6948, { count = 3 })
+      assert.equals(3, MM.Items.GetCount(6948))
+    end)
+  end)
+
+  describe("IsOwned", function()
+    it("is true when at least one is in bags", function()
+      stubs:setItem(6948, { count = 1 })
+      assert.is_true(MM.Items.IsOwned(6948))
+    end)
+
+    it("is true when equipped even with a zero bag count", function()
+      stubs:setItem(6948, { count = 0, equipped = true })
+      assert.is_true(MM.Items.IsOwned(6948))
+    end)
+
+    it("is false when neither owned nor equipped", function()
+      stubs:setItem(6948, { count = 0, equipped = false })
+      assert.is_false(MM.Items.IsOwned(6948))
+    end)
+  end)
+
+  describe("Pickup", function()
+    it("picks the item up onto the cursor", function()
+      assert.is_true(MM.Items.Pickup(6948))
+      assert.same({ type = "item", id = 6948 }, stubs.world.cursor)
+    end)
+  end)
+end)

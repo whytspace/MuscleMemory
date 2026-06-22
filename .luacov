@@ -1,0 +1,15 @@
+-- Coverage configuration for `busted --coverage`.
+-- Report on the add-on source only; skip the test harness and installed rocks.
+return {
+  exclude = {
+    "spec/",
+    "/usr/",
+    "luarocks",
+    "luacov",
+    "busted",
+    "luassert",
+    "say$",
+    "pl/",
+    "mediator",
+  },
+}

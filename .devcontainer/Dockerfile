@@ -15,6 +15,8 @@ RUN apt-get update \
     tar \
     unzip \
   && luarocks --lua-version=5.1 install luacheck \
+  && luarocks --lua-version=5.1 install busted \
+  && luarocks --lua-version=5.1 install luacov \
   && arch="$(dpkg --print-architecture)" \
   && case "$arch" in \
     amd64) stylua_arch="linux-x86_64"; lls_arch="linux-x64" ;; \

@@ -1,0 +1,5 @@
+# Coverage output from `busted --coverage`
+luacov.stats.out
+luacov.report.out
+
+.DS_Store

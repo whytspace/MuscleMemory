@@ -12,6 +12,9 @@ lua5.1 -v
 printf 'Luacheck: '
 luacheck --version
 
+printf 'Busted: '
+busted --version
+
 printf 'StyLua: '
 stylua --version
 

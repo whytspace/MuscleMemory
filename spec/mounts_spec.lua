@@ -1,0 +1,47 @@
+local addon = require("spec.helpers.addon")
+
+describe("Mounts", function()
+  local MM, stubs
+  before_each(function()
+    MM, stubs = addon.load()
+  end)
+
+  describe("GetInfo", function()
+    it("returns nil for a nil id or unknown mount", function()
+      assert.is_nil(MM.Mounts.GetInfo(nil))
+      assert.is_nil(MM.Mounts.GetInfo(123))
+    end)
+
+    it("reads name, spellId, icon and collected state", function()
+      stubs:setMount(219, { name = "Mechanostrider", spellId = 17453, icon = 132248, collected = true })
+      local info = MM.Mounts.GetInfo(219)
+      assert.equals("Mechanostrider", info.name)
+      assert.equals(17453, info.spellId)
+      assert.equals(132248, info.icon)
+      assert.is_true(info.isCollected)
+    end)
+  end)
+
+  describe("IsKnown", function()
+    it("is true for a collected mount", function()
+      stubs:setMount(219, { collected = true })
+      assert.is_true(MM.Mounts.IsKnown(219))
+    end)
+
+    it("is false for an uncollected mount", function()
+      stubs:setMount(219, { collected = false })
+      assert.is_false(MM.Mounts.IsKnown(219))
+    end)
+
+    it("is falsey for an unknown mount", function()
+      assert.is_falsy(MM.Mounts.IsKnown(123))
+    end)
+  end)
+
+  describe("Pickup", function()
+    it("picks the mount up onto the cursor", function()
+      assert.is_true(MM.Mounts.Pickup(219))
+      assert.same({ type = "mount", id = 219 }, stubs.world.cursor)
+    end)
+  end)
+end)

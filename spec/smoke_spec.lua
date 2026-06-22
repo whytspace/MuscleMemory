@@ -1,0 +1,13 @@
+local addon = require("spec.helpers.addon")
+
+describe("test harness", function()
+  it("loads the add-on and registers modules", function()
+    local MM = addon.fresh()
+    assert.is_table(MM.Tables)
+    assert.is_table(MM.DB)
+    assert.is_table(MM.Resolver)
+    assert.is_table(MM.Applier)
+    assert.is_table(MM.StandardMemories)
+    assert.is_table(MM.DB:GetRoot())
+  end)
+end)

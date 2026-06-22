@@ -10,6 +10,11 @@ exclude_files = {
   ".devcontainer/**"
 }
 
+-- Test files run under Busted, which injects describe/it/assert/spy/etc.
+files["spec"] = {
+  std = "lua51+busted"
+}
+
 globals = {
   "MuscleMemoryDB",
   "SLASH_MUSCLEMEMORY1",
