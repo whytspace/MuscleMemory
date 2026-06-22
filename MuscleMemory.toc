@@ -10,6 +10,7 @@ Defaults.lua
 
 Util/Print.lua
 Util/Tables.lua
+Util/Conditions.lua
 Util/Spells.lua
 Util/Items.lua
 Util/Macros.lua
@@ -31,6 +32,7 @@ SlashCommands.lua
 
 UI/Widgets.lua
 UI/Modals.lua
+UI/ConditionsEditor.lua
 UI/MainFrame.lua
 UI/MusclesTab.lua
 UI/MemoriesTab.lua

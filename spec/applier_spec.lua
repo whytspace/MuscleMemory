@@ -24,6 +24,18 @@ describe("Applier", function()
       assert.equals(1766, plan.slots[1].resolved.id)
     end)
 
+    it("skips a muscle whose conditions don't match the character", function()
+      MM.DB:SetSlot("Core", 1, { type = "spell", id = 1766 })
+      MM.DB:GetMuscle("Core").conditions = { classes = { "WARRIOR" } }
+
+      local plan = MM.Applier:BuildPlan()
+      assert.is_nil(plan.slots[1])
+
+      MM.DB:GetMuscle("Core").conditions = { classes = { "MAGE" } }
+      plan = MM.Applier:BuildPlan()
+      assert.equals(1766, plan.slots[1].resolved.id)
+    end)
+
     it("lets an ignore in the higher muscle yield to the lower one", function()
       local lower = addLowerMuscle()
       MM.DB:SetSlot("Core", 1, { type = "ignore" })

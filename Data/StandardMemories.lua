@@ -10,7 +10,7 @@ end
 
 local function ClassSpell(spellId, classes)
   local spell = Spell(spellId)
-  spell.classes = classes
+  spell.conditions = { classes = classes }
   return spell
 end
 

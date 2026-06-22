@@ -3,7 +3,7 @@ local ADDON_NAME, MM = ...
 MM.modules = MM.modules or {}
 MM.ui = MM.ui or {}
 
-MM.MAX_ACTION_SLOT = 120
+MM.MAX_ACTION_SLOT = 180
 MM.ACTIONS_PER_BAR = 12
 
 function MM:RegisterModule(name, module)

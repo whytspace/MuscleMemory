@@ -38,7 +38,9 @@ local function macroAssignment(index, slot)
     scope = indexHint and MM.Macros.GetMacroScope(indexHint, globalCount) or nil,
     indexHint = indexHint,
     nameHint = name,
-    iconHint = icon,
+    -- #showtooltip macros have no static icon, so prefer the slot's live
+    -- (dynamic) texture over GetMacroInfo's "?" placeholder.
+    iconHint = (slot and GetActionTexture and GetActionTexture(slot)) or icon,
   }
 end
 

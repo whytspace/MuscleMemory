@@ -39,6 +39,11 @@ function Stubs.new()
     playerName = "Tester",
     realm = "TestRealm",
     class = "MAGE", -- the classFile UnitClass returns as its 2nd value
+    specId = nil, -- GetSpecializationInfo's id for the active spec
+    role = "DAMAGER",
+    level = 70,
+    faction = "Alliance",
+    race = "Gnome", -- the raceFile UnitRace returns as its 2nd value
     inCombat = false,
     macroLimit = 120,
 
@@ -78,6 +83,27 @@ function Stubs.new()
         return nil
       end
       return world.class, world.class
+    end,
+    UnitRace = function(unit)
+      if unit ~= "player" then
+        return nil
+      end
+      return world.race, world.race
+    end,
+    UnitLevel = function(unit)
+      return unit == "player" and world.level or nil
+    end,
+    UnitFactionGroup = function(unit)
+      return unit == "player" and world.faction or nil
+    end,
+    GetSpecialization = function()
+      return world.specId and 1 or nil
+    end,
+    GetSpecializationInfo = function()
+      return world.specId
+    end,
+    GetSpecializationRole = function()
+      return world.role
     end,
 
     -- Spells ---------------------------------------------------------------
@@ -385,6 +411,13 @@ end
 
 function Stubs:setCursor(cursor)
   self.world.cursor = cursor
+  return self
+end
+
+function Stubs:setCharacter(fields)
+  for key, value in pairs(fields) do
+    self.world[key] = value
+  end
   return self
 end
 
