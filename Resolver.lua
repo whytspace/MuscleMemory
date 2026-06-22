@@ -99,6 +99,17 @@ local resolvers = {
     return { kind = "equipmentset", name = assignment.name, label = assignment.name }
   end,
 
+  battlepet = function(assignment, options)
+    local info = MM.BattlePets.GetInfo(assignment.id)
+    if options.requireAvailable and not MM.BattlePets.IsKnown(assignment.id) then
+      return nil, "battle pet not owned"
+    end
+    if not info then
+      return nil, "battle pet not found"
+    end
+    return { kind = "battlepet", id = assignment.id, label = info.name, icon = info.icon }
+  end,
+
   flyout = function(assignment, options)
     local info = MM.Flyouts.GetInfo(assignment.id)
     local available = MM.Flyouts.IsKnown(assignment.id)

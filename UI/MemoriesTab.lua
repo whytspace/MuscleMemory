@@ -144,6 +144,9 @@ local function candidateInfo(candidate)
   elseif candidate.type == "mount" then
     local info = MM.Mounts.GetInfo(candidate.id)
     return info and info.name or ("Mount " .. tostring(candidate.id)), info and info.icon
+  elseif candidate.type == "battlepet" then
+    local info = MM.BattlePets.GetInfo(candidate.id)
+    return info and info.name or ("Pet " .. tostring(candidate.id)), info and info.icon
   elseif candidate.type == "flyout" then
     local info = MM.Flyouts.GetInfo(candidate.id)
     return info and info.name or ("Flyout " .. tostring(candidate.id)), info and info.icon

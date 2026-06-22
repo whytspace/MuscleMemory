@@ -31,6 +31,11 @@ local function getAssignmentName(assignment)
     return info and info.name or nil
   end
 
+  if assignment.type == "battlepet" then
+    local info = MM.BattlePets.GetInfo(assignment.id)
+    return info and info.name or nil
+  end
+
   if assignment.type == "flyout" then
     local info = MM.Flyouts.GetInfo(assignment.id)
     return info and info.name or nil
@@ -133,6 +138,11 @@ function Actions.GetAssignmentLabel(assignment)
     return info and info.name or ("Mount ID: " .. tostring(assignment.id))
   end
 
+  if assignment.type == "battlepet" then
+    local info = MM.BattlePets.GetInfo(assignment.id)
+    return info and info.name or ("Battle Pet: " .. tostring(assignment.id))
+  end
+
   if assignment.type == "flyout" then
     local info = MM.Flyouts.GetInfo(assignment.id)
     return info and info.name or ("Flyout ID: " .. tostring(assignment.id))
@@ -199,6 +209,11 @@ function Actions.GetAssignmentIcon(assignment, slot)
 
   if assignment.type == "mount" then
     local info = MM.Mounts.GetInfo(assignment.id)
+    return info and info.icon or nil
+  end
+
+  if assignment.type == "battlepet" then
+    local info = MM.BattlePets.GetInfo(assignment.id)
     return info and info.icon or nil
   end
 
@@ -312,6 +327,10 @@ local function slotMatches(slot, target)
       or info.actionType == "summonmount"
       or (info.actionType == "companion" and info.subType == "MOUNT")
     ) and info.id == target.id
+  end
+
+  if target.kind == "battlepet" then
+    return (info.actionType == "summonpet" or info.actionType == "battlepet") and info.id == target.id
   end
 
   if target.kind == "flyout" then

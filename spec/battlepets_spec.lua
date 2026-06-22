@@ -1,0 +1,80 @@
+local addon = require("spec.helpers.addon")
+
+describe("BattlePets", function()
+  local MM, stubs
+  local GUID = "BattlePet-0-0000000A1B2C"
+  before_each(function()
+    MM, stubs = addon.fresh()
+  end)
+
+  describe("GetInfo", function()
+    it("returns nil for a nil guid or pet the player does not own", function()
+      assert.is_nil(MM.BattlePets.GetInfo(nil))
+      assert.is_nil(MM.BattlePets.GetInfo(GUID))
+    end)
+
+    it("reads the species name and icon", function()
+      stubs:setBattlePet(GUID, { name = "Mechanical Squirrel", icon = 132559 })
+      local info = MM.BattlePets.GetInfo(GUID)
+      assert.equals("Mechanical Squirrel", info.name)
+      assert.equals(132559, info.icon)
+    end)
+
+    it("prefers a custom name when the pet has one", function()
+      stubs:setBattlePet(GUID, { name = "Mechanical Squirrel", customName = "Sparky" })
+      assert.equals("Sparky", MM.BattlePets.GetInfo(GUID).name)
+    end)
+  end)
+
+  describe("IsKnown", function()
+    it("is true for an owned pet and false otherwise", function()
+      stubs:setBattlePet(GUID, {})
+      assert.is_true(MM.BattlePets.IsKnown(GUID))
+      assert.is_false(MM.BattlePets.IsKnown("BattlePet-0-nope"))
+    end)
+  end)
+
+  describe("Pickup", function()
+    it("picks the pet up onto the cursor by guid", function()
+      assert.is_true(MM.BattlePets.Pickup(GUID))
+      assert.same({ type = "battlepet", id = GUID }, stubs.world.cursor)
+    end)
+  end)
+
+  describe("Resolver", function()
+    it("resolves an owned pet with its icon", function()
+      stubs:setBattlePet(GUID, { name = "Mechanical Squirrel", icon = 132559 })
+      local resolved = MM.Resolver:ResolveAction({ type = "battlepet", id = GUID })
+      assert.equals("battlepet", resolved.kind)
+      assert.equals("Mechanical Squirrel", resolved.label)
+      assert.equals(132559, resolved.icon)
+    end)
+
+    it("refuses an unowned pet when availability is required", function()
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "battlepet", id = GUID }, { requireAvailable = true })
+      assert.is_nil(resolved)
+      assert.equals("battle pet not owned", reason)
+    end)
+
+    it("reports a pet that does not exist at all", function()
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "battlepet", id = GUID })
+      assert.is_nil(resolved)
+      assert.equals("battle pet not found", reason)
+    end)
+  end)
+
+  describe("apply round-trip", function()
+    it("captures a summoned pet and re-places it on the bar", function()
+      stubs:setBattlePet(GUID, { name = "Mechanical Squirrel" })
+      stubs:setSlot(8, { actionType = "summonpet", id = GUID })
+
+      assert.is_true(MM.Capture:CaptureSlot("Core", 8))
+      assert.same({ type = "battlepet", id = GUID }, MM.DB:GetMuscle("Core").slots[8])
+
+      stubs.world.slots[8] = nil
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(GUID, stubs.world.slots[8].id)
+      assert.is_nil(stubs.world.cursor)
+    end)
+  end)
+end)

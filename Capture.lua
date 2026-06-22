@@ -55,6 +55,7 @@ local fromCursor = {
   spell = simple("spell"),
   item = simple("item"),
   mount = simple("mount"),
+  battlepet = simple("battlepet"),
   flyout = simple("flyout"),
   macro = function(id)
     return macroAssignment(id, nil)
@@ -62,12 +63,14 @@ local fromCursor = {
   equipmentset = equipmentSetAssignment,
 }
 
--- Action-slot type -> assignment builder. Mount variants normalise to "mount".
+-- Action-slot type -> assignment builder. Mount variants normalise to "mount";
+-- a summoned battle pet ("summonpet") normalises to "battlepet" (its cursor type).
 local fromSlot = {
   spell = simple("spell"),
   item = simple("item"),
   mount = simple("mount"),
   summonmount = simple("mount"),
+  summonpet = simple("battlepet"),
   equipmentset = equipmentSetAssignment,
   macro = macroAssignment,
   flyout = simple("flyout"),

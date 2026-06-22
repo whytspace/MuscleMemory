@@ -45,6 +45,7 @@ function Stubs.new()
     spells = {}, -- [id] = { name, icon, known }
     items = {}, -- [id] = { name, link, icon, count, equipped }
     mounts = {}, -- [id] = { name, spellId, icon, collected }
+    battlePets = {}, -- [guid] = { speciesId, customName, name, icon }
     flyouts = {}, -- 1-based list of { id, name, numSlots, isKnown, slots }
     equipmentSets = {}, -- [name] = id
     globalMacros = {}, -- 1-based list of { name, icon, body }
@@ -130,6 +131,20 @@ function Stubs.new()
       end,
       Pickup = function(id)
         world.cursor = { type = "mount", id = id }
+      end,
+    },
+
+    -- Battle pets ----------------------------------------------------------
+    C_PetJournal = {
+      GetPetInfoByPetID = function(guid)
+        local pet = world.battlePets[guid]
+        if not pet then
+          return nil
+        end
+        return pet.speciesId, pet.customName, 1, 0, 100, 0, false, pet.name, pet.icon
+      end,
+      PickupPet = function(guid)
+        world.cursor = { type = "battlepet", id = guid }
       end,
     },
 
@@ -316,6 +331,17 @@ function Stubs:setMount(id, opts)
     spellId = opts.spellId or (3000 + id),
     icon = opts.icon or (4000 + id),
     collected = opts.collected ~= false,
+  }
+  return self
+end
+
+function Stubs:setBattlePet(guid, opts)
+  opts = opts or {}
+  self.world.battlePets[guid] = {
+    speciesId = opts.speciesId or 100,
+    customName = opts.customName,
+    name = opts.name or ("Pet " .. tostring(guid)),
+    icon = opts.icon or 5000,
   }
   return self
 end

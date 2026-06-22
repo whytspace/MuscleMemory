@@ -29,6 +29,7 @@ read_globals = {
   "C_EquipmentSet",
   "C_Item",
   "C_MountJournal",
+  "C_PetJournal",
   "C_Spell",
   "C_SpellBook",
   "CANCEL",

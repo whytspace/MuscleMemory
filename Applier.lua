@@ -265,6 +265,8 @@ function Applier:ApplyEntry(entry)
     pickedUp = MM.Macros.Pickup(entry.resolved.macro)
   elseif entry.resolved.kind == "mount" then
     pickedUp = MM.Mounts.Pickup(entry.resolved.id)
+  elseif entry.resolved.kind == "battlepet" then
+    pickedUp = MM.BattlePets.Pickup(entry.resolved.id)
   elseif entry.resolved.kind == "flyout" then
     pickedUp = MM.Flyouts.Pickup(entry.resolved.id)
   elseif entry.resolved.kind == "equipmentset" then
