@@ -395,23 +395,23 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
     label:SetJustifyH("CENTER")
   end
 
-  -- Bars.
-  local bars = math.floor(MM.MAX_ACTION_SLOT / MM.ACTIONS_PER_BAR)
+  -- Bars (real Edit Mode bars and their scattered slot ranges, not 1..120 linear).
+  local bars = MM.Actions.BARS
   local grid = CreateFrame("Frame", nil, parent)
   grid:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -2)
 
-  for bar = 1, bars do
-    local y = -(bar - 1) * (CELL + CELL_GAP)
-    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", "Bar " .. bar, colors.parchment)
+  for barIndex, bar in ipairs(bars) do
+    local y = -(barIndex - 1) * (CELL + CELL_GAP)
+    local rowLabel = Widgets.Label(grid, "GameFontHighlightSmall", "Bar " .. barIndex, colors.parchment)
     rowLabel:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, y - (CELL - 12) / 2)
 
     for button = 1, MM.ACTIONS_PER_BAR do
-      local slot = (bar - 1) * MM.ACTIONS_PER_BAR + button
+      local slot = bar.base + button
       local x = LABEL_WIDTH + (button - 1) * (CELL + CELL_GAP)
       self:BuildSlot(grid, muscleId, muscle, slot, x, y)
     end
   end
-  grid:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), bars * (CELL + CELL_GAP))
+  grid:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), #bars * (CELL + CELL_GAP))
 
   local legend = self:BuildLegend(parent)
   legend:SetPoint("TOPLEFT", grid, "BOTTOMLEFT", 0, -14)

@@ -7,15 +7,15 @@ describe("Actions", function()
   end)
 
   describe("IsValidSlot", function()
-    it("accepts integers in 1..120", function()
+    it("accepts integers in 1..180", function()
       assert.is_true(MM.Actions.IsValidSlot(1))
-      assert.is_true(MM.Actions.IsValidSlot(120))
+      assert.is_true(MM.Actions.IsValidSlot(180))
       assert.is_true(MM.Actions.IsValidSlot(60))
     end)
 
     it("rejects out-of-range, non-integer and non-number slots", function()
       assert.is_false(MM.Actions.IsValidSlot(0))
-      assert.is_false(MM.Actions.IsValidSlot(121))
+      assert.is_false(MM.Actions.IsValidSlot(181))
       assert.is_false(MM.Actions.IsValidSlot(-1))
       assert.is_false(MM.Actions.IsValidSlot(1.5))
       assert.is_false(MM.Actions.IsValidSlot("5"))
@@ -24,11 +24,16 @@ describe("Actions", function()
   end)
 
   describe("GetSlotLabel", function()
-    it("maps slots onto bar/button positions", function()
+    it("labels slots by their real (non-linear) action bar", function()
       assert.equals("bar 1 button 1", MM.Actions.GetSlotLabel(1))
       assert.equals("bar 1 button 12", MM.Actions.GetSlotLabel(12))
-      assert.equals("bar 2 button 1", MM.Actions.GetSlotLabel(13))
-      assert.equals("bar 10 button 12", MM.Actions.GetSlotLabel(120))
+      assert.equals("bar 2 button 1", MM.Actions.GetSlotLabel(61)) -- bottom left
+      assert.equals("bar 3 button 12", MM.Actions.GetSlotLabel(60)) -- bottom right
+      assert.equals("bar 8 button 12", MM.Actions.GetSlotLabel(180))
+    end)
+
+    it("labels a paging/stance slot that isn't a visible bar", function()
+      assert.equals("slot 13", MM.Actions.GetSlotLabel(13))
     end)
   end)
 

@@ -3,6 +3,22 @@ local ADDON_NAME, MM = ...
 local Actions = {}
 MM.Actions = Actions
 
+-- The eight standard action bars in Edit Mode order, each 12 buttons. WoW's
+-- action-slot numbering does NOT run linearly with the visible bar order: only
+-- Bar 1 is slots 1-12; the rest map to scattered MultiBar ranges (the slots in
+-- between are the main bar's stance/paging pages, not separate bars). `base` is
+-- the slot before each bar's first button.
+Actions.BARS = {
+  { base = 0 }, -- Bar 1  · slots 1-12    (main)
+  { base = 60 }, -- Bar 2  · slots 61-72   (bottom left)
+  { base = 48 }, -- Bar 3  · slots 49-60   (bottom right)
+  { base = 24 }, -- Bar 4  · slots 25-36   (right)
+  { base = 36 }, -- Bar 5  · slots 37-48   (left)
+  { base = 144 }, -- Bar 6  · slots 145-156
+  { base = 156 }, -- Bar 7  · slots 157-168
+  { base = 168 }, -- Bar 8  · slots 169-180
+}
+
 local function normalizeText(text)
   return string.lower(tostring(text or ""))
 end
@@ -80,9 +96,13 @@ function Actions.PlaceCursor(slot)
 end
 
 function Actions.GetSlotLabel(slot)
-  local bar = math.floor((slot - 1) / MM.ACTIONS_PER_BAR) + 1
-  local button = ((slot - 1) % MM.ACTIONS_PER_BAR) + 1
-  return string.format("bar %d button %d", bar, button)
+  for index, bar in ipairs(Actions.BARS) do
+    if slot > bar.base and slot <= bar.base + MM.ACTIONS_PER_BAR then
+      return string.format("bar %d button %d", index, slot - bar.base)
+    end
+  end
+  -- Stance / paging / vehicle slots that aren't one of the eight visible bars.
+  return string.format("slot %d", slot)
 end
 
 function Actions.GetAssignmentLabel(assignment)
