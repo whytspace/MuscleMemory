@@ -31,6 +31,11 @@ local function getAssignmentName(assignment)
     return info and info.name or nil
   end
 
+  if assignment.type == "flyout" then
+    local info = MM.Flyouts.GetInfo(assignment.id)
+    return info and info.name or nil
+  end
+
   if assignment.type == "equipmentset" then
     return assignment.name
   end
@@ -128,6 +133,11 @@ function Actions.GetAssignmentLabel(assignment)
     return info and info.name or ("Mount ID: " .. tostring(assignment.id))
   end
 
+  if assignment.type == "flyout" then
+    local info = MM.Flyouts.GetInfo(assignment.id)
+    return info and info.name or ("Flyout ID: " .. tostring(assignment.id))
+  end
+
   if assignment.type == "equipmentset" then
     return "Equipment Set: " .. tostring(assignment.name)
   end
@@ -189,6 +199,11 @@ function Actions.GetAssignmentIcon(assignment, slot)
 
   if assignment.type == "mount" then
     local info = MM.Mounts.GetInfo(assignment.id)
+    return info and info.icon or nil
+  end
+
+  if assignment.type == "flyout" then
+    local info = MM.Flyouts.GetInfo(assignment.id)
     return info and info.icon or nil
   end
 
@@ -297,6 +312,10 @@ local function slotMatches(slot, target)
       or info.actionType == "summonmount"
       or (info.actionType == "companion" and info.subType == "MOUNT")
     ) and info.id == target.id
+  end
+
+  if target.kind == "flyout" then
+    return info.actionType == "flyout" and info.id == target.id
   end
 
   if target.kind == "equipmentset" then

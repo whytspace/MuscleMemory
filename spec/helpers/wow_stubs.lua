@@ -45,6 +45,7 @@ function Stubs.new()
     spells = {}, -- [id] = { name, icon, known }
     items = {}, -- [id] = { name, link, icon, count, equipped }
     mounts = {}, -- [id] = { name, spellId, icon, collected }
+    flyouts = {}, -- 1-based list of { id, name, numSlots, isKnown, slots }
     equipmentSets = {}, -- [name] = id
     globalMacros = {}, -- 1-based list of { name, icon, body }
     charMacros = {}, -- list mapped to indices macroLimit+1 ..
@@ -129,6 +130,57 @@ function Stubs.new()
       end,
       Pickup = function(id)
         world.cursor = { type = "mount", id = id }
+      end,
+    },
+
+    -- Flyouts --------------------------------------------------------------
+    Enum = {
+      SpellBookSpellBank = { Player = 0, Pet = 1 },
+      SpellBookItemType = { Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
+    },
+    GetFlyoutInfo = function(id)
+      for _, flyout in ipairs(world.flyouts) do
+        if flyout.id == id then
+          return flyout.name, "", flyout.numSlots, flyout.isKnown
+        end
+      end
+      return nil
+    end,
+    GetFlyoutSlotInfo = function(id, slot)
+      for _, flyout in ipairs(world.flyouts) do
+        if flyout.id == id then
+          local spellId = flyout.slots[slot]
+          if spellId then
+            return spellId, nil, true, nil, nil
+          end
+        end
+      end
+      return nil
+    end,
+    -- A single spellbook skill line holding every known flyout, enough to drive
+    -- the slot scan in Flyouts.Pickup.
+    C_SpellBook = {
+      GetNumSpellBookSkillLines = function()
+        return 1
+      end,
+      GetSpellBookSkillLineInfo = function(line)
+        if line ~= 1 then
+          return nil
+        end
+        return { itemIndexOffset = 0, numSpellBookItems = #world.flyouts }
+      end,
+      GetSpellBookItemType = function(index)
+        local flyout = world.flyouts[index]
+        if not flyout then
+          return nil
+        end
+        return 4, flyout.id -- 4 == Enum.SpellBookItemType.Flyout
+      end,
+      PickupSpellBookItem = function(index)
+        local flyout = world.flyouts[index]
+        if flyout then
+          world.cursor = { type = "flyout", id = flyout.id }
+        end
       end,
     },
 
@@ -264,6 +316,19 @@ function Stubs:setMount(id, opts)
     spellId = opts.spellId or (3000 + id),
     icon = opts.icon or (4000 + id),
     collected = opts.collected ~= false,
+  }
+  return self
+end
+
+function Stubs:setFlyout(id, opts)
+  opts = opts or {}
+  local list = self.world.flyouts
+  list[#list + 1] = {
+    id = id,
+    name = opts.name or ("Flyout " .. tostring(id)),
+    slots = opts.slots or {},
+    numSlots = opts.numSlots or (opts.slots and #opts.slots) or 0,
+    isKnown = opts.known ~= false,
   }
   return self
 end

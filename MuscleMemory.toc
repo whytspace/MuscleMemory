@@ -15,6 +15,7 @@ Util/Items.lua
 Util/Macros.lua
 Util/Mounts.lua
 Util/EquipmentSets.lua
+Util/Flyouts.lua
 Util/Actions.lua
 
 Data/SpellIds.lua

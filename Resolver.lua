@@ -99,6 +99,24 @@ local resolvers = {
     return { kind = "equipmentset", name = assignment.name, label = assignment.name }
   end,
 
+  flyout = function(assignment, options)
+    local info = MM.Flyouts.GetInfo(assignment.id)
+    local available = MM.Flyouts.IsKnown(assignment.id)
+    if options.requireAvailable and not available then
+      return nil, "flyout not known"
+    end
+    if not info then
+      return nil, "flyout not found"
+    end
+    return {
+      kind = "flyout",
+      id = assignment.id,
+      label = info.name,
+      icon = info.icon,
+      pickupAvailable = available,
+    }
+  end,
+
   memory = function(assignment)
     return Resolver:ResolveMemoryAssignment(assignment)
   end,

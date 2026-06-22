@@ -55,6 +55,7 @@ local fromCursor = {
   spell = simple("spell"),
   item = simple("item"),
   mount = simple("mount"),
+  flyout = simple("flyout"),
   macro = function(id)
     return macroAssignment(id, nil)
   end,
@@ -69,9 +70,7 @@ local fromSlot = {
   summonmount = simple("mount"),
   equipmentset = equipmentSetAssignment,
   macro = macroAssignment,
-  flyout = function()
-    return { type = "ignore" }
-  end,
+  flyout = simple("flyout"),
 }
 
 -- A spell dragged from the spellbook puts its book *slot index* on the cursor,
