@@ -205,6 +205,17 @@ describe("DB", function()
       assert.is_nil(MM.DB:GetMemory(nil))
     end)
 
+    it("clones a custom memory into a new custom memory", function()
+      local source = MM.DB:CreateMemory("Mine")
+      MM.DB:AddCandidate(source, { type = "spell", id = 7 })
+
+      local clone = MM.DB:CloneMemory({ source = "custom", id = source })
+      local copy = MM.DB:GetCustomMemory(clone)
+      assert.equals("Mine Copy", copy.name)
+      assert.are_not.equal(MM.DB:GetCustomMemory(source).candidates, copy.candidates)
+      assert.equals(7, copy.candidates[1].id)
+    end)
+
     it("creates, renames, and deletes a custom memory", function()
       local key = MM.DB:CreateMemory("Cleanse")
       assert.equals("Cleanse", MM.DB:GetCustomMemory(key).name)

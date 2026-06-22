@@ -63,11 +63,7 @@ local function selectCandidate(index)
 end
 
 local function cloneMemory(ref)
-  if ref.source ~= "standard" then
-    MM:Warn("cloning custom memories isn't supported yet.")
-    return
-  end
-  local key, reason = MM.DB:CopyStandardMemory(ref.id)
+  local key, reason = MM.DB:CloneMemory(ref)
   if not key then
     MM:Warn(reason or "could not clone memory")
     return

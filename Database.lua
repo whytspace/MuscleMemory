@@ -393,6 +393,22 @@ function DB:CopyStandardMemory(memoryId, newId, newName)
   return key
 end
 
+-- Clone any memory (standard or custom) into a new editable custom memory.
+function DB:CloneMemory(reference)
+  local source = self:GetMemory(reference)
+  if not source then
+    return nil, "unknown memory"
+  end
+
+  local root = self:GetRoot()
+  local name = (source.name or "Memory") .. " Copy"
+  local key = uniqueId(name, "memory_copy", root.customMemories)
+  local copy = MM.Tables.DeepCopy(source)
+  copy.name = name
+  root.customMemories[key] = copy
+  return key
+end
+
 -- Standard memories are immutable add-on data, so create / rename / delete and
 -- all candidate edits operate only on custom memories.
 
