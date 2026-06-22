@@ -9,15 +9,15 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Lua 5.1
-        uses: leafo/gh-actions-lua@v10
+        uses: leafo/gh-actions-lua@v13
         with:
           luaVersion: "5.1"
 
       - name: Set up LuaRocks
-        uses: leafo/gh-actions-luarocks@v4
+        uses: leafo/gh-actions-luarocks@v6
 
       - name: Install Luacheck and Busted
         run: |
@@ -33,7 +33,7 @@ jobs:
         run: busted
 
       - name: StyLua
-        uses: JohnnyMorganz/stylua-action@v4
+        uses: JohnnyMorganz/stylua-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
