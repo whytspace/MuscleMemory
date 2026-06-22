@@ -338,7 +338,7 @@ function SlotGrid:BuildSlotButton(parent, layerId, layer, slot, point, relativeT
 
   button.emptyMarker = makeEmptyMarker(button)
 
-  local iconState = configured and MM.Actions.GetAssignmentIconState(assignment, slot, layer)
+  local iconState = configured and MM.Actions.GetAssignmentIconState(assignment, slot)
     or {
       kind = "icon",
       texture = MM.Actions.GetLiveSlotIcon(slot),

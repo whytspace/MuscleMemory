@@ -39,7 +39,6 @@ function Applier:BuildPlan(profileId)
       local assignment = layer.slots and layer.slots[slot]
       if assignment then
         local resolved, reason = MM.Resolver:ResolveAction(assignment)
-        local fallback, fallbackSource = MM.Resolver:GetEffectiveFallback(assignment, layer)
         local entry = {
           slot = slot,
           layerId = activeLayer.id,
@@ -47,8 +46,7 @@ function Applier:BuildPlan(profileId)
           assignment = assignment,
           resolved = resolved,
           unresolvedReason = reason,
-          fallback = fallback,
-          fallbackSource = fallbackSource,
+          fallback = MM.DB:GetFallback(),
         }
 
         if not (resolved and resolved.kind == "ignore") then
@@ -308,9 +306,7 @@ function Applier:ApplyProfile(profileId, options)
     end
   end
 
-  local state = MM.DB:GetCharacterState()
-  state.lastApplied[plan.profileId] = time()
-  state.pendingProfiles[plan.profileId] = nil
+  MM.DB:GetCharacterState().pendingProfiles[plan.profileId] = nil
 
   MM:Print(string.format("applied %d slots, left %d unresolved, failed %d.", applied, unchanged, failed))
   return failed == 0

@@ -16,7 +16,6 @@ end
 
 MM.StandardGroups = {
   lust = {
-    id = "lust",
     name = "Lust",
     candidates = {
       Spell(S.BLOODLUST),
@@ -27,7 +26,6 @@ MM.StandardGroups = {
     },
   },
   interrupt = {
-    id = "interrupt",
     name = "Kick / Interrupt",
     candidates = {
       Spell(S.SOLAR_BEAM),
@@ -48,7 +46,6 @@ MM.StandardGroups = {
     },
   },
   stun = {
-    id = "stun",
     name = "Stun",
     candidates = {
       Spell(S.SHOCKWAVE),
@@ -70,7 +67,6 @@ MM.StandardGroups = {
     },
   },
   hard_cc = {
-    id = "hard_cc",
     name = "Hard CC",
     candidates = {
       Spell(S.POLYMORPH),
@@ -89,7 +85,6 @@ MM.StandardGroups = {
     },
   },
   soft_cc = {
-    id = "soft_cc",
     name = "Soft CC",
     candidates = {
       Spell(S.DRAGONS_BREATH),
@@ -109,7 +104,6 @@ MM.StandardGroups = {
     },
   },
   taunt = {
-    id = "taunt",
     name = "Taunt",
     candidates = {
       Spell(S.TAUNT),
@@ -121,7 +115,6 @@ MM.StandardGroups = {
     },
   },
   movement = {
-    id = "movement",
     name = "Movement",
     candidates = {
       Spell(S.DEATH_CHARGE),

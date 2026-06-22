@@ -18,9 +18,10 @@ through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck
 
 ## Data model
 
-- **Profile** — chooses which layers are active (and in what order) for the current character,
-  plus its auto-apply triggers. A profile is a lightweight selection over layers; the slot
-  content lives in the layers.
+- **Profile** — an ordered selection of which layers are active. A profile is a lightweight
+  selection over layers; the slot content lives in the layers. Profiles are account-wide; each
+  character either inherits the account-default profile or picks its own (`/mm profile select`),
+  stored under `characterState`.
 - **Layer** — maps action-bar slots to assignments. Global and reusable across profiles. The
   active layers are stacked in order, and for each slot the first layer that assigns it wins —
   hence "layer".
@@ -34,9 +35,9 @@ Standard groups are immutable add-on data. Custom groups and layers live in Save
 
 ## Applying
 
-The applier refuses to run during combat lockdown or while the cursor is holding something.
-Unresolved assignments fall back to `keep`, which leaves the existing slot untouched and prints a
-warning. The fallback can be overridden per slot, group, layer, or globally.
+The applier refuses to run during combat lockdown or while the cursor is holding something. When a
+managed slot can't resolve an assignment, the global `fallback` setting (`keep` or `clear`, set via
+`/mm config fallback`) decides whether to leave the existing action or clear the slot.
 
 ## Verification notes
 

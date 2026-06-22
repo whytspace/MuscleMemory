@@ -1,23 +1,13 @@
 local ADDON_NAME, MM = ...
 
 MM.defaults = {
-  globalFallback = "keep",
-  activeProfile = "Default",
+  fallback = "keep",
+  profile = "Default",
   profiles = {
     Default = {
       name = "Default",
       activeLayers = {
-        Core = {
-          enabled = true,
-          order = 1,
-        },
-      },
-      triggers = {
-        mode = "prompt",
-        onLogin = false,
-        onSpecChanged = true,
-        onSpellAvailabilityChanged = true,
-        afterCombatIfPending = true,
+        { id = "Core", enabled = true },
       },
     },
   },
@@ -29,9 +19,13 @@ MM.defaults = {
   },
   customGroups = {},
   characterState = {},
-  ui = {
-    selectedLayer = "Core",
-    selectedGroupSource = "standard",
-    selectedGroupId = "interrupt",
-  },
+}
+
+-- Auto-apply behaviour. Fixed for now, read by Events; not stored or configurable.
+MM.triggers = {
+  mode = "prompt",
+  onLogin = false,
+  onSpecChanged = true,
+  onSpellAvailabilityChanged = true,
+  afterCombatIfPending = true,
 }

@@ -119,13 +119,19 @@ local function profileDelete(args)
   report(nil, MM.DB:DeleteProfile(id))
 end
 
+local function profileInherit()
+  MM.DB:SetActiveProfile(nil)
+  refresh()
+  MM:Print("this character now inherits the account default profile (" .. MM.DB:GetProfile().name .. ").")
+end
+
 -- Layers ------------------------------------------------------------------
 
 local function layerList()
   local selected = selectedLayer()
-  for _, entry in ipairs(MM.DB:GetProfileLayers()) do
+  for index, entry in ipairs(MM.DB:GetProfileLayers()) do
     local tags = (entry.enabled and "" or "  (disabled)") .. (entry.id == selected and "  (selected)" or "")
-    MM:Print(string.format("%d. %s%s", entry.order, entry.name, tags))
+    MM:Print(string.format("%d. %s%s", index, entry.name, tags))
   end
 end
 
@@ -316,9 +322,9 @@ local function groupList()
 end
 
 local function groupCopy(args)
-  local group, reason = MM.DB:CopyStandardGroup(args[1], args[2])
-  if group then
-    MM:Print("copied standard group " .. tostring(args[1]) .. " to custom group " .. group.id .. ".")
+  local key, reason = MM.DB:CopyStandardGroup(args[1], args[2])
+  if key then
+    MM:Print("copied standard group " .. tostring(args[1]) .. " to custom group " .. key .. ".")
   else
     MM:Warn(reason or "could not copy group")
   end
@@ -332,6 +338,14 @@ end
 
 local function apply(args)
   MM.Applier:ApplyProfile(args[1] or MM.DB:GetActiveProfileId())
+end
+
+local function configFallback(args)
+  if not args[1] then
+    MM:Print("fallback: " .. MM.DB:GetFallback() .. " (what to do when a managed slot can't resolve).")
+    return
+  end
+  report("fallback set to " .. args[1] .. ".", MM.DB:SetFallback(args[1]))
 end
 
 local function toggleDebug()
@@ -350,8 +364,9 @@ local tree = {
       desc = "manage profiles",
       commands = {
         list = { desc = "list profiles", run = profileList },
-        new = { desc = "create and activate a profile", args = "<name>", run = profileNew },
-        select = { desc = "switch active profile", args = "<name>", run = profileSelect },
+        new = { desc = "create a profile and use it on this character", args = "<name>", run = profileNew },
+        select = { desc = "use a profile on this character", args = "<name>", run = profileSelect },
+        inherit = { desc = "use the account default profile on this character", run = profileInherit },
         rename = { desc = "rename a profile", args = "<old> <new>", run = profileRename },
         delete = { desc = "delete a profile", args = "<name>", run = profileDelete },
       },
@@ -386,6 +401,12 @@ local tree = {
       commands = {
         list = { desc = "list standard and custom groups", run = groupList },
         copy = { desc = "copy a standard group to custom", args = "<standard> [custom]", run = groupCopy },
+      },
+    },
+    config = {
+      desc = "settings",
+      commands = {
+        fallback = { desc = "what to do with an unresolved slot", args = "<keep|clear>", run = configFallback },
       },
     },
     preview = { desc = "preview the active or named profile", args = "[profile]", run = preview },

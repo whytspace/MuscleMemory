@@ -18,10 +18,7 @@ end
 function Events:MarkPending(profileId, reason)
   local state = MM.DB:GetCharacterState()
   profileId = profileId or MM.DB:GetActiveProfileId()
-  state.pendingProfiles[profileId] = {
-    reason = reason or "pending",
-    time = time(),
-  }
+  state.pendingProfiles[profileId] = { reason = reason or "pending" }
 end
 
 function Events:ShouldPrintPendingPrompt(profileId, reason)
@@ -42,7 +39,7 @@ function Events:PromptOrApply(profileId, reason)
     return
   end
 
-  local mode = profile.triggers and profile.triggers.mode or "manual"
+  local mode = MM.triggers.mode or "manual"
   if mode == "manual" then
     return
   end
@@ -65,8 +62,7 @@ end
 
 function Events:OnEvent(event)
   local profileId = MM.DB:GetActiveProfileId()
-  local profile = MM.DB:GetProfile(profileId)
-  local triggers = profile and profile.triggers or {}
+  local triggers = MM.triggers
 
   if event == "PLAYER_REGEN_ENABLED" then
     local state = MM.DB:GetCharacterState()
