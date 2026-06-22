@@ -5,7 +5,6 @@ local function Spell(spellId)
   return {
     type = "spell",
     id = spellId,
-    enabled = true,
   }
 end
 
@@ -19,7 +18,6 @@ MM.StandardGroups = {
   lust = {
     id = "lust",
     name = "Lust",
-    enabled = true,
     candidates = {
       Spell(S.BLOODLUST),
       Spell(S.HEROISM),
@@ -31,7 +29,6 @@ MM.StandardGroups = {
   interrupt = {
     id = "interrupt",
     name = "Kick / Interrupt",
-    enabled = true,
     candidates = {
       Spell(S.SOLAR_BEAM),
       Spell(S.SKULL_BASH),
@@ -53,7 +50,6 @@ MM.StandardGroups = {
   stun = {
     id = "stun",
     name = "Stun",
-    enabled = true,
     candidates = {
       Spell(S.SHOCKWAVE),
       Spell(S.STORM_BOLT),
@@ -76,7 +72,6 @@ MM.StandardGroups = {
   hard_cc = {
     id = "hard_cc",
     name = "Hard CC",
-    enabled = true,
     candidates = {
       Spell(S.POLYMORPH),
       Spell(S.HEX),
@@ -96,7 +91,6 @@ MM.StandardGroups = {
   soft_cc = {
     id = "soft_cc",
     name = "Soft CC",
-    enabled = true,
     candidates = {
       Spell(S.DRAGONS_BREATH),
       Spell(S.SUPERNOVA),
@@ -117,7 +111,6 @@ MM.StandardGroups = {
   taunt = {
     id = "taunt",
     name = "Taunt",
-    enabled = true,
     candidates = {
       Spell(S.TAUNT),
       Spell(S.GROWL),
@@ -130,7 +123,6 @@ MM.StandardGroups = {
   movement = {
     id = "movement",
     name = "Movement",
-    enabled = true,
     candidates = {
       Spell(S.DEATH_CHARGE),
       Spell(S.HEROIC_LEAP),

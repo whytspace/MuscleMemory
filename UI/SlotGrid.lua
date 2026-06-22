@@ -17,23 +17,11 @@ end
 local function sortedGroups()
   local groups = {}
   for groupId, group in pairs(MM.StandardGroups or {}) do
-    if MM.DB:IsStandardGroupEnabled(groupId) then
-      groups[#groups + 1] = {
-        source = "standard",
-        id = groupId,
-        name = group.name or groupId,
-      }
-    end
+    groups[#groups + 1] = { source = "standard", id = groupId, name = group.name or groupId }
   end
 
   for groupId, group in pairs(MM.DB:GetRoot().customGroups or {}) do
-    if group.enabled ~= false then
-      groups[#groups + 1] = {
-        source = "custom",
-        id = groupId,
-        name = group.name or groupId,
-      }
-    end
+    groups[#groups + 1] = { source = "custom", id = groupId, name = group.name or groupId }
   end
 
   table.sort(groups, function(left, right)

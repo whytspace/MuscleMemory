@@ -361,12 +361,6 @@ function DB:GetCustomGroup(groupId)
   return self:GetRoot().customGroups[groupId]
 end
 
-function DB:GetStandardGroupOverride(groupId)
-  local root = self:GetRoot()
-  root.standardGroupOverrides[groupId] = root.standardGroupOverrides[groupId] or {}
-  return root.standardGroupOverrides[groupId]
-end
-
 function DB:GetGroup(reference)
   if not reference then
     return nil
@@ -377,20 +371,6 @@ function DB:GetGroup(reference)
   end
 
   return MM.StandardGroups[reference.id]
-end
-
-function DB:IsStandardGroupEnabled(groupId)
-  local group = MM.StandardGroups[groupId]
-  if not group or not group.enabled then
-    return false
-  end
-
-  local override = self:GetRoot().standardGroupOverrides[groupId]
-  if override and override.enabled == false then
-    return false
-  end
-
-  return true
 end
 
 function DB:CopyStandardGroup(groupId, newId, newName)

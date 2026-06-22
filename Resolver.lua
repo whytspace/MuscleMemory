@@ -5,10 +5,6 @@ MM.Resolver = Resolver
 MM:RegisterModule("Resolver", Resolver)
 
 local function matchesRequirements(candidate)
-  if candidate.enabled == false then
-    return false
-  end
-
   if candidate.classes then
     local _, classFile = UnitClass("player")
     local matched = false
@@ -129,14 +125,6 @@ function Resolver:ResolveGroupAssignment(assignment)
 
   if not group then
     return nil, "group not found"
-  end
-
-  if assignment.source ~= "custom" and not MM.DB:IsStandardGroupEnabled(assignment.id) then
-    return nil, "group disabled"
-  end
-
-  if group.enabled == false then
-    return nil, "group disabled"
   end
 
   for _, candidate in ipairs(group.candidates or {}) do

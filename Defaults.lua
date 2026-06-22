@@ -28,7 +28,6 @@ MM.defaults = {
     },
   },
   customGroups = {},
-  standardGroupOverrides = {},
   characterState = {},
   ui = {
     selectedLayout = "Core",
