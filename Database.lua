@@ -40,7 +40,13 @@ local function matchByName(map, target)
 end
 
 function DB:Initialize()
+  -- Seed starter content only into a brand-new DB; structural defaults always
+  -- merge. This keeps a deleted Core/profile from resurrecting on the next load.
+  local fresh = MuscleMemoryDB == nil
   MuscleMemoryDB = MM.Tables.MergeDefaults(MuscleMemoryDB, MM.defaults)
+  if fresh then
+    MuscleMemoryDB = MM.Tables.MergeDefaults(MuscleMemoryDB, MM.seed)
+  end
   self.root = MuscleMemoryDB
 end
 
