@@ -269,14 +269,14 @@ local function slotEdit(args)
       MM:Warn(string.format("usage: /mm layout slot %d %s <id>", slot, verb))
       return
     end
-    assignment = { type = verb, id = actionId, unresolvedFallback = "inherit" }
+    assignment = { type = verb, id = actionId }
   elseif verb == "group" then
     local ref = groupRef(arg)
     if not ref then
       MM:Warn("unknown group '" .. tostring(arg) .. "' (see /mm group list)")
       return
     end
-    assignment = { type = "group", source = ref.source, id = ref.id, unresolvedFallback = "inherit" }
+    assignment = { type = "group", source = ref.source, id = ref.id }
   else
     MM:Warn("unknown slot verb '" .. verb .. "'.")
     return

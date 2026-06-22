@@ -19,9 +19,7 @@ MM.StandardGroups = {
   lust = {
     id = "lust",
     name = "Lust",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.BLOODLUST),
       Spell(S.HEROISM),
@@ -33,9 +31,7 @@ MM.StandardGroups = {
   interrupt = {
     id = "interrupt",
     name = "Kick / Interrupt",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.SOLAR_BEAM),
       Spell(S.SKULL_BASH),
@@ -57,9 +53,7 @@ MM.StandardGroups = {
   stun = {
     id = "stun",
     name = "Stun",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.SHOCKWAVE),
       Spell(S.STORM_BOLT),
@@ -82,9 +76,7 @@ MM.StandardGroups = {
   hard_cc = {
     id = "hard_cc",
     name = "Hard CC",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.POLYMORPH),
       Spell(S.HEX),
@@ -104,9 +96,7 @@ MM.StandardGroups = {
   soft_cc = {
     id = "soft_cc",
     name = "Soft CC",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.DRAGONS_BREATH),
       Spell(S.SUPERNOVA),
@@ -127,9 +117,7 @@ MM.StandardGroups = {
   taunt = {
     id = "taunt",
     name = "Taunt",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.TAUNT),
       Spell(S.GROWL),
@@ -142,9 +130,7 @@ MM.StandardGroups = {
   movement = {
     id = "movement",
     name = "Movement",
-    immutable = true,
     enabled = true,
-    unresolvedFallback = "inherit",
     candidates = {
       Spell(S.DEATH_CHARGE),
       Spell(S.HEROIC_LEAP),

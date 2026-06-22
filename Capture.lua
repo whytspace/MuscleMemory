@@ -5,7 +5,7 @@ MM.Capture = Capture
 
 local function simple(type)
   return function(id)
-    return { type = type, id = id, unresolvedFallback = "inherit" }
+    return { type = type, id = id }
   end
 end
 
@@ -39,7 +39,6 @@ local function macroAssignment(index, slot)
     indexHint = indexHint,
     nameHint = name,
     iconHint = icon,
-    unresolvedFallback = "inherit",
   }
 end
 
@@ -48,7 +47,7 @@ local function equipmentSetAssignment(id)
   if not name then
     return nil, "equipment set capture is unavailable"
   end
-  return { type = "equipmentset", name = name, unresolvedFallback = "inherit" }
+  return { type = "equipmentset", name = name }
 end
 
 -- Cursor type -> assignment builder.
@@ -71,7 +70,7 @@ local fromSlot = {
   equipmentset = equipmentSetAssignment,
   macro = macroAssignment,
   flyout = function()
-    return { type = "ignore", captureNote = "flyout actions are not managed yet" }
+    return { type = "ignore" }
   end,
 }
 
@@ -108,7 +107,7 @@ function Capture:FromSlot(slot)
   end
 
   if info.actionType == "companion" and info.subType == "MOUNT" then
-    return { type = "mount", id = info.id, unresolvedFallback = "inherit" }
+    return { type = "mount", id = info.id }
   end
 
   local builder = fromSlot[info.actionType]

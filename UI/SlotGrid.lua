@@ -545,7 +545,7 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
   local function setSpell()
     local spellId = tonumber(spellInput:GetText())
     if spellId then
-      assignSlot(layoutId, selectedSlot, { type = "spell", id = spellId, unresolvedFallback = "inherit" })
+      assignSlot(layoutId, selectedSlot, { type = "spell", id = spellId })
     else
       MM:Warn("enter a spell ID first.")
     end
@@ -566,7 +566,6 @@ function SlotGrid:BuildSlotPane(parent, layoutId, layout)
         type = "group",
         source = group.source,
         id = group.id,
-        unresolvedFallback = "inherit",
       })
     end)
     button:SetPoint("TOPLEFT", groupsLabel, "BOTTOMLEFT", 0, y)

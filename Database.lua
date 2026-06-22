@@ -233,8 +233,6 @@ function DB:CreateLayout(name)
 
   root.layouts[layoutId] = {
     name = name or ("Layout " .. tostring(MM.Tables.Count(root.layouts) + 1)),
-    revision = 1,
-    unresolvedFallback = "inherit",
     slots = {},
   }
 
@@ -337,7 +335,6 @@ function DB:SetSlot(layoutId, slot, assignment)
   end
 
   layout.slots[slot] = assignment
-  layout.revision = (layout.revision or 1) + 1
   return true
 end
 
@@ -357,7 +354,6 @@ function DB:SetAllLayoutSlots(layoutId, enabled)
     layout.slots = {}
   end
 
-  layout.revision = (layout.revision or 1) + 1
   return true
 end
 
@@ -412,7 +408,6 @@ function DB:CopyStandardGroup(groupId, newId, newName)
   local copy = MM.Tables.DeepCopy(source)
   copy.id = newId
   copy.name = newName or (source.name .. " Copy")
-  copy.immutable = false
   copy.sourceStandard = groupId
   root.customGroups[newId] = copy
   return copy

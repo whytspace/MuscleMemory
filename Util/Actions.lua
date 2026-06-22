@@ -247,18 +247,16 @@ function Actions.GetAssignmentIconState(assignment, slot, layout)
   return { kind = "preserve" }
 end
 
-function Actions.IsAssignmentInSlot(assignment, slot)
-  if not assignment then
+-- Does the live action in `slot` match a target identity? `target` carries a
+-- `kind` plus whichever identity fields that kind needs (id, name, bodyHash,
+-- macroIndex, setName). Shared by IsAssignmentInSlot and IsResolvedInSlot.
+local function slotMatches(slot, target)
+  if target.kind == "ignore" then
     return true
   end
 
-  local hasAction = not HasAction or HasAction(slot)
-  if assignment.type == "ignore" then
-    return true
-  end
-
-  if assignment.type == "empty" then
-    return not hasAction
+  if target.kind == "empty" then
+    return not (not HasAction or HasAction(slot))
   end
 
   local info = Actions.GetInfo(slot)
@@ -266,57 +264,65 @@ function Actions.IsAssignmentInSlot(assignment, slot)
     return false
   end
 
-  if assignment.type == "spell" then
-    if info.actionType == "spell" and info.id == assignment.id then
+  if target.kind == "spell" then
+    if info.actionType == "spell" and info.id == target.id then
       return true
     end
-
-    if GetActionText then
-      return normalizeText(GetActionText(slot)) == normalizeText(getAssignmentName(assignment))
+    if GetActionText and target.name then
+      return normalizeText(GetActionText(slot)) == normalizeText(target.name)
     end
-
     return false
   end
 
-  if assignment.type == "item" then
-    return info.actionType == "item" and info.id == assignment.id
+  if target.kind == "item" then
+    return info.actionType == "item" and info.id == target.id
   end
 
-  if assignment.type == "macro" then
+  if target.kind == "macro" then
     if info.actionType ~= "macro" then
       return false
     end
-
-    if assignment.indexHint and info.id == assignment.indexHint then
+    if target.macroIndex and info.id == target.macroIndex then
       return true
     end
-
-    if GetMacroInfo and assignment.bodyHash then
+    if GetMacroInfo and target.bodyHash then
       local _, _, body = GetMacroInfo(info.id)
-      return body and MM.Macros.HashBody(body) == assignment.bodyHash
+      return body and MM.Macros.HashBody(body) == target.bodyHash
     end
-
     return false
   end
 
-  if assignment.type == "mount" then
+  if target.kind == "mount" then
     return (
       info.actionType == "mount"
       or info.actionType == "summonmount"
       or (info.actionType == "companion" and info.subType == "MOUNT")
-    ) and info.id == assignment.id
+    ) and info.id == target.id
   end
 
-  if assignment.type == "equipmentset" then
+  if target.kind == "equipmentset" then
     if info.actionType ~= "equipmentset" or not C_EquipmentSet or not C_EquipmentSet.GetEquipmentSetInfo then
       return false
     end
-
-    local name = C_EquipmentSet.GetEquipmentSetInfo(info.id)
-    return name == assignment.name
+    return C_EquipmentSet.GetEquipmentSetInfo(info.id) == target.setName
   end
 
   return false
+end
+
+function Actions.IsAssignmentInSlot(assignment, slot)
+  if not assignment then
+    return true
+  end
+
+  return slotMatches(slot, {
+    kind = assignment.type,
+    id = assignment.id,
+    name = getAssignmentName(assignment),
+    bodyHash = assignment.bodyHash,
+    macroIndex = assignment.indexHint,
+    setName = assignment.name,
+  })
 end
 
 function Actions.IsResolvedInSlot(resolved, slot)
@@ -324,69 +330,12 @@ function Actions.IsResolvedInSlot(resolved, slot)
     return false
   end
 
-  if resolved.kind == "ignore" then
-    return true
-  end
-
-  local hasAction = not HasAction or HasAction(slot)
-  if resolved.kind == "empty" then
-    return not hasAction
-  end
-
-  local info = Actions.GetInfo(slot)
-  if not info or not info.actionType then
-    return false
-  end
-
-  if resolved.kind == "spell" then
-    if info.actionType == "spell" and info.id == resolved.id then
-      return true
-    end
-
-    if GetActionText and resolved.label then
-      return normalizeText(GetActionText(slot)) == normalizeText(resolved.label)
-    end
-
-    return false
-  end
-
-  if resolved.kind == "item" then
-    return info.actionType == "item" and info.id == resolved.id
-  end
-
-  if resolved.kind == "macro" then
-    if info.actionType ~= "macro" or not resolved.macro then
-      return false
-    end
-
-    if info.id == resolved.macro.index then
-      return true
-    end
-
-    if GetMacroInfo then
-      local _, _, body = GetMacroInfo(info.id)
-      return body and MM.Macros.HashBody(body) == resolved.macro.bodyHash
-    end
-
-    return false
-  end
-
-  if resolved.kind == "mount" then
-    return (
-      info.actionType == "mount"
-      or info.actionType == "summonmount"
-      or (info.actionType == "companion" and info.subType == "MOUNT")
-    ) and info.id == resolved.id
-  end
-
-  if resolved.kind == "equipmentset" then
-    if info.actionType ~= "equipmentset" or not C_EquipmentSet or not C_EquipmentSet.GetEquipmentSetInfo then
-      return false
-    end
-
-    local name = C_EquipmentSet.GetEquipmentSetInfo(info.id)
-    return name == resolved.name
-  end
-
-  return false
+  return slotMatches(slot, {
+    kind = resolved.kind,
+    id = resolved.id,
+    name = resolved.label,
+    bodyHash = resolved.macro and resolved.macro.bodyHash,
+    macroIndex = resolved.macro and resolved.macro.index,
+    setName = resolved.name,
+  })
 end
