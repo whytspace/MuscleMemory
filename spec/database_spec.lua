@@ -204,6 +204,50 @@ describe("DB", function()
       assert.equals("Mine", MM.DB:GetMemory({ source = "custom", id = key }).name)
       assert.is_nil(MM.DB:GetMemory(nil))
     end)
+
+    it("creates, renames, and deletes a custom memory", function()
+      local key = MM.DB:CreateMemory("Cleanse")
+      assert.equals("Cleanse", MM.DB:GetCustomMemory(key).name)
+
+      assert.is_true(MM.DB:RenameMemory(key, "Purify"))
+      assert.equals("Purify", MM.DB:GetCustomMemory(key).name)
+
+      assert.is_true(MM.DB:DeleteMemory(key))
+      assert.is_nil(MM.DB:GetCustomMemory(key))
+    end)
+
+    it("refuses to edit standard memories", function()
+      local ok, reason = MM.DB:RenameMemory("interrupt", "Nope")
+      assert.is_false(ok)
+      assert.equals("only custom memories can be renamed", reason)
+      assert.is_false(MM.DB:AddCandidate("interrupt", { type = "spell", id = 1 }))
+    end)
+
+    it("adds, removes, and reorders candidates", function()
+      local key = MM.DB:CreateMemory("Custom")
+      MM.DB:AddCandidate(key, { type = "spell", id = 11 })
+      MM.DB:AddCandidate(key, { type = "spell", id = 22 })
+      MM.DB:AddCandidate(key, { type = "spell", id = 33 })
+
+      assert.is_true(MM.DB:MoveCandidate(key, 3, 1))
+      local candidates = MM.DB:GetCustomMemory(key).candidates
+      assert.equals(33, candidates[1].id)
+      assert.equals(11, candidates[2].id)
+      assert.equals(22, candidates[3].id)
+
+      assert.is_true(MM.DB:RemoveCandidate(key, 2))
+      candidates = MM.DB:GetCustomMemory(key).candidates
+      assert.equals(2, #candidates)
+      assert.equals(33, candidates[1].id)
+      assert.equals(22, candidates[2].id)
+    end)
+
+    it("rejects bad candidate edits", function()
+      local key = MM.DB:CreateMemory("Custom")
+      local ok = MM.DB:RemoveCandidate(key, 1)
+      assert.is_false(ok)
+      assert.is_false((MM.DB:AddCandidate(key)))
+    end)
   end)
 
   describe("character state", function()

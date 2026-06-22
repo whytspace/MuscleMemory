@@ -462,72 +462,13 @@ local function statusFor(assignment)
   return "Managed \226\128\148 pins this exact action into the slot.", colors.goldDim
 end
 
--- A drop overlay covering the whole Slot Editor. It appears only while a
--- pinnable action sits on the cursor, so dropping anywhere on the sidebar pins
--- that action to the selected slot.
-local PINNABLE = { spell = true, item = true, mount = true, macro = true, equipmentset = true }
-
-local function updateDropOverlay()
-  local overlay = MusclesTab.dropOverlay
-  if not overlay then
-    return
+-- The Slot Editor's drop overlay: drop a pinnable action anywhere on the sidebar
+-- to pin it to the selected slot.
+local function dropZone()
+  if not MusclesTab.dropZone then
+    MusclesTab.dropZone = Widgets.DropZone("Drop to pin this action")
   end
-  local cursorType = GetCursorInfo and GetCursorInfo()
-  local parent = overlay:GetParent()
-  local show = MusclesTab.dropTarget and cursorType and PINNABLE[cursorType] and parent and parent:IsVisible()
-  overlay:SetShown(show and true or false)
-end
-
-local function pinFromCursor()
-  local target = MusclesTab.dropTarget
-  if target and GetCursorInfo and GetCursorInfo() then
-    assignFromCursor(target.muscleId, target.slot)
-  end
-end
-
-local function getDropOverlay()
-  if MusclesTab.dropOverlay then
-    return MusclesTab.dropOverlay
-  end
-
-  local overlay = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-  overlay:Hide()
-  overlay:EnableMouse(true)
-  overlay:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Buttons\\WHITE8X8",
-    edgeSize = 2,
-  })
-  overlay:SetBackdropColor(Widgets.unpackColor(colors.gold, 0.1))
-  overlay:SetBackdropBorderColor(Widgets.unpackColor(colors.gold, 0.85))
-
-  overlay.label = Widgets.Label(overlay, "GameFontHighlight", "Drop to pin this action", colors.gold)
-  overlay.label:SetPoint("CENTER")
-
-  overlay:SetScript("OnReceiveDrag", pinFromCursor)
-  overlay:SetScript("OnMouseUp", pinFromCursor)
-  overlay:RegisterEvent("CURSOR_CHANGED")
-  overlay:SetScript("OnEvent", updateDropOverlay)
-
-  MusclesTab.dropOverlay = overlay
-  return overlay
-end
-
-local function attachDropOverlay(inset, muscleId, slot)
-  local overlay = getDropOverlay()
-  overlay:SetParent(inset)
-  overlay:ClearAllPoints()
-  overlay:SetAllPoints(inset)
-  overlay:SetFrameLevel(inset:GetFrameLevel() + 20)
-  MusclesTab.dropTarget = { muscleId = muscleId, slot = slot }
-  updateDropOverlay()
-end
-
-local function detachDropOverlay()
-  MusclesTab.dropTarget = nil
-  if MusclesTab.dropOverlay then
-    MusclesTab.dropOverlay:Hide()
-  end
+  return MusclesTab.dropZone
 end
 
 function MusclesTab:BuildEditor(parent, muscleId, muscle)
@@ -538,7 +479,9 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
-    detachDropOverlay()
+    if MusclesTab.dropZone then
+      MusclesTab.dropZone:Detach()
+    end
     local note = Widgets.Label(
       inset,
       "GameFontHighlightSmall",
@@ -639,7 +582,9 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   end
   content:SetHeight(math.max(1, -y))
 
-  attachDropOverlay(inset, muscleId, slot)
+  dropZone():Attach(inset, function()
+    assignFromCursor(muscleId, slot)
+  end)
 end
 
 -- Assembly -------------------------------------------------------------------

@@ -75,6 +75,63 @@ local function cloneMemory(ref)
   selectMemory({ source = "custom", id = key })
 end
 
+-- Drag a spell/item/macro/mount/equipment set onto the candidate list to add it
+-- to the (custom) memory.
+local function addCandidateFromCursor(memoryId)
+  local assignment, reason = MM.Capture:FromCursor()
+  if not assignment then
+    MM:Warn(reason or "could not read cursor")
+    return
+  end
+  local ok, err = MM.DB:AddCandidate(memoryId, assignment)
+  if not ok then
+    MM:Warn(err or "could not add candidate")
+  end
+  if ClearCursor then
+    ClearCursor()
+  end
+  refresh()
+end
+
+local function newMemory()
+  MM.ui.Modals.Input("New Memory", "Name the new Memory", "New Memory", "Create", function(name)
+    local key = MM.DB:CreateMemory(name ~= "" and name or nil)
+    selectMemory({ source = "custom", id = key })
+  end)
+end
+
+local function renameMemory(ref)
+  local memory = MM.DB:GetMemory(ref)
+  MM.ui.Modals.Input("Rename Memory", "New name for this Memory", memory and memory.name or "", "Rename", function(name)
+    if name == "" then
+      return
+    end
+    local ok, err = MM.DB:RenameMemory(ref.id, name)
+    if not ok then
+      MM:Warn(err)
+    end
+    refresh()
+  end)
+end
+
+local function deleteMemory(ref)
+  local memory = MM.DB:GetMemory(ref)
+  local name = memory and memory.name or ref.id
+  MM.ui.Modals.Confirm(
+    "Delete Memory",
+    string.format('Delete custom memory "%s"? Slots bound to it will fall through on the next apply.', name),
+    "Delete",
+    function()
+      local ok, err = MM.DB:DeleteMemory(ref.id)
+      if not ok then
+        MM:Warn(err)
+      end
+      MM.ui.state.memory = nil
+      refresh()
+    end
+  )
+end
+
 local function prettyClass(token)
   token = tostring(token)
   return token:sub(1, 1):upper() .. token:sub(2):lower()
@@ -103,24 +160,8 @@ function MemoriesTab:BuildRail(parent, ref)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "+ New Memory", RAIL_WIDTH - 24, nil)
+  local newButton = Widgets.Button(inset, "+ New Memory", RAIL_WIDTH - 24, newMemory)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
-  newButton:Disable()
-  newButton:SetScript("OnEnter", function(button)
-    GameTooltip:SetOwner(button, "ANCHOR_TOP")
-    GameTooltip:SetText(
-      "Creating blank memories is coming soon \226\128\148 use Clone to edit for now.",
-      1,
-      1,
-      1,
-      1,
-      true
-    )
-    GameTooltip:Show()
-  end)
-  newButton:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-  end)
 
   local scroll, content = Widgets.ScrollList(inset)
   scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
@@ -207,13 +248,15 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     end)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -4, -2)
 
-    -- Inert editing controls (rename / delete / add) — rendered, disabled.
-    for _, spec in ipairs({ { "Delete", 60 }, { "Rename", 66 }, { "+ Add action", 100 } }) do
-      local button = Widgets.Button(center, spec[1], spec[2], nil)
-      button:SetPoint("RIGHT", clone, "LEFT", -6, 0)
-      button:Disable()
-      clone = button
-    end
+    local del = Widgets.Button(center, "Delete", 64, function()
+      deleteMemory(ref)
+    end)
+    del:SetPoint("RIGHT", clone, "LEFT", -6, 0)
+
+    local rename = Widgets.Button(center, "Rename", 66, function()
+      renameMemory(ref)
+    end)
+    rename:SetPoint("RIGHT", del, "LEFT", -6, 0)
   end
 
   -- Resolution chip.
@@ -225,8 +268,9 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   chip:SetPoint("RIGHT", center, "RIGHT", -4, 0)
   chip:SetJustifyH("LEFT")
 
-  local hint =
-    Widgets.Hint(center, (locked and "Priority order" or "Drag to reorder") .. " \194\183 the first usable action wins")
+  local hintText = locked and "Priority order \194\183 the first usable action wins"
+    or "Drag here to add \194\183 drag a row to reorder \194\183 right-click to remove \194\183 first usable wins"
+  local hint = Widgets.Hint(center, hintText)
   hint:SetPoint("TOPLEFT", chip, "BOTTOMLEFT", 0, -10)
 
   -- Candidate rows.
@@ -236,6 +280,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
 
   local candidates = memory and memory.candidates or {}
   local selected = MM.ui.state.candidate or 1
+  MemoriesTab.candidateRows = {}
   local y = 0
   for index, candidate in ipairs(candidates) do
     local name, icon = candidateInfo(candidate)
@@ -243,6 +288,8 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
     row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
     row:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
     row:SetSelected(index == selected)
+    row.candidateIndex = index
+    MemoriesTab.candidateRows[index] = row
 
     local order = Widgets.Label(row, "GameFontNormalSmall", tostring(index))
     order:SetWidth(16)
@@ -254,6 +301,28 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
       local handle = Widgets.DragDots(row)
       handle:SetPoint("LEFT", row, "LEFT", 10, 0)
       order:SetPoint("LEFT", handle, "RIGHT", 8, 0)
+
+      -- Drag a candidate onto another to reorder (same pattern as the muscle rail).
+      row:RegisterForDrag("LeftButton")
+      row:SetScript("OnDragStart", function(frame)
+        frame:SetAlpha(0.5)
+        MemoriesTab._dragCandidate = index
+      end)
+      row:SetScript("OnDragStop", function(frame)
+        frame:SetAlpha(1)
+        local from = MemoriesTab._dragCandidate
+        MemoriesTab._dragCandidate = nil
+        if not from then
+          return
+        end
+        for _, candidateRow in ipairs(MemoriesTab.candidateRows) do
+          if candidateRow:IsMouseOver() then
+            MM.DB:MoveCandidate(ref.id, from, candidateRow.candidateIndex)
+            refresh()
+            return
+          end
+        end
+      end)
     end
     order:SetTextColor(Widgets.unpackColor(colors.goldDim))
 
@@ -284,7 +353,17 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
       label:SetPoint("RIGHT", row, "RIGHT", -8, 0)
     end
 
-    row:SetScript("OnClick", function()
+    row:SetScript("OnClick", function(_, mouseButton)
+      if mouseButton == "RightButton" then
+        if not locked then
+          local ok, err = MM.DB:RemoveCandidate(ref.id, index)
+          if not ok then
+            MM:Warn(err)
+          end
+          refresh()
+        end
+        return
+      end
       selectCandidate(index)
     end)
 
@@ -293,8 +372,26 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   content:SetHeight(math.max(1, -y))
 
   if #candidates == 0 then
-    local note = Widgets.Label(center, "GameFontDisableSmall", "This memory has no candidates.")
+    local emptyText = locked and "This memory has no candidates."
+      or "No candidates yet \226\128\148 drag a spell, item, macro, mount or equipment set here to add one."
+    local note = Widgets.Hint(center, emptyText)
     note:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -16)
+    note:SetPoint("RIGHT", center, "RIGHT", -4, 0)
+    note:SetJustifyH("LEFT")
+  end
+
+  -- Custom memories accept dropped actions as new candidates.
+  if locked then
+    if MemoriesTab.dropZone then
+      MemoriesTab.dropZone:Detach()
+    end
+  else
+    if not MemoriesTab.dropZone then
+      MemoriesTab.dropZone = Widgets.DropZone("Drop to add a candidate")
+    end
+    MemoriesTab.dropZone:Attach(center, function()
+      addCandidateFromCursor(ref.id)
+    end)
   end
 end
 

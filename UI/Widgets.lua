@@ -367,6 +367,67 @@ function Widgets.ListRow(parent, height)
   return row
 end
 
+-- The cursor types we can capture and pin/add.
+local PINNABLE = { spell = true, item = true, mount = true, macro = true, equipmentset = true }
+
+-- A drop overlay that covers a panel (set via :Attach) while a pinnable action is
+-- on the cursor, so dropping anywhere on the panel runs the attached callback.
+-- Shared by the Slot Editor (pin to slot) and the Memories candidate list (add a
+-- candidate). One per consumer; re-Attach it to the current panel each rebuild.
+function Widgets.DropZone(labelText)
+  local overlay = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  overlay:Hide()
+  overlay:EnableMouse(true)
+  overlay:SetBackdrop({
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 2,
+  })
+  overlay:SetBackdropColor(unpackColor(Widgets.colors.gold, 0.1))
+  overlay:SetBackdropBorderColor(unpackColor(Widgets.colors.gold, 0.85))
+
+  overlay.label = Widgets.Label(overlay, "GameFontHighlight", labelText, Widgets.colors.gold)
+  overlay.label:SetPoint("CENTER")
+
+  local function drop(self)
+    if self.active and self.onDrop and GetCursorInfo and GetCursorInfo() then
+      self.onDrop()
+    end
+  end
+  overlay:SetScript("OnReceiveDrag", drop)
+  overlay:SetScript("OnMouseUp", drop)
+
+  function overlay:Refresh()
+    local cursorType = GetCursorInfo and GetCursorInfo()
+    local parent = self:GetParent()
+    local show = self.active and cursorType and PINNABLE[cursorType] and parent and parent:IsVisible()
+    self:SetShown(show and true or false)
+  end
+
+  overlay:RegisterEvent("CURSOR_CHANGED")
+  overlay:SetScript("OnEvent", function(self)
+    self:Refresh()
+  end)
+
+  function overlay:Attach(panel, onDrop)
+    self.active = true
+    self.onDrop = onDrop
+    self:SetParent(panel)
+    self:ClearAllPoints()
+    self:SetAllPoints(panel)
+    self:SetFrameLevel(panel:GetFrameLevel() + 20)
+    self:Refresh()
+  end
+
+  function overlay:Detach()
+    self.active = false
+    self.onDrop = nil
+    self:Hide()
+  end
+
+  return overlay
+end
+
 -- Header text for the centre column of a tab (active muscle / memory name).
 function Widgets.Title(parent, text)
   local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")

@@ -393,6 +393,102 @@ function DB:CopyStandardMemory(memoryId, newId, newName)
   return key
 end
 
+-- Standard memories are immutable add-on data, so create / rename / delete and
+-- all candidate edits operate only on custom memories.
+
+function DB:CreateMemory(name)
+  local root = self:GetRoot()
+  local key = uniqueId(name, "memory", root.customMemories)
+  root.customMemories[key] = {
+    name = name and name ~= "" and name or ("Memory " .. tostring(MM.Tables.Count(root.customMemories) + 1)),
+    candidates = {},
+  }
+  return key, root.customMemories[key]
+end
+
+function DB:RenameMemory(memoryId, name)
+  local memory = self:GetCustomMemory(memoryId)
+  if not memory then
+    return false, "only custom memories can be renamed"
+  end
+
+  name = string.gsub(name or "", "^%s+", "")
+  name = string.gsub(name, "%s+$", "")
+  if name == "" then
+    return false, "memory name cannot be empty"
+  end
+
+  memory.name = name
+  return true
+end
+
+-- Slots bound to the deleted memory simply stop resolving and fall through on the
+-- next apply, so there's no reference cleanup to do.
+function DB:DeleteMemory(memoryId)
+  local root = self:GetRoot()
+  if not root.customMemories[memoryId] then
+    return false, "unknown custom memory"
+  end
+
+  root.customMemories[memoryId] = nil
+  return true
+end
+
+-- Candidates -----------------------------------------------------------------
+
+-- Append a candidate (a captured assignment) to a custom memory.
+function DB:AddCandidate(memoryId, assignment)
+  local memory = self:GetCustomMemory(memoryId)
+  if not memory then
+    return false, "only custom memories can be edited"
+  end
+  if not assignment or not assignment.type then
+    return false, "no action to add"
+  end
+
+  memory.candidates = memory.candidates or {}
+  memory.candidates[#memory.candidates + 1] = assignment
+  return true
+end
+
+function DB:RemoveCandidate(memoryId, index)
+  local memory = self:GetCustomMemory(memoryId)
+  if not memory then
+    return false, "only custom memories can be edited"
+  end
+
+  index = tonumber(index)
+  if not index or not memory.candidates or not memory.candidates[index] then
+    return false, "no candidate at that position"
+  end
+
+  table.remove(memory.candidates, index)
+  return true
+end
+
+-- Move the candidate at `fromIndex` to `toIndex` (clamped). Single splice, like
+-- MoveMuscle.
+function DB:MoveCandidate(memoryId, fromIndex, toIndex)
+  local memory = self:GetCustomMemory(memoryId)
+  local candidates = memory and memory.candidates
+  if not candidates then
+    return false, "only custom memories can be edited"
+  end
+
+  fromIndex = tonumber(fromIndex)
+  toIndex = tonumber(toIndex)
+  if not fromIndex or not toIndex or not candidates[fromIndex] then
+    return false, "invalid candidate position"
+  end
+  toIndex = math.max(1, math.min(toIndex, #candidates))
+  if fromIndex == toIndex then
+    return false, "candidate is already at that position"
+  end
+
+  table.insert(candidates, toIndex, table.remove(candidates, fromIndex))
+  return true
+end
+
 -- Character state ----------------------------------------------------------
 
 function DB:GetCharacterKey()
