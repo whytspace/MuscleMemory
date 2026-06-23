@@ -45,13 +45,13 @@ describe("Applier", function()
       assert.equals(2050, plan.slots[1].resolved.id)
     end)
 
-    it("lets a real action in the lower muscle override an empty above it", function()
+    it("treats an empty assignment as a stopper", function()
       local lower = addLowerMuscle()
       MM.DB:SetSlot("Core", 1, { type = "empty" })
       MM.DB:SetSlot(lower, 1, { type = "spell", id = 2050 })
 
       local plan = MM.Applier:BuildPlan()
-      assert.equals(2050, plan.slots[1].resolved.id)
+      assert.equals("empty", plan.slots[1].resolved.kind)
     end)
 
     it("keeps an empty assignment when nothing else claims the slot", function()

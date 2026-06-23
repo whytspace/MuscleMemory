@@ -58,7 +58,8 @@ function Applier:BuildPlan(profileId)
 
         if not (resolved and resolved.kind == "ignore") then
           if resolved and resolved.kind == "empty" then
-            terminalEntry = entry
+            finalEntry = entry
+            break
           elseif resolved then
             finalEntry = entry
             break
