@@ -391,7 +391,9 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "spell" then
-    if info.actionType == "spell" and info.id == target.id then
+    -- Ask the action bar for the canonical spell id: FindSpellActionButtons
+    -- accepts base spell ids when the placed button currently shows an override.
+    if info.actionType == "spell" and MM.Spells.IsOnActionSlot(target.id, slot) then
       return true
     end
     if GetActionText and target.name then

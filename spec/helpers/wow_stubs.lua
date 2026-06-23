@@ -124,6 +124,18 @@ function Stubs.new()
       local spell = world.spells[id]
       return spell ~= nil and spell.known == true
     end,
+    C_ActionBar = {
+      FindSpellActionButtons = function(spellId)
+        local slots = {}
+        for slot, action in pairs(world.slots) do
+          if action.actionType == "spell" and (action.id == spellId or action.baseSpellId == spellId) then
+            slots[#slots + 1] = slot
+          end
+        end
+        table.sort(slots)
+        return slots
+      end,
+    },
 
     -- Items ----------------------------------------------------------------
     C_Item = {

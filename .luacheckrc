@@ -25,6 +25,7 @@ globals = {
 
 read_globals = {
   "ADDON_LOADED",
+  "C_ActionBar",
   "C_AddOns",
   "C_EquipmentSet",
   "C_Item",

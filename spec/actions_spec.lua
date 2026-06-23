@@ -110,6 +110,11 @@ describe("Actions", function()
       assert.is_false(MM.Actions.IsAssignmentInSlot({ type = "spell", id = 5 }, 3))
     end)
 
+    it("matches a base spell when the slot reports its override", function()
+      stubs:setSlot(3, { actionType = "spell", id = MM.SpellIds.PRIMAL_RAGE, baseSpellId = MM.SpellIds.COMMAND_PET })
+      assert.is_true(MM.Actions.IsAssignmentInSlot({ type = "spell", id = MM.SpellIds.COMMAND_PET }, 3))
+    end)
+
     it("falls back to matching a spell by action text", function()
       stubs:setSpell(1766, { name = "Kick" })
       stubs:setSlot(3, { actionType = "spell", id = 99, text = "Kick" })

@@ -60,6 +60,20 @@ function Spells.IsKnown(spellId)
   return false
 end
 
+function Spells.IsOnActionSlot(spellId, slot)
+  if not spellId or not slot then
+    return false
+  end
+
+  for _, actionSlot in ipairs(C_ActionBar.FindSpellActionButtons(spellId)) do
+    if actionSlot == slot then
+      return true
+    end
+  end
+
+  return false
+end
+
 function Spells.Pickup(spellId)
   if C_Spell and C_Spell.PickupSpell then
     C_Spell.PickupSpell(spellId)
