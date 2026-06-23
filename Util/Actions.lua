@@ -9,15 +9,19 @@ MM.Actions = Actions
 -- bars are the main bar's per-form/stance pages (a Druid in Cat Form sees one of
 -- these in place of Bar 1) — only relevant to classes with shapeshift forms.
 -- `base` is the slot before each bar's first button; `stance` marks form pages.
+-- `binding` is the key-binding action prefix (button index appended) for bars
+-- that own physical buttons. The paged bars (Page 2, the stance pages, the
+-- Skyriding bonus bar) reuse Bar 1's physical buttons, so they carry no binding
+-- of their own and show no key in the grid (Bar 1 already shows those keys).
 Actions.BARS = {
-  { label = "Bar 1", base = 0 }, -- slots 1-12    (main)
-  { label = "Bar 2", base = 60 }, -- slots 61-72   (bottom left)
-  { label = "Bar 3", base = 48 }, -- slots 49-60   (bottom right)
-  { label = "Bar 4", base = 24 }, -- slots 25-36   (right)
-  { label = "Bar 5", base = 36 }, -- slots 37-48   (left)
-  { label = "Bar 6", base = 144 }, -- slots 145-156
-  { label = "Bar 7", base = 156 }, -- slots 157-168
-  { label = "Bar 8", base = 168 }, -- slots 169-180
+  { label = "Bar 1", base = 0, binding = "ACTIONBUTTON" }, -- slots 1-12    (main)
+  { label = "Bar 2", base = 60, binding = "MULTIACTIONBAR1BUTTON" }, -- slots 61-72   (bottom left)
+  { label = "Bar 3", base = 48, binding = "MULTIACTIONBAR2BUTTON" }, -- slots 49-60   (bottom right)
+  { label = "Bar 4", base = 24, binding = "MULTIACTIONBAR3BUTTON" }, -- slots 25-36   (right)
+  { label = "Bar 5", base = 36, binding = "MULTIACTIONBAR4BUTTON" }, -- slots 37-48   (left)
+  { label = "Bar 6", base = 144, binding = "MULTIACTIONBAR5BUTTON" }, -- slots 145-156
+  { label = "Bar 7", base = 156, binding = "MULTIACTIONBAR6BUTTON" }, -- slots 157-168
+  { label = "Bar 8", base = 168, binding = "MULTIACTIONBAR7BUTTON" }, -- slots 169-180
   { label = "Page 2", base = 12 }, -- slots 13-24 (main bar's second page)
   { label = "Stance 1", base = 72, stance = true }, -- slots 73-84
   { label = "Stance 2", base = 84, stance = true }, -- slots 85-96
@@ -133,6 +137,59 @@ function Actions.GetSlotLabel(slot)
   end
   -- Paging / vehicle slots that aren't one of the listed bars.
   return string.format("slot %d", slot)
+end
+
+-- Abbreviate a single binding token to WoW's action-bar hotkey style. WoW's
+-- GetBindingText only shortens the modifiers (ALT/CTRL/SHIFT); it leaves mouse
+-- buttons as their full localized name ("Middle Mouse", "Mouse Button 5"), so we
+-- shorten those ourselves: BUTTON3 -> M3, BUTTON5 -> M5, the mouse wheel -> Mw*,
+-- and numpad digits -> N*. Anything else (letters, F-keys, Space, ...) keeps
+-- WoW's own name via GetBindingText.
+local MODIFIER_ABBR = { ALT = "A", CTRL = "C", SHIFT = "S" }
+
+local function abbreviateKeyToken(token)
+  if MODIFIER_ABBR[token] then
+    return MODIFIER_ABBR[token]
+  end
+  local mouseButton = token:match("^BUTTON(%d+)$")
+  if mouseButton then
+    return "M" .. mouseButton
+  end
+  if token == "MOUSEWHEELUP" then
+    return "MwU"
+  end
+  if token == "MOUSEWHEELDOWN" then
+    return "MwD"
+  end
+  local numpad = token:match("^NUMPAD(%d)$")
+  if numpad then
+    return "N" .. numpad
+  end
+  return GetBindingText(token, 1)
+end
+
+-- The bound key for a slot's physical button, abbreviated in WoW's action-bar
+-- style (e.g. ALT-BUTTON4 -> "AM4", BUTTON3 -> "M3"), or nil when nothing is
+-- bound. Paged slots (Page 2, stance, Skyriding) have no binding of their own,
+-- so they show no key.
+function Actions.GetSlotHotkey(slot)
+  if not GetBindingKey or not GetBindingText then
+    return nil
+  end
+  for _, bar in ipairs(Actions.BARS) do
+    if bar.binding and slot > bar.base and slot <= bar.base + MM.ACTIONS_PER_BAR then
+      local key = GetBindingKey(bar.binding .. (slot - bar.base))
+      if not key then
+        return nil
+      end
+      local text = ""
+      for token in string.gmatch(key, "[^-]+") do
+        text = text .. abbreviateKeyToken(token)
+      end
+      return text ~= "" and text or nil
+    end
+  end
+  return nil
 end
 
 function Actions.GetAssignmentLabel(assignment)

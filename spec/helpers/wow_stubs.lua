@@ -56,6 +56,7 @@ function Stubs.new()
     globalMacros = {}, -- 1-based list of { name, icon, body }
     charMacros = {}, -- list mapped to indices macroLimit+1 ..
     slots = {}, -- [slot] = { actionType, id, subType, text, texture }
+    bindings = {}, -- [bindingAction] = key string, e.g. ACTIONBUTTON1 = "SHIFT-3"
 
     cursor = nil, -- { type = , id = } or nil
     printed = {}, -- captured MM:Print / print output
@@ -309,6 +310,18 @@ function Stubs.new()
       end
     end,
 
+    -- Key bindings ---------------------------------------------------------
+    GetBindingKey = function(action)
+      return world.bindings[action]
+    end,
+    -- Real WoW only abbreviates the modifiers here; mouse buttons come back as
+    -- their full name ("Middle Mouse"), which is why Actions abbreviates the key
+    -- tokens itself. The fake returns each token verbatim — all the fallback path
+    -- (letters, F-keys) needs.
+    GetBindingText = function(key)
+      return key or ""
+    end,
+
     -- Cursor ---------------------------------------------------------------
     GetCursorInfo = function()
       local cursor = world.cursor
@@ -422,6 +435,11 @@ end
 
 function Stubs:setSlot(slot, action)
   self.world.slots[slot] = action
+  return self
+end
+
+function Stubs:setBinding(action, key)
+  self.world.bindings[action] = key
   return self
 end
 

@@ -271,6 +271,7 @@ local function paintSlot(icon, muscle, slot)
 
   icon:SetBadge(false)
   icon:SetAlphaAll(1)
+  icon:SetHotkey(MM.Actions.GetSlotHotkey(slot))
 
   if not managed then
     local texture = MM.Actions.GetLiveSlotIcon(slot)

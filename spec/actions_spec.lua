@@ -40,6 +40,34 @@ describe("Actions", function()
     end)
   end)
 
+  describe("GetSlotHotkey", function()
+    it("abbreviates a slot's bound key in WoW's action-bar style", function()
+      stubs:setBinding("ACTIONBUTTON1", "1")
+      stubs:setBinding("MULTIACTIONBAR1BUTTON1", "F1") -- bottom left, slots 61-72
+      stubs:setBinding("MULTIACTIONBAR1BUTTON2", "ALT-BUTTON4") -- Alt + mouse button 4
+      stubs:setBinding("MULTIACTIONBAR1BUTTON3", "BUTTON3") -- middle mouse
+      stubs:setBinding("MULTIACTIONBAR1BUTTON4", "BUTTON5") -- mouse button 5
+      stubs:setBinding("MULTIACTIONBAR7BUTTON12", "SHIFT-F12") -- bar 8, slot 180
+      assert.equals("1", MM.Actions.GetSlotHotkey(1))
+      assert.equals("F1", MM.Actions.GetSlotHotkey(61))
+      assert.equals("AM4", MM.Actions.GetSlotHotkey(62))
+      assert.equals("M3", MM.Actions.GetSlotHotkey(63))
+      assert.equals("M5", MM.Actions.GetSlotHotkey(64))
+      assert.equals("SF12", MM.Actions.GetSlotHotkey(180))
+    end)
+
+    it("shows no key for paged bars (Page 2, stance, Skyriding)", function()
+      stubs:setBinding("ACTIONBUTTON1", "1")
+      assert.is_nil(MM.Actions.GetSlotHotkey(13)) -- page 2 button 1
+      assert.is_nil(MM.Actions.GetSlotHotkey(73)) -- stance 1 button 1
+      assert.is_nil(MM.Actions.GetSlotHotkey(121)) -- skyriding button 1
+    end)
+
+    it("returns nil when nothing is bound", function()
+      assert.is_nil(MM.Actions.GetSlotHotkey(5))
+    end)
+  end)
+
   describe("GetAssignmentLabel", function()
     it("labels the structural assignment types", function()
       assert.equals("Ignore", MM.Actions.GetAssignmentLabel(nil))

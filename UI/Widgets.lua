@@ -385,6 +385,13 @@ function Widgets.Icon(parent, size)
   icon.glyph:SetPoint("CENTER")
   icon.glyph:Hide()
 
+  -- Bound-key text in the top-right corner, mirroring WoW's own action buttons.
+  icon.hotkey = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  icon.hotkey:SetPoint("TOPRIGHT", -1, -1)
+  icon.hotkey:SetJustifyH("RIGHT")
+  icon.hotkey:SetTextColor(unpackColor(Widgets.colors.parchment))
+  icon.hotkey:Hide()
+
   icon.border = createBorder(icon)
 
   local function hideSymbol(self)
@@ -428,6 +435,15 @@ function Widgets.Icon(parent, size)
 
   function icon:SetBorder(thickness, color, alpha)
     setBorder(self.border, thickness, color, alpha)
+  end
+
+  function icon:SetHotkey(text)
+    if text and text ~= "" then
+      self.hotkey:SetText(text)
+      self.hotkey:Show()
+    else
+      self.hotkey:Hide()
+    end
   end
 
   function icon:SetBadge(show)

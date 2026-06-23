@@ -52,6 +52,8 @@ read_globals = {
   "GetActionInfo",
   "GetActionText",
   "GetActionTexture",
+  "GetBindingKey",
+  "GetBindingText",
   "GetCursorInfo",
   "GetFlyoutInfo",
   "GetFlyoutSlotInfo",
