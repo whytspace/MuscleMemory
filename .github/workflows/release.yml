@@ -20,5 +20,6 @@ jobs:
       - name: Package addon
         uses: BigWigsMods/packager@v2
         env:
-          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          # @v2's release.sh reads GITHUB_OAUTH / CF_API_KEY; the *_TOKEN names are master-only.
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+          CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
