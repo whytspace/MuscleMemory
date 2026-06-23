@@ -1,9 +1,9 @@
 local ADDON_NAME, MM = ...
 
 -- The Memories tab. Browsing is fully live (list, per-character resolution,
--- candidate display) and Clone-to-edit is wired to DB:CopyStandardMemory. The
--- candidate/condition *editing* needs DB + Resolver work that doesn't exist yet,
--- so those controls are rendered to match the design but are inert for now.
+-- candidate display), standard memories can be cloned into editable custom
+-- memories, and custom candidates can be added, reordered, removed, and gated by
+-- conditions.
 local MemoriesTab = {}
 MM.ui.MemoriesTab = MemoriesTab
 
@@ -464,7 +464,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   end
 end
 
--- Right: condition editor (inert preview) ------------------------------------
+-- Right: condition editor ------------------------------------------------------
 
 function MemoriesTab:BuildRule(parent, memory)
   local inset = CreateFrame("Frame", nil, parent)
@@ -532,7 +532,7 @@ end
 
 -- Assembly -------------------------------------------------------------------
 
-function MemoriesTab:Build(parent)
+function MemoriesTab:BuildContent(parent)
   local ref = selectedRef()
   if not ref then
     local note = Widgets.Label(parent, "GameFontHighlight", "No memories available.")
@@ -557,4 +557,17 @@ function MemoriesTab:Build(parent)
   local rightGroove = Widgets.VGroove(parent)
   rightGroove:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(RULE_WIDTH + 6), -6)
   rightGroove:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 6), 6)
+end
+
+function MemoriesTab:Build(parent)
+  self.parent = parent
+  self:Refresh()
+end
+
+function MemoriesTab:Refresh()
+  if not self.parent then
+    return
+  end
+  Widgets.ClearChildren(self.parent)
+  self:BuildContent(self.parent)
 end

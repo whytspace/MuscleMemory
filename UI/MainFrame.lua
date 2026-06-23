@@ -251,11 +251,9 @@ local function anchorContent(frame, inset)
   frame:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -5, 5)
 end
 
--- Show the active tab. Tabs that expose :Refresh are *retained* — built once
--- into a persistent frame and updated in place, so their state (scroll, focus)
--- and frames survive a refresh. Tabs without :Refresh still use the legacy path,
--- which destroys and rebuilds a shared content frame each time. (Legacy frames
--- can't truly be freed, so that path leaks; it's being migrated away.)
+-- Show the active tab. Each tab owns one retained root frame; tabs with dynamic
+-- state expose :Refresh to update that root in place when commands or controls
+-- mutate the model.
 function UI:ShowContent()
   local tab = MM.ui.state.tab
 
@@ -278,29 +276,20 @@ function UI:ShowContent()
   end
 
   local builder = tabBuilder(tab)
-  if builder and builder.Refresh then
-    if self.content then
-      self.content:Hide()
-    end
-    local frame = self.tabFrames[tab]
-    if not frame then
-      frame = CreateFrame("Frame", nil, self.frame)
-      anchorContent(frame, self.contentInset)
-      self.tabFrames[tab] = frame
+  local frame = self.tabFrames[tab]
+  local firstBuild = frame == nil
+  if not frame then
+    frame = CreateFrame("Frame", nil, self.frame)
+    anchorContent(frame, self.contentInset)
+    self.tabFrames[tab] = frame
+    if builder then
       builder:Build(frame)
     end
-    frame:Show()
+  end
+
+  frame:Show()
+  if builder and builder.Refresh and not firstBuild then
     builder:Refresh()
-  else
-    if self.content then
-      self.content:Hide()
-      self.content:SetParent(nil)
-    end
-    self.content = CreateFrame("Frame", nil, self.frame)
-    anchorContent(self.content, self.contentInset)
-    if builder then
-      builder:Build(self.content)
-    end
   end
 end
 

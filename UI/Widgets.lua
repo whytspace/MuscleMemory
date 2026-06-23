@@ -135,6 +135,18 @@ function Widgets.Hairline(parent, horizontal)
   return line
 end
 
+-- Clear a retained host before rebuilding its contents. WoW frames are pooled by
+-- the client rather than freed, so callers use this only inside retained tab
+-- frames; heavyweight children such as scroll lists and grids keep their own
+-- pools and reattach during the rebuild.
+function Widgets.ClearChildren(parent)
+  for _, child in ipairs({ parent:GetChildren() }) do
+    child:Hide()
+    child:ClearAllPoints()
+    child:SetParent(nil)
+  end
+end
+
 -- A vertical groove separator (dark line + light highlight) for splitting the
 -- shared content inset into panels. Anchor its TOP/BOTTOM yourself.
 function Widgets.VGroove(parent)

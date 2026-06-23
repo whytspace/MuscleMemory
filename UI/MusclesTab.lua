@@ -750,7 +750,7 @@ end
 
 -- Assembly -------------------------------------------------------------------
 
-function MusclesTab:Build(parent)
+function MusclesTab:BuildContent(parent)
   local muscleId = MM.DB:GetSelectedMuscleId()
   local muscle = MM.DB:GetMuscle(muscleId)
 
@@ -783,4 +783,17 @@ function MusclesTab:Build(parent)
   else
     self:BuildGrid(center, muscleId, muscle)
   end
+end
+
+function MusclesTab:Build(parent)
+  self.parent = parent
+  self:Refresh()
+end
+
+function MusclesTab:Refresh()
+  if not self.parent then
+    return
+  end
+  Widgets.ClearChildren(self.parent)
+  self:BuildContent(self.parent)
 end
