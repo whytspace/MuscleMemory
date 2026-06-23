@@ -1,21 +1,20 @@
 local ADDON_NAME, MM = ...
 
 -- The About tab: logo, name, tagline, version/author pulled from the .toc, the
--- two-paragraph pitch, and a copyable issue-tracker link.
+-- two-paragraph pitch, and a copyable link to the project page.
 local AboutTab = {}
 MM.ui.AboutTab = AboutTab
 
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local GITHUB_URL = "https://github.com/whytspace/MuscleMemory"
-
-local function metadata(key, fallback)
-  if C_AddOns and C_AddOns.GetAddOnMetadata then
-    return C_AddOns.GetAddOnMetadata(ADDON_NAME, key) or fallback
-  end
-  return fallback
+-- Read straight from our own .toc; the fields are guaranteed present, so a
+-- missing one should fail loudly rather than show a fake value.
+local function metadata(key)
+  return C_AddOns.GetAddOnMetadata(ADDON_NAME, key)
 end
+
+local GITHUB_URL = metadata("X-Website")
 
 function AboutTab:Build(parent)
   local column = CreateFrame("Frame", nil, parent)
@@ -34,11 +33,8 @@ function AboutTab:Build(parent)
   local tagline = Widgets.Label(column, "GameFontHighlight", "Bind buttons by purpose, not just spell.", colors.goldDim)
   tagline:SetPoint("TOP", title, "BOTTOM", 0, -8)
 
-  local meta = Widgets.Label(
-    column,
-    "GameFontDisableSmall",
-    "v" .. metadata("Version", "0.1.0") .. "  \194\183  by " .. metadata("Author", "whytspace")
-  )
+  local meta =
+    Widgets.Label(column, "GameFontDisableSmall", "v" .. metadata("Version") .. "  \194\183  by " .. metadata("Author"))
   meta:SetPoint("TOP", tagline, "BOTTOM", 0, -10)
 
   local para1 = Widgets.Label(
@@ -63,7 +59,7 @@ function AboutTab:Build(parent)
   para2:SetSpacing(3)
   para2:SetTextColor(Widgets.unpackColor(colors.parchment))
 
-  local linkLabel = Widgets.Label(column, "GameFontDisableSmall", "Report an issue (copy the link):")
+  local linkLabel = Widgets.Label(column, "GameFontDisableSmall", "Project page (copy the link):")
   linkLabel:SetPoint("TOP", para2, "BOTTOM", 0, -26)
 
   local link = CreateFrame("EditBox", nil, column, "InputBoxTemplate")
