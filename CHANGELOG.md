@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Show the Muscle Memory logo in WoW's add-ons list.
+
 ## 0.1.1 - 2026-06-23
 
 - Release under the MIT License.

@@ -3,6 +3,7 @@
 ## Notes: Bind buttons by purpose, not just spells.
 ## Author: whytspace
 ## Version: 0.1.1
+## IconTexture: Interface\AddOns\MuscleMemory\Assets\logo
 ## X-Website: https://github.com/whytspace/MuscleMemory/
 ## SavedVariables: MuscleMemoryDB
 
