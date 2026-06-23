@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.1.2 - 2026-06-23
+
 - Show the Muscle Memory logo in WoW's add-ons list.
 - Recognize placeholder spells (such as "Command Pet" becoming "Primal Rage"), so they are not re-applied continuously.
 
