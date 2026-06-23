@@ -50,16 +50,19 @@ local resolvers = {
 
   item = function(assignment, options)
     local info = MM.Items.GetInfo(assignment.id)
-    if options.requireAvailable and not MM.Items.IsOwned(assignment.id) then
+    local available = MM.Items.IsOwned(assignment.id)
+    if options.requireAvailable and not available then
       return nil, "item not owned"
     end
-    if not (info or MM.Items.IsOwned(assignment.id)) then
+    if not (info or available) then
       return nil, "item not found"
     end
     return {
       kind = "item",
       id = assignment.id,
       label = info and info.name or ("item " .. tostring(assignment.id)),
+      icon = info and info.icon,
+      pickupAvailable = available,
     }
   end,
 
@@ -73,31 +76,33 @@ local resolvers = {
 
   mount = function(assignment, options)
     local info = MM.Mounts.GetInfo(assignment.id)
-    if options.requireAvailable and not MM.Mounts.IsKnown(assignment.id) then
+    local available = MM.Mounts.IsKnown(assignment.id)
+    if options.requireAvailable and not available then
       return nil, "mount not known"
     end
     if not info then
       return nil, "mount not found"
     end
-    return { kind = "mount", id = assignment.id, label = info.name, icon = info.icon }
+    return { kind = "mount", id = assignment.id, label = info.name, icon = info.icon, pickupAvailable = available }
   end,
 
   equipmentset = function(assignment)
     if not MM.EquipmentSets.Exists(assignment.name) then
       return nil, "equipment set not found"
     end
-    return { kind = "equipmentset", name = assignment.name, label = assignment.name }
+    return { kind = "equipmentset", name = assignment.name, label = assignment.name, pickupAvailable = true }
   end,
 
   battlepet = function(assignment, options)
     local info = MM.BattlePets.GetInfo(assignment.id)
-    if options.requireAvailable and not MM.BattlePets.IsKnown(assignment.id) then
+    local available = MM.BattlePets.IsKnown(assignment.id)
+    if options.requireAvailable and not available then
       return nil, "battle pet not owned"
     end
     if not info then
       return nil, "battle pet not found"
     end
-    return { kind = "battlepet", id = assignment.id, label = info.name, icon = info.icon }
+    return { kind = "battlepet", id = assignment.id, label = info.name, icon = info.icon, pickupAvailable = available }
   end,
 
   flyout = function(assignment, options)

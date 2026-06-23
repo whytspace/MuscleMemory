@@ -48,6 +48,7 @@ describe("BattlePets", function()
       assert.equals("battlepet", resolved.kind)
       assert.equals("Mechanical Squirrel", resolved.label)
       assert.equals(132559, resolved.icon)
+      assert.is_true(resolved.pickupAvailable)
     end)
 
     it("refuses an unowned pet when availability is required", function()
