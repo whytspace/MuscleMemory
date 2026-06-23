@@ -4,6 +4,8 @@ All notable user-facing changes should be recorded here.
 
 ## Unreleased
 
+- Release under the MIT License.
+
 ## 0.1.0 - 2026-06-23
 
 - Initial public launch track for Muscle Memory.

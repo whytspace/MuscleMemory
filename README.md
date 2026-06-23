@@ -49,3 +49,7 @@ type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and how the add-on is structured.
+
+## License
+
+Released under the [MIT License](LICENSE).
