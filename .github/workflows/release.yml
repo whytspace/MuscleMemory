@@ -23,3 +23,22 @@ jobs:
           # @v2's release.sh reads GITHUB_OAUTH / CF_API_KEY; the *_TOKEN names are master-only.
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
           CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
+
+      # The packager sets the release body to the whole CHANGELOG.md; replace it with just
+      # this tag's section so the release shows only the latest changes.
+      - name: Trim release notes to the latest version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          notes="$(awk -v v="$ver" '
+            $0 ~ "^## " v "( |$)" { grab=1; next }
+            grab && /^## / { exit }
+            grab { print }
+          ' CHANGELOG.md)"
+          if [ -n "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+            gh release edit "$GITHUB_REF_NAME" --notes "$notes"
+            echo "Set $GITHUB_REF_NAME notes to the $ver section."
+          else
+            echo "No CHANGELOG section for $ver; leaving notes as-is."
+          fi

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable user-facing changes should be recorded here.
+All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
