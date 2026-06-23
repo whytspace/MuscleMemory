@@ -4,6 +4,8 @@ All notable user-facing changes should be recorded here.
 
 ## Unreleased
 
+## 0.1.0 - 2026-06-23
+
 - Initial public launch track for Muscle Memory.
 - Capture and apply action-bar muscles across characters.
 - Resolve purpose-based memories such as interrupt, taunt, lust, defensives, movement, mounts, items, macros, battle pets, and equipment sets.
