@@ -16,4 +16,6 @@ ignore:
   - spec
   - stylua.toml
   - luacov.report.out
+  - design
+  - docs
   - Assets/*.png
