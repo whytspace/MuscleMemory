@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Recognize the Single Button Assistant when capturing a slot, so it is saved and applied as the assistant itself instead of the ability it currently recommends.
+
 ## 0.1.2 - 2026-06-23
 
 - Show the Muscle Memory logo in WoW's add-ons list.

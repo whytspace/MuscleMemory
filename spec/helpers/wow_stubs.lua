@@ -60,6 +60,8 @@ function Stubs.new()
 
     cursor = nil, -- { type = , id = } or nil
     printed = {}, -- captured MM:Print / print output
+
+    assistedCombat = { spell = nil, available = false }, -- Single Button Assistant
   }
 
   local self = setmetatable({ world = world }, Stubs)
@@ -125,15 +127,36 @@ function Stubs.new()
       return spell ~= nil and spell.known == true
     end,
     C_ActionBar = {
+      -- Real WoW returns nil (not an empty table) when the spell is on no bar,
+      -- and for spells it never indexes such as the Single Button Assistant.
       FindSpellActionButtons = function(spellId)
         local slots = {}
         for slot, action in pairs(world.slots) do
-          if action.actionType == "spell" and (action.id == spellId or action.baseSpellId == spellId) then
+          if
+            not action.assistedCombat
+            and action.actionType == "spell"
+            and (action.id == spellId or action.baseSpellId == spellId)
+          then
             slots[#slots + 1] = slot
           end
         end
+        if #slots == 0 then
+          return nil
+        end
         table.sort(slots)
         return slots
+      end,
+      IsAssistedCombatAction = function(slot)
+        local action = world.slots[slot]
+        return action ~= nil and action.assistedCombat == true
+      end,
+    },
+    C_AssistedCombat = {
+      GetActionSpell = function()
+        return world.assistedCombat.spell
+      end,
+      IsAvailable = function()
+        return world.assistedCombat.available == true
       end,
     },
 
@@ -447,6 +470,17 @@ end
 
 function Stubs:setSlot(slot, action)
   self.world.slots[slot] = action
+  return self
+end
+
+-- Configure the Single Button Assistant: its stable action spell id and whether
+-- the assisted-combat feature is currently available.
+function Stubs:setAssistedCombat(opts)
+  opts = opts or {}
+  self.world.assistedCombat = {
+    spell = opts.spell,
+    available = opts.available ~= false,
+  }
   return self
 end
 

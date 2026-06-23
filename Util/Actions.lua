@@ -391,6 +391,12 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "spell" then
+    -- The Single Button Assistant is a spell, but the bar never reports it via
+    -- FindSpellActionButtons (it shows the recommended ability instead), so match
+    -- it with the dedicated assisted-combat query.
+    if MM.Spells.IsAssistedCombatActionSpell(target.id) then
+      return MM.Spells.IsAssistedCombatSlot(slot)
+    end
     -- Ask the action bar for the canonical spell id: FindSpellActionButtons
     -- accepts base spell ids when the placed button currently shows an override.
     if info.actionType == "spell" and MM.Spells.IsOnActionSlot(target.id, slot) then

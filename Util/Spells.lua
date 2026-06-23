@@ -65,12 +65,58 @@ function Spells.IsOnActionSlot(spellId, slot)
     return false
   end
 
-  for _, actionSlot in ipairs(C_ActionBar.FindSpellActionButtons(spellId)) do
+  if not (C_ActionBar and C_ActionBar.FindSpellActionButtons) then
+    return false
+  end
+
+  -- Returns nil (not an empty table) when the spell isn't on any bar, and for
+  -- spells it doesn't index at all (e.g. the Single Button Assistant action).
+  local slots = C_ActionBar.FindSpellActionButtons(spellId)
+  if type(slots) ~= "table" then
+    return false
+  end
+
+  for _, actionSlot in ipairs(slots) do
     if actionSlot == slot then
       return true
     end
   end
 
+  return false
+end
+
+-- The Single Button Assistant ("Assisted Combat") is a real, castable spell
+-- whose id stays stable while its icon/tooltip track the recommended ability.
+-- The bar doesn't expose it through FindSpellActionButtons and IsPlayerSpell
+-- doesn't report it, so it needs the dedicated C_AssistedCombat queries.
+function Spells.GetAssistedCombatActionSpell()
+  if C_AssistedCombat and C_AssistedCombat.GetActionSpell then
+    return C_AssistedCombat.GetActionSpell()
+  end
+  return nil
+end
+
+function Spells.IsAssistedCombatActionSpell(spellId)
+  if not spellId then
+    return false
+  end
+  return Spells.GetAssistedCombatActionSpell() == spellId
+end
+
+function Spells.IsAssistedCombatAvailable()
+  if C_AssistedCombat and C_AssistedCombat.IsAvailable then
+    return C_AssistedCombat.IsAvailable() == true
+  end
+  return false
+end
+
+function Spells.IsAssistedCombatSlot(slot)
+  if not slot then
+    return false
+  end
+  if C_ActionBar and C_ActionBar.IsAssistedCombatAction then
+    return C_ActionBar.IsAssistedCombatAction(slot) == true
+  end
   return false
 end
 

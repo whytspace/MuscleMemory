@@ -32,7 +32,14 @@ local resolvers = {
 
   spell = function(assignment, options)
     local info = MM.Spells.GetInfo(assignment.id)
-    local available = MM.Spells.IsKnown(assignment.id)
+    -- The Single Button Assistant isn't a "known" spell; gate it on whether the
+    -- assisted-combat feature is available instead.
+    local available
+    if MM.Spells.IsAssistedCombatActionSpell(assignment.id) then
+      available = MM.Spells.IsAssistedCombatAvailable()
+    else
+      available = MM.Spells.IsKnown(assignment.id)
+    end
     if options.requireAvailable and not available then
       return nil, "spell not known"
     end

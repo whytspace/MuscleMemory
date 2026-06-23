@@ -140,6 +140,15 @@ function Capture:FromSlot(slot)
     return { type = "empty" }
   end
 
+  -- The Single Button Assistant reports its recommended ability through
+  -- GetActionInfo, not its own identity, so capture its stable action spell.
+  if MM.Spells.IsAssistedCombatSlot(slot) then
+    local spellId = MM.Spells.GetAssistedCombatActionSpell()
+    if spellId then
+      return { type = "spell", id = spellId }
+    end
+  end
+
   local info = MM.Actions.GetInfo(slot)
   if not info or not info.actionType then
     return nil, "slot has no capturable action"

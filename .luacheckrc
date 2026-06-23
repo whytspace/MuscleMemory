@@ -27,6 +27,7 @@ read_globals = {
   "ADDON_LOADED",
   "C_ActionBar",
   "C_AddOns",
+  "C_AssistedCombat",
   "C_EquipmentSet",
   "C_Item",
   "C_MountJournal",
