@@ -4,6 +4,8 @@ All notable user-facing changes should be recorded here.
 
 ## Unreleased
 
+## 0.1.1 - 2026-06-23
+
 - Release under the MIT License.
 
 ## 0.1.0 - 2026-06-23
