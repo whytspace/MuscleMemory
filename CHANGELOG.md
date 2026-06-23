@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.1.3 - 2026-06-23
+
 - Recognize the Single Button Assistant when capturing a slot, so it is saved and applied as the assistant itself instead of the ability it currently recommends.
 
 ## 0.1.2 - 2026-06-23
