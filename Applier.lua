@@ -312,34 +312,41 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   local applied = 0
-  local unchanged = 0
+  local skipped = 0
+  local unresolved = 0
   local failed = 0
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
     if entry then
-      local ok, applyReason = self:ApplyEntry(entry)
-      if ok then
-        if entry.resolved then
-          applied = applied + 1
-        else
-          unchanged = unchanged + 1
-          MM:Warn(
-            string.format(
-              "%s unresolved: %s. %s.",
-              MM.Actions.GetSlotLabel(entry.slot),
-              entry.unresolvedReason,
-              entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
-            )
-          )
-        end
+      if entry.resolved and MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
+        skipped = skipped + 1
       else
-        failed = failed + 1
-        MM:Warn(string.format("%s failed: %s", MM.Actions.GetSlotLabel(entry.slot), applyReason))
+        local ok, applyReason = self:ApplyEntry(entry)
+        if ok then
+          if entry.resolved then
+            applied = applied + 1
+          else
+            unresolved = unresolved + 1
+            MM:Warn(
+              string.format(
+                "%s unresolved: %s. %s.",
+                MM.Actions.GetSlotLabel(entry.slot),
+                entry.unresolvedReason,
+                entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
+              )
+            )
+          end
+        else
+          failed = failed + 1
+          MM:Warn(string.format("%s failed: %s", MM.Actions.GetSlotLabel(entry.slot), applyReason))
+        end
       end
     end
   end
 
-  MM:Print(string.format("applied %d slots, left %d unresolved, failed %d.", applied, unchanged, failed))
+  MM:Print(
+    string.format("applied %d slots, skipped %d unchanged, left %d unresolved, failed %d.", applied, skipped, unresolved, failed)
+  )
   return failed == 0
 end

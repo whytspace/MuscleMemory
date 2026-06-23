@@ -145,11 +145,28 @@ describe("Applier", function()
   end)
 
   describe("ApplyProfile", function()
+    local function printedMatches(world, pattern)
+      for _, line in ipairs(world.printed) do
+        if line:match(pattern) then
+          return true
+        end
+      end
+      return false
+    end
+
     it("applies a resolved spell into an empty slot", function()
       MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
       assert.is_true(MM.Applier:ApplyProfile())
       assert.equals("spell", stubs.world.slots[10].actionType)
       assert.equals(1766, stubs.world.slots[10].id)
+    end)
+
+    it("skips a resolved slot that already matches", function()
+      MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
+      stubs:setSlot(10, { actionType = "spell", id = 1766 })
+
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.is_true(printedMatches(stubs.world, "applied 0 slots, skipped 1 unchanged"))
     end)
 
     it("restores a mount via its summon spell and stays idempotent", function()
