@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.1.4 - 2026-06-23
+
 - Muscle Memory is now published on CurseForge.
 
 ## 0.1.3 - 2026-06-23
