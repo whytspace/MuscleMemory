@@ -346,7 +346,13 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   MM:Print(
-    string.format("applied %d slots, skipped %d unchanged, left %d unresolved, failed %d.", applied, skipped, unresolved, failed)
+    string.format(
+      "applied %d slots, skipped %d unchanged, left %d unresolved, failed %d.",
+      applied,
+      skipped,
+      unresolved,
+      failed
+    )
   )
   return failed == 0
 end
