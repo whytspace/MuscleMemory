@@ -84,7 +84,7 @@ MM.SpellIds = {
   TORMENT = 185245,
 
   -- Movement
-  DEATH_CHARGE = 444347, -- Verify current Retail spell ID before release.
+  DEATH_CHARGE = 444347,
   HEROIC_LEAP = 6544,
   FEL_RUSH = 195072,
   ROLL = 109132,
