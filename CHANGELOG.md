@@ -1,0 +1,11 @@
+# Changelog
+
+All notable user-facing changes should be recorded here.
+
+## Unreleased
+
+- Initial public launch track for Muscle Memory.
+- Capture and apply action-bar muscles across characters.
+- Resolve purpose-based memories such as interrupt, taunt, lust, defensives, movement, mounts, items, macros, battle pets, and equipment sets.
+- Manage profiles, muscles, memories, fallback behavior, and condition-aware candidates through slash commands and the in-game UI.
+- Package releases through a maintainer script and the WoW addon packager workflow.

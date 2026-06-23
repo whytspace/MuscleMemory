@@ -16,6 +16,36 @@ WoW embeds a Lua 5.1-family runtime with Blizzard-specific globals, so Luacheck 
 through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck .` and
 `devc stylua .` before committing — both should be clean.
 
+## Changelog
+
+Update `CHANGELOG.md` in the same commit when a change is relevant to players, release notes, or
+addon-manager metadata. Pure internal cleanup, tests, formatting, and development-only chores can
+skip it.
+
+## Releases
+
+Cut releases from a clean `main` branch:
+
+```sh
+scripts/release.sh patch    # X.Y.Z -> X.Y.(Z+1)
+scripts/release.sh minor    # X.Y.Z -> X.(Y+1).0
+scripts/release.sh major    # X.Y.Z -> (X+1).0.0
+```
+
+The script updates `MuscleMemory.toc`, moves the `CHANGELOG.md` Unreleased notes under the release
+date, runs the release checks, creates a `chore: release vX.Y.Z` commit, and creates an annotated
+tag. It does not push. Publish the release with:
+
+```sh
+git push origin main
+git push origin vX.Y.Z
+```
+
+Pushing the tag runs the packaging workflow. The workflow uses BigWigsMods/packager, `.pkgmeta`,
+and `CHANGELOG.md` to build the zip and publish a GitHub release. After the CurseForge project
+exists, add its project ID to `MuscleMemory.toc` and set the `CF_API_TOKEN` repository secret to
+upload there from the same workflow.
+
 ## UI conventions
 
 Build the UI with current WoW UI systems, not their legacy equivalents — the add-on targets

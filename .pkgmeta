@@ -1,0 +1,19 @@
+package-as: MuscleMemory
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - .devcontainer
+  - .github
+  - .gitignore
+  - .luacheckrc
+  - .release
+  - CONTRIBUTING.md
+  - README.md
+  - scripts
+  - spec
+  - stylua.toml
+  - luacov.report.out
+  - Assets/*.png

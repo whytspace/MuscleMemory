@@ -43,11 +43,20 @@ function DB:Initialize()
   -- Seed starter content only into a brand-new DB; structural defaults always
   -- merge. This keeps a deleted Core/profile from resurrecting on the next load.
   local fresh = MuscleMemoryDB == nil
+  local savedSchemaVersion = MuscleMemoryDB and tonumber(MuscleMemoryDB.schemaVersion) or 0
   MuscleMemoryDB = MM.Tables.MergeDefaults(MuscleMemoryDB, MM.defaults)
+  self:MigrateSchema(MuscleMemoryDB, savedSchemaVersion)
   if fresh then
     MuscleMemoryDB = MM.Tables.MergeDefaults(MuscleMemoryDB, MM.seed)
   end
   self.root = MuscleMemoryDB
+end
+
+function DB:MigrateSchema(root, savedSchemaVersion)
+  if savedSchemaVersion < MM.SCHEMA_VERSION then
+    -- Version 1 only stamps existing saves; future migrations belong here.
+    root.schemaVersion = MM.SCHEMA_VERSION
+  end
 end
 
 function DB:GetRoot()

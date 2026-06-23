@@ -9,10 +9,34 @@ describe("DB", function()
   describe("Initialize", function()
     it("merges defaults into an empty saved-variables table", function()
       local root = MM.DB:GetRoot()
+      assert.equals(1, root.schemaVersion)
       assert.equals("keep", root.fallback)
       assert.is_table(root.profiles.Default)
       assert.is_table(root.muscles.Core)
       assert.same({}, root.customMemories)
+    end)
+
+    it("stamps existing saved variables with the current schema version", function()
+      local loadedMM, _, env = addon.load()
+      env.MuscleMemoryDB = {
+        fallback = "clear",
+        profile = "Solo",
+        profiles = {
+          Solo = { name = "Solo", activeMuscles = {} },
+        },
+        muscles = {
+          Solo = { name = "Solo", slots = {} },
+        },
+        customMemories = {},
+        characterState = {},
+      }
+
+      loadedMM.DB:Initialize()
+      local root = loadedMM.DB:GetRoot()
+
+      assert.equals(1, root.schemaVersion)
+      assert.equals("clear", root.fallback)
+      assert.is_nil(root.profiles.Default)
     end)
   end)
 
