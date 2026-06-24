@@ -14,7 +14,7 @@ Slots can also point to purpose-based **memories** such as Kick / Interrupt, Tau
 Each character gets whatever ability it actually has for that purpose, so one muscle works across
 many classes.
 
-![Muscle Memory muscle grid](docs/images/muscles-overview.png)
+![Muscle Memory muscle grid](docs/images/muscles.png)
 
 ## Getting started
 
@@ -35,9 +35,9 @@ type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 
 ## Screenshots
 
-![Muscle Memory muscle detail](docs/images/muscles-detail.png)
-
 ![Muscle Memory memories tab](docs/images/memories.png)
+
+![Muscle Memory profiles tab](docs/images/profiles.png)
 
 ![Muscle Memory apply prompt](docs/images/apply-prompt.png)
 
