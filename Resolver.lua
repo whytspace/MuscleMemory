@@ -57,9 +57,10 @@ local resolvers = {
 
   item = function(assignment, options)
     local info = MM.Items.GetInfo(assignment.id)
-    local available = MM.Items.IsOwned(assignment.id)
+    local owned = MM.Items.IsOwned(assignment.id)
+    local available = owned and MM.Items.IsUsable(assignment.id)
     if options.requireAvailable and not available then
-      return nil, "item not owned"
+      return nil, owned and "item not usable" or "item not owned"
     end
     if not (info or available) then
       return nil, "item not found"

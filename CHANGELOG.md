@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Added a predefined "Battle Rez" memory covering the Druid, Death Knight, Warlock, and Paladin combat resurrection spells plus the engineering battle-rez items (Emergency Soul Link, Convincingly Realistic Jumper Cables, and earlier expansions'), resolving to whichever you can currently use.
+- Item memories now resolve only to items you can actually use: those out of their level range, requiring a profession you lack, or sitting in the bank are no longer treated as available.
 - Added a per-profile "When changes are detected" setting that chooses how the add-on reacts when an event re-scan finds changes: do nothing, print a message, show the popup (the default), or apply automatically.
 - Fixed a spurious "changes are available" prompt at login: a slot that cannot currently be restored (such as a temporarily unavailable pet ability) no longer triggers the prompt once the game has finished loading.
 

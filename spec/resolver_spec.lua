@@ -73,6 +73,20 @@ describe("Resolver", function()
       assert.equals("item not owned", reason)
     end)
 
+    it("refuses an owned but unusable item (out of level range / wrong profession)", function()
+      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, usable = false })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "item", id = 40772 }, { requireAvailable = true })
+      assert.is_nil(resolved)
+      assert.equals("item not usable", reason)
+    end)
+
+    it("marks an owned but unusable item as unavailable for pickup", function()
+      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, usable = false })
+      local resolved = MM.Resolver:ResolveAction({ type = "item", id = 40772 })
+      assert.equals("item", resolved.kind)
+      assert.is_false(resolved.pickupAvailable)
+    end)
+
     it("resolves an uncollected mount as unavailable", function()
       stubs:setMount(219, { name = "Strider", icon = 132248, collected = false })
       local resolved = MM.Resolver:ResolveAction({ type = "mount", id = 219 })
@@ -100,9 +114,10 @@ describe("Resolver", function()
   end)
 
   describe("memory", function()
-    local S
+    local S, I
     before_each(function()
       S = MM.SpellIds
+      I = MM.ItemIds
     end)
 
     it("resolves to the first usable candidate", function()
@@ -112,6 +127,32 @@ describe("Resolver", function()
       assert.equals("spell", resolved.kind)
       assert.equals(S.PUMMEL, resolved.id)
       assert.equals("Kick / Interrupt", resolved.memory.name)
+    end)
+
+    it("falls through to an owned, usable engineering item for a non-rez class", function()
+      stubs.world.class = "MAGE"
+      stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
+      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      assert.equals("item", resolved.kind)
+      assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
+      assert.equals("Battle Rez", resolved.memory.name)
+    end)
+
+    it("skips a rez item the player owns but cannot use (out of level range / no engineering)", function()
+      stubs.world.class = "MAGE"
+      stubs:setItem(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q3, { name = "Jumper Cables", count = 1, usable = false })
+      stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
+      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
+    end)
+
+    it("skips a level-capped rez item above its max level (levelMax condition)", function()
+      stubs.world.class = "MAGE"
+      stubs.world.level = 80 -- above the Reanimator's level-60 cap
+      stubs:setItem(I.DISPOSABLE_SPECTROPHASIC_REANIMATOR, { name = "Reanimator", count = 1, usable = true })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      assert.is_nil(resolved)
+      assert.matches("no matching candidate", reason)
     end)
 
     it("skips candidates whose class requirement does not match", function()

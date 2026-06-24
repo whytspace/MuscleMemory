@@ -40,8 +40,10 @@ function Items.GetCount(itemId)
     return 0
   end
 
+  -- Bags only: bank and reagent-bank items can't be used or dragged to a bar
+  -- until withdrawn, so they don't count as available.
   if C_Item and C_Item.GetItemCount then
-    return C_Item.GetItemCount(itemId, false, false, true) or 0
+    return C_Item.GetItemCount(itemId, false, false, false) or 0
   end
 
   if GetItemCount then
@@ -67,6 +69,64 @@ end
 
 function Items.IsOwned(itemId)
   return Items.GetCount(itemId) > 0 or Items.IsEquipped(itemId) or Items.IsToy(itemId)
+end
+
+-- An unmet requirement (wrong level, class, or profession) renders as a red line
+-- in the item tooltip. This is the standard red the client uses for those lines.
+local function isRequirementRed(r, g, b)
+  return r ~= nil and r > 0.9 and g < 0.2 and b < 0.2
+end
+
+-- Scan the item's tooltip for an unmet (red) requirement line. Returns true if
+-- one is found, false if the tooltip is clean, or nil if the tooltip data isn't
+-- available (no C_TooltipInfo, or the item isn't cached yet).
+local function tooltipHasUnmetRequirement(itemId)
+  if not (C_TooltipInfo and C_TooltipInfo.GetItemByID) then
+    return nil
+  end
+
+  local data = C_TooltipInfo.GetItemByID(itemId)
+  if not data or not data.lines then
+    return nil
+  end
+
+  for _, line in ipairs(data.lines) do
+    if TooltipUtil and TooltipUtil.SurfaceArgs then
+      TooltipUtil.SurfaceArgs(line)
+    end
+    local color = line.leftColor
+    if color and color.GetRGB and isRequirementRed(color:GetRGB()) then
+      return true
+    end
+  end
+
+  return false
+end
+
+-- Whether the player currently meets the item's use requirements (level range,
+-- class, and required profession), so out-of-range items resolve correctly
+-- without custom conditions.
+--
+-- IsUsableItem only knows about level and class; it reports a profession-gated
+-- item (e.g. an engineering battle rez) as usable even on a character without the
+-- profession. So we trust IsUsableItem only to rule items out, and otherwise scan
+-- the tooltip, whose red requirement lines do reflect profession and level caps.
+function Items.IsUsable(itemId)
+  if not itemId then
+    return false
+  end
+
+  local usable
+  if C_Item and C_Item.IsUsableItem then
+    usable = C_Item.IsUsableItem(itemId)
+  elseif IsUsableItem then
+    usable = IsUsableItem(itemId)
+  end
+  if usable == false then
+    return false
+  end
+
+  return tooltipHasUnmetRequirement(itemId) ~= true
 end
 
 function Items.Pickup(itemId)

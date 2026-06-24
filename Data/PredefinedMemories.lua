@@ -1,5 +1,6 @@
 local ADDON_NAME, MM = ...
 local S = MM.SpellIds
+local I = MM.ItemIds
 
 local function Spell(spellId)
   return {
@@ -12,6 +13,18 @@ local function ClassSpell(spellId, classes)
   local spell = Spell(spellId)
   spell.conditions = { classes = classes }
   return spell
+end
+
+-- Required profession (e.g. engineering) and minimum level are enforced by the
+-- resolver's IsUsable check. A maximum usable level has no WoW API and isn't
+-- reliably in the tooltip, so items with a level cap pass it here as a levelMax
+-- condition (e.g. { levelMax = 60 }).
+local function Item(itemId, conditions)
+  return {
+    type = "item",
+    id = itemId,
+    conditions = conditions,
+  }
 end
 
 MM.PredefinedMemories = {
@@ -101,6 +114,24 @@ MM.PredefinedMemories = {
       Spell(S.SCATTER_SHOT),
       Spell(S.MORTAL_COIL),
       Spell(S.HOWL_OF_TERROR),
+    },
+  },
+  battle_rez = {
+    name = "Battle Rez",
+    candidates = {
+      Spell(S.REBIRTH),
+      Spell(S.RAISE_ALLY),
+      Spell(S.SOULSTONE),
+      Spell(S.INTERCESSION),
+      -- Items ordered low level -> high level, and low quality -> high quality
+      -- within an item.
+      Item(I.UNSTABLE_TEMPORAL_TIME_SHIFTER, { levelMax = 50 }),
+      Item(I.DISPOSABLE_SPECTROPHASIC_REANIMATOR, { levelMax = 60 }),
+      Item(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q1, { levelMax = 80 }),
+      Item(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q2, { levelMax = 80 }),
+      Item(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q3, { levelMax = 80 }),
+      Item(I.EMERGENCY_SOUL_LINK_Q1, { levelMax = 90 }),
+      Item(I.EMERGENCY_SOUL_LINK_Q2, { levelMax = 90 }),
     },
   },
   taunt = {

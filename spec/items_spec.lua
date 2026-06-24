@@ -49,13 +49,39 @@ describe("Items", function()
     end)
 
     it("is true for a learned toy with a zero bag count", function()
-      stubs:setItem(119210, { count = 0, equipped = false, isToy = true })
+      stubs:setItem(119210, { count = 0, isToy = true })
       assert.is_true(MM.Items.IsOwned(119210))
     end)
 
-    it("is false when neither owned, equipped nor a known toy", function()
-      stubs:setItem(6948, { count = 0, equipped = false })
+    it("is false when neither in bags, equipped nor a known toy", function()
+      stubs:setItem(6948, { count = 0 })
       assert.is_false(MM.Items.IsOwned(6948))
+    end)
+  end)
+
+  describe("IsUsable", function()
+    it("is false for a nil id", function()
+      assert.is_false(MM.Items.IsUsable(nil))
+    end)
+
+    it("is true when the item meets its use requirements", function()
+      stubs:setItem(6948, { usable = true })
+      assert.is_true(MM.Items.IsUsable(6948))
+    end)
+
+    it("is false when out of level range or class (IsUsableItem says so)", function()
+      stubs:setItem(40772, { usable = false })
+      assert.is_false(MM.Items.IsUsable(40772))
+    end)
+
+    it("is false for a profession the player lacks, despite IsUsableItem (the red tooltip line)", function()
+      -- IsUsableItem ignores profession requirements, so this is the case it misses.
+      stubs:setItem(184308, { usable = true, requirement = "Requires Engineering" })
+      assert.is_false(MM.Items.IsUsable(184308))
+    end)
+
+    it("treats an uncached item as usable", function()
+      assert.is_true(MM.Items.IsUsable(123))
     end)
   end)
 

@@ -173,8 +173,41 @@ function Stubs.new()
         local item = world.items[id]
         return item and item.count or 0
       end,
+      IsUsableItem = function(id)
+        local item = world.items[id]
+        if not item then
+          return nil
+        end
+        return item.usable
+      end,
       PickupItem = function(id)
         world.cursor = { type = "item", id = id }
+      end,
+    },
+    -- Structured tooltip data. An unmet requirement (item.requirement) surfaces as
+    -- a red left-colored line, mirroring how the client flags "Requires Engineering"
+    -- or a level cap the player fails.
+    TooltipUtil = {
+      SurfaceArgs = function() end,
+    },
+    C_TooltipInfo = {
+      GetItemByID = function(id)
+        local item = world.items[id]
+        if not item then
+          return nil
+        end
+        local lines = { { leftText = item.name } }
+        if item.requirement then
+          lines[#lines + 1] = {
+            leftText = item.requirement,
+            leftColor = {
+              GetRGB = function()
+                return 1, 0.125, 0.125
+              end,
+            },
+          }
+        end
+        return { lines = lines }
       end,
     },
     IsEquippedItem = function(id)
@@ -412,6 +445,8 @@ function Stubs:setItem(id, opts)
     count = opts.count or 0,
     equipped = opts.equipped == true,
     isToy = opts.isToy == true,
+    usable = opts.usable ~= false,
+    requirement = opts.requirement, -- e.g. "Requires Engineering"; shows as a red tooltip line
   }
   return self
 end
