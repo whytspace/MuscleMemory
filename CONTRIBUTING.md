@@ -101,27 +101,27 @@ What's tested and what isn't:
 
 ## Data model
 
-- **Profile** — an ordered selection of which muscles are active. A profile is a lightweight
-  selection over muscles; the slot content lives in the muscles. Profiles are account-wide; each
-  character either inherits the account-default profile or picks its own (`/mm profile select`),
-  stored under `characterState`.
-- **Muscle** — maps action-bar slots to assignments. Global and reusable across profiles. The
-  active muscles are stacked in order, and for each slot the first muscle that assigns it wins —
-  hence "muscle".
+- **Profile** — a complete, self-contained data set: its own muscles, memories, and `fallback`
+  setting. Switching profiles swaps the whole set. The profile list is account-wide; `root.profile`
+  is the global default and each character may override it with its own choice (the Profiles tab or
+  `/mm profile select`), stored under `characterState`. `/mm profile default` sets the global default.
+- **Muscle** — maps action-bar slots to assignments; belongs to a profile (not shared between them).
+  A profile's `muscleOrder` stacks its muscles, and for each slot the first enabled muscle that
+  assigns it wins — hence "muscle". Each muscle carries its own `enabled` flag.
 - **Assignment** — one of `ignore`, `empty`, `spell`, `item`, `macro`, `mount`, `equipmentset`,
   or `memory`.
 - **Memory** — an ordered list of candidates; the first one the current character can use
   wins (e.g. the Interrupt memory resolves to Kick, Pummel, Counterspell, … per class).
 
-Standard memories are immutable add-on data. Custom memories and muscles live in SavedVariables
-(`MuscleMemoryDB`).
+Predefined memories are immutable add-on data. A profile's muscles, memories and fallback live in
+SavedVariables (`MuscleMemoryDB`) under that profile.
 
 ## Applying
 
 The applier refuses to run during combat lockdown or while the cursor is holding something. When a
-managed slot can't resolve an assignment, the global `fallback` setting (`keep` or `clear`, set via
-`/mm config fallback`) decides whether to leave the existing action or clear the slot.
+managed slot can't resolve an assignment, the active profile's `fallback` setting (`keep` or `clear`,
+set via `/mm config fallback`) decides whether to leave the existing action or clear the slot.
 
-A few events (spec change, spells changed, leaving combat) re-evaluate the active profile. If
-applying it would change a slot, `Events` raises a popup offering to apply — nothing is stored or
-auto-applied; "pending" is just computed live from the current bars.
+A few events (spec change, spells changed, leaving combat) — and switching the active profile —
+re-evaluate it. If applying it would change a slot, `Events` raises a popup offering to apply —
+nothing is stored or auto-applied; "pending" is just computed live from the current bars.
