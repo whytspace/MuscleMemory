@@ -28,8 +28,8 @@ Everything in the window is also a slash command. The commands form a self-docum
 type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 
 - `/mm` — open the window
-- `/mm apply [profile]` — restore your bars from the active (or named) profile
-- `/mm preview [profile]` — show what Apply would change, without touching your bars
+- `/mm apply` — restore your bars from the active profile
+- `/mm preview` — show what Apply would change, without touching your bars
 - `/mm muscle capture [slot|all]` — capture a live bar slot, or all of them, into the selected muscle
 - `/mm profile` · `/mm muscle` · `/mm memory` — manage profiles, muscles, and memories
 

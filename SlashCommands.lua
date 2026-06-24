@@ -354,12 +354,12 @@ end
 
 -- Top level ----------------------------------------------------------------
 
-local function preview(args)
-  MM.Applier:PreviewProfile(args[1] or MM.DB:GetActiveProfileId())
+local function preview()
+  MM.Applier:PreviewProfile()
 end
 
-local function apply(args)
-  MM.Applier:ApplyProfile(args[1] or MM.DB:GetActiveProfileId())
+local function apply()
+  MM.Applier:ApplyProfile()
 end
 
 local function configFallback(args)
@@ -433,8 +433,8 @@ local tree = {
         fallback = { desc = "what to do with an unresolved slot", args = "<keep|clear>", run = configFallback },
       },
     },
-    preview = { desc = "preview the active or named profile", args = "[profile]", run = preview },
-    apply = { desc = "apply the active or named profile", args = "[profile]", run = apply },
+    preview = { desc = "preview the active profile", run = preview },
+    apply = { desc = "apply the active profile", run = apply },
     debug = { desc = "toggle debug output", run = toggleDebug },
   },
 }
