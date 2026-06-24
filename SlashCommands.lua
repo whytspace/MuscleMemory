@@ -40,10 +40,10 @@ local function refresh()
 end
 
 local function memoryRef(id)
-  if id and MM.StandardMemories[id] then
-    return { source = "standard", id = id }
+  if id and MM.PredefinedMemories[id] then
+    return { source = "predefined", id = id }
   end
-  if id and MM.DB:GetCustomMemory(id) then
+  if id and MM.DB:Memories()[id] then
     return { source = "custom", id = id }
   end
   return nil
@@ -299,22 +299,22 @@ end
 -- Memories -------------------------------------------------------------------
 
 local function memoryList()
-  local standard = {}
-  for id, memory in pairs(MM.StandardMemories) do
-    standard[#standard + 1] = { id = id, name = memory.name or id }
+  local predefined = {}
+  for id, memory in pairs(MM.PredefinedMemories) do
+    predefined[#predefined + 1] = { id = id, name = memory.name or id }
   end
-  table.sort(standard, function(left, right)
+  table.sort(predefined, function(left, right)
     return left.id < right.id
   end)
 
-  MM:Print("standard memories (id — name):")
-  for _, memory in ipairs(standard) do
+  MM:Print("predefined memories (id — name):")
+  for _, memory in ipairs(predefined) do
     MM:Print(string.format("  %s — %s", memory.id, memory.name))
   end
 
-  local custom = MM.DB:GetRoot().customMemories
+  local custom = MM.DB:Memories()
   if next(custom) then
-    MM:Print("custom memories:")
+    MM:Print("profile memories:")
     for id, memory in pairs(custom) do
       MM:Print(string.format("  %s — %s", id, memory.name or id))
     end
@@ -322,9 +322,9 @@ local function memoryList()
 end
 
 local function memoryCopy(args)
-  local key, reason = MM.DB:CopyStandardMemory(args[1], args[2])
+  local key, reason = MM.DB:CopyPredefinedMemory(args[1], args[2])
   if key then
-    MM:Print("copied standard memory " .. tostring(args[1]) .. " to custom memory " .. key .. ".")
+    MM:Print("copied predefined memory " .. tostring(args[1]) .. " to profile memory " .. key .. ".")
   else
     MM:Warn(reason or "could not copy memory")
   end

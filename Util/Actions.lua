@@ -206,7 +206,7 @@ function Actions.GetAssignmentLabel(assignment)
   end
 
   if assignment.type == "memory" then
-    local memory = MM.DB:GetMemory({ source = assignment.source, id = assignment.id })
+    local memory = MM.DB:ResolveMemory({ source = assignment.source, id = assignment.id })
     return memory and memory.name or ("Memory: " .. tostring(assignment.id))
   end
 

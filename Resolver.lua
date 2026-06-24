@@ -149,7 +149,7 @@ function Resolver:ResolveAction(assignment, options)
 end
 
 function Resolver:ResolveMemoryAssignment(assignment)
-  local memory = MM.DB:GetMemory({
+  local memory = MM.DB:ResolveMemory({
     source = assignment.source,
     id = assignment.id,
   })

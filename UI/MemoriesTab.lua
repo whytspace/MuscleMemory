@@ -1,9 +1,9 @@
 local ADDON_NAME, MM = ...
 
 -- The Memories tab. Browsing is fully live (list, per-character resolution,
--- candidate display), standard memories can be cloned into editable custom
--- memories, and custom candidates can be added, reordered, removed, and gated by
--- conditions.
+-- candidate display), predefined memories can be cloned into editable profile
+-- memories, and profile candidates can be added, reordered, removed, and gated
+-- by conditions.
 local MemoriesTab = {}
 MM.ui.MemoriesTab = MemoriesTab
 
@@ -19,10 +19,10 @@ end
 
 local function memoryList()
   local memories = {}
-  for id, memory in pairs(MM.StandardMemories or {}) do
-    memories[#memories + 1] = { source = "standard", id = id, name = memory.name or id, locked = true }
+  for id, memory in pairs(MM.PredefinedMemories or {}) do
+    memories[#memories + 1] = { source = "predefined", id = id, name = memory.name or id, locked = true }
   end
-  for id, memory in pairs(MM.DB:GetRoot().customMemories or {}) do
+  for id, memory in pairs(MM.DB:Memories() or {}) do
     memories[#memories + 1] = { source = "custom", id = id, name = memory.name or id, locked = false }
   end
   table.sort(memories, function(left, right)
@@ -38,7 +38,7 @@ end
 -- The currently selected memory, defaulting to the first available.
 local function selectedRef()
   local state = MM.ui.state
-  if state.memory and MM.DB:GetMemory(state.memory) then
+  if state.memory and MM.DB:ResolveMemory(state.memory) then
     return state.memory
   end
   local list = memoryList()
@@ -97,7 +97,7 @@ local function newMemory()
 end
 
 local function renameMemory(ref)
-  local memory = MM.DB:GetMemory(ref)
+  local memory = MM.DB:ResolveMemory(ref)
   MM.ui.Modals.Input("Rename Memory", "New name for this Memory", memory and memory.name or "", "Rename", function(name)
     if name == "" then
       return
@@ -111,7 +111,7 @@ local function renameMemory(ref)
 end
 
 local function deleteMemory(ref)
-  local memory = MM.DB:GetMemory(ref)
+  local memory = MM.DB:ResolveMemory(ref)
   local name = memory and memory.name or ref.id
   MM.ui.Modals.Confirm(
     "Delete Memory",
@@ -194,7 +194,7 @@ local function memoryRowInit(row, data)
   local active = ref and memory.source == ref.source and memory.id == ref.id
   row:SetSelected(active)
 
-  local memoryObj = MM.DB:GetMemory({ source = memory.source, id = memory.id })
+  local memoryObj = MM.DB:ResolveMemory({ source = memory.source, id = memory.id })
   local resolved = resolveMemory(memory)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
@@ -277,7 +277,7 @@ local function candidateRowInit(row, data)
         return
       end
       if mouseButton == "RightButton" then
-        if ref.source ~= "standard" then
+        if ref.source ~= "predefined" then
           local ok, err = MM.DB:RemoveCandidate(ref.id, index)
           if not ok then
             MM:Warn(err)
@@ -293,7 +293,7 @@ local function candidateRowInit(row, data)
     -- cursor is over on release).
     row:SetScript("OnDragStart", function(self)
       local ref = selectedRef()
-      if not self.data or not ref or ref.source == "standard" then
+      if not self.data or not ref or ref.source == "predefined" then
         return
       end
       self:SetAlpha(0.5)
@@ -322,7 +322,7 @@ local function candidateRowInit(row, data)
 
   row.data = data
   local index, candidate = data.index, data.candidate
-  local locked = (selectedRef() or {}).source == "standard"
+  local locked = (selectedRef() or {}).source == "predefined"
 
   row:SetSelected(index == (MM.ui.state.candidate or 1))
 
@@ -377,7 +377,7 @@ function MemoriesTab:BuildCenter(parent, ref, memory)
   local title = Widgets.Title(center, memory and memory.name or "\226\128\148")
   title:SetPoint("TOPLEFT", center, "TOPLEFT", 12, -2)
 
-  local locked = ref.source == "standard"
+  local locked = ref.source == "predefined"
   if locked then
     local tag = Widgets.Label(center, "GameFontDisableSmall", "PREDEFINED \194\183 read-only")
     tag:SetPoint("LEFT", title, "RIGHT", 12, 0)
@@ -540,7 +540,7 @@ function MemoriesTab:BuildContent(parent)
     return
   end
 
-  local memory = MM.DB:GetMemory(ref)
+  local memory = MM.DB:ResolveMemory(ref)
   local candidateCount = memory and memory.candidates and #memory.candidates or 0
   if (MM.ui.state.candidate or 1) > candidateCount then
     MM.ui.state.candidate = 1

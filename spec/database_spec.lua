@@ -9,34 +9,69 @@ describe("DB", function()
   describe("Initialize", function()
     it("merges defaults into an empty saved-variables table", function()
       local root = MM.DB:GetRoot()
-      assert.equals(1, root.schemaVersion)
-      assert.equals("keep", root.fallback)
-      assert.is_table(root.profiles.Default)
-      assert.is_table(root.muscles.Core)
-      assert.same({}, root.customMemories)
+      assert.equals(2, root.schemaVersion)
+      assert.is_nil(root.fallback)
+      assert.is_nil(root.muscles)
+      assert.is_nil(root.customMemories)
+
+      local default = root.profiles.Default
+      assert.is_table(default)
+      assert.equals("keep", default.fallback)
+      assert.same({ "Core" }, default.muscleOrder)
+      assert.is_table(default.muscles.Core)
+      assert.same({}, default.memories)
     end)
 
-    it("stamps existing saved variables with the current schema version", function()
+    it("migrates a v1 save: muscles, memories and fallback move into each profile", function()
       local loadedMM, _, env = addon.load()
       env.MuscleMemoryDB = {
+        schemaVersion = 1,
         fallback = "clear",
         profile = "Solo",
         profiles = {
-          Solo = { name = "Solo", activeMuscles = {} },
+          Solo = { name = "Solo", activeMuscles = { { id = "A", enabled = true }, { id = "B", enabled = false } } },
+          Duo = { name = "Duo", activeMuscles = { { id = "B", enabled = true } } },
         },
         muscles = {
-          Solo = { name = "Solo", slots = {} },
+          A = { name = "A", slots = { [1] = { type = "memory", source = "standard", id = "interrupt" } } },
+          B = { name = "B", slots = {} },
+          C = { name = "C", slots = {} }, -- in no profile's activeMuscles
         },
-        customMemories = {},
+        customMemories = { mine = { name = "Mine", candidates = {} } },
         characterState = {},
       }
 
       loadedMM.DB:Initialize()
       local root = loadedMM.DB:GetRoot()
 
-      assert.equals(1, root.schemaVersion)
-      assert.equals("clear", root.fallback)
-      assert.is_nil(root.profiles.Default)
+      assert.equals(2, root.schemaVersion)
+      assert.is_nil(root.muscles)
+      assert.is_nil(root.customMemories)
+      assert.is_nil(root.fallback)
+
+      local solo = root.profiles.Solo
+      assert.equals("clear", solo.fallback)
+      -- Full copy of the shared pool into the profile.
+      assert.is_table(solo.muscles.A)
+      assert.is_table(solo.muscles.B)
+      assert.is_table(solo.muscles.C)
+      assert.equals("Mine", solo.memories.mine.name)
+      -- activeMuscles -> muscleOrder, enabled carried onto the muscle.
+      assert.is_nil(solo.activeMuscles)
+      assert.same({ "A", "B", "C" }, solo.muscleOrder)
+      assert.is_true(solo.muscles.A.enabled)
+      assert.is_false(solo.muscles.B.enabled)
+      -- Muscle carried in but not part of this profile stays visible but disabled.
+      assert.is_false(solo.muscles.C.enabled)
+      -- Stored memory source rewritten standard -> predefined.
+      assert.equals("predefined", solo.muscles.A.slots[1].source)
+
+      local duo = root.profiles.Duo
+      assert.equals("B", duo.muscleOrder[1])
+      assert.equals(3, #duo.muscleOrder)
+      assert.is_true(duo.muscles.B.enabled)
+      assert.is_false(duo.muscles.A.enabled)
+      assert.is_false(duo.muscles.C.enabled)
     end)
   end)
 
@@ -65,12 +100,60 @@ describe("DB", function()
     end)
   end)
 
+  describe("global profile", function()
+    it("reads and validates the account default", function()
+      local id = MM.DB:CreateProfile("Raid")
+      assert.equals("Default", MM.DB:GetGlobalProfileId())
+      assert.is_true(MM.DB:SetGlobalProfile(id))
+      assert.equals(id, MM.DB:GetGlobalProfileId())
+
+      local ok, reason = MM.DB:SetGlobalProfile("ghost")
+      assert.is_false(ok)
+      assert.equals("unknown profile", reason)
+    end)
+
+    it("repairs the global default and character overrides when a profile is deleted", function()
+      local id = MM.DB:CreateProfile("Raid")
+      MM.DB:SetGlobalProfile(id)
+      MM.DB:SetActiveProfile(id)
+
+      assert.is_true(MM.DB:DeleteProfile(id))
+      assert.are_not.equal(id, MM.DB:GetRoot().profile)
+      assert.is_nil(MM.DB:GetCharacterState().profile)
+    end)
+  end)
+
   describe("profiles", function()
-    it("creates a profile that copies the active muscle selection", function()
+    it("creates an empty profile", function()
       local _, profile = MM.DB:CreateProfile("Raid")
       assert.equals("Raid", profile.name)
-      assert.same({ { id = "Core", enabled = true } }, profile.activeMuscles)
-      assert.are_not.equal(MM.DB:GetProfile("Default").activeMuscles, profile.activeMuscles)
+      assert.equals("keep", profile.fallback)
+      assert.same({}, profile.muscleOrder)
+      assert.same({}, profile.muscles)
+      assert.same({}, profile.memories)
+    end)
+
+    it("clones a profile 1:1, fully independent of the source", function()
+      MM.DB:SetSlot("Core", 1, { type = "spell", id = 42 })
+      MM.DB:CreateMemory("Mine")
+
+      local id, clone = MM.DB:CloneProfile("Default", "Raid")
+      assert.equals("Raid", clone.name)
+      assert.same({ "Core" }, clone.muscleOrder)
+      assert.equals(42, clone.muscles.Core.slots[1].id)
+      assert.is_table(next(clone.memories) and clone.memories)
+
+      -- Mutating the clone must not touch the source.
+      clone.muscles.Core.slots[1].id = 99
+      assert.equals(42, MM.DB:GetProfile("Default").muscles.Core.slots[1].id)
+      assert.are_not.equal(MM.DB:GetProfile("Default").muscles, clone.muscles)
+      assert.is_string(id)
+    end)
+
+    it("rejects cloning an unknown profile", function()
+      local id, reason = MM.DB:CloneProfile("ghost", "Raid")
+      assert.is_nil(id)
+      assert.equals("unknown profile", reason)
     end)
 
     it("derives unique ids from names that slugify the same", function()
@@ -102,18 +185,30 @@ describe("DB", function()
       assert.equals("Default", MM.DB:FindProfileId("Default"))
       assert.is_nil(MM.DB:FindProfileId("nope"))
     end)
+
+    it("scopes muscles and memories to the active profile", function()
+      MM.DB:CreateMuscle("Shared")
+      local other = MM.DB:CreateProfile("Other")
+
+      -- The new profile starts empty; the active profile's muscle is not visible.
+      MM.DB:SetActiveProfile(other)
+      assert.is_nil(MM.DB:FindMuscleId("Shared"))
+      assert.equals(0, #MM.DB:GetProfileMuscles())
+    end)
   end)
 
   describe("muscles", function()
-    it("creates a muscle and appends it to the active profile", function()
+    it("creates a muscle and appends it to the active profile order", function()
       local id = MM.DB:CreateMuscle("PvP")
       local profile = MM.DB:GetProfile()
-      assert.equals(id, profile.activeMuscles[#profile.activeMuscles].id)
+      assert.equals(id, profile.muscleOrder[#profile.muscleOrder])
       assert.is_table(MM.DB:GetMuscle(id))
+      assert.is_true(MM.DB:GetMuscle(id).enabled)
     end)
 
-    it("enables and disables a muscle within the profile", function()
+    it("enables and disables a muscle (flag stored on the muscle)", function()
       assert.is_true(MM.DB:SetMuscleEnabled("Core", false))
+      assert.is_false(MM.DB:GetMuscle("Core").enabled)
       assert.equals(0, #MM.DB:GetActiveMuscles())
       assert.is_true(MM.DB:SetMuscleEnabled("Core", true))
       assert.equals(1, #MM.DB:GetActiveMuscles())
@@ -125,12 +220,12 @@ describe("DB", function()
       assert.equals("muscle is not part of this profile", reason)
     end)
 
-    it("deletes a muscle and prunes it from every profile", function()
+    it("deletes a muscle and prunes it from the order", function()
       local id = MM.DB:CreateMuscle("PvP")
       assert.is_true(MM.DB:DeleteMuscle(id))
       assert.is_nil(MM.DB:GetMuscle(id))
-      for _, entry in ipairs(MM.DB:GetProfile().activeMuscles) do
-        assert.are_not.equal(id, entry.id)
+      for _, ordered in ipairs(MM.DB:GetProfile().muscleOrder) do
+        assert.are_not.equal(id, ordered)
       end
     end)
 
@@ -147,11 +242,7 @@ describe("DB", function()
       end)
 
       local function order()
-        local ids = {}
-        for _, entry in ipairs(MM.DB:GetProfile().activeMuscles) do
-          ids[#ids + 1] = entry.id
-        end
-        return ids
+        return MM.DB:GetProfile().muscleOrder
       end
 
       it("moves a muscle to a new position", function()
@@ -205,56 +296,64 @@ describe("DB", function()
       assert.is_false(ok)
       assert.equals("fallback must be keep or clear", reason)
     end)
+
+    it("scopes fallback to the active profile", function()
+      MM.DB:SetFallback("clear")
+      local other = MM.DB:CreateProfile("Other")
+      MM.DB:SetActiveProfile(other)
+      assert.equals("keep", MM.DB:GetFallback())
+    end)
   end)
 
   describe("memories", function()
-    it("copies a standard memory into an editable custom one", function()
-      local key = MM.DB:CopyStandardMemory("interrupt")
-      local copy = MM.DB:GetCustomMemory(key)
+    it("copies a predefined memory into an editable profile one", function()
+      local key = MM.DB:CopyPredefinedMemory("interrupt")
+      local copy = MM.DB:Memories()[key]
       assert.equals("Kick / Interrupt Copy", copy.name)
-      assert.are_not.equal(MM.StandardMemories.interrupt.candidates, copy.candidates)
-      assert.same(MM.StandardMemories.interrupt.candidates, copy.candidates)
+      assert.are_not.equal(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
+      assert.same(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
     end)
 
-    it("rejects copying an unknown standard memory", function()
-      local key, reason = MM.DB:CopyStandardMemory("ghost")
+    it("rejects copying an unknown predefined memory", function()
+      local key, reason = MM.DB:CopyPredefinedMemory("ghost")
       assert.is_nil(key)
-      assert.equals("unknown standard memory", reason)
+      assert.equals("unknown predefined memory", reason)
     end)
 
-    it("resolves standard memories by id and custom ones by source", function()
-      local key = MM.DB:CopyStandardMemory("interrupt", "mine", "Mine")
-      assert.equals("Kick / Interrupt", MM.DB:GetMemory({ id = "interrupt" }).name)
-      assert.equals("Mine", MM.DB:GetMemory({ source = "custom", id = key }).name)
-      assert.is_nil(MM.DB:GetMemory(nil))
+    it("resolves predefined memories by id and profile ones by source", function()
+      local key = MM.DB:CopyPredefinedMemory("interrupt", "mine", "Mine")
+      assert.equals("Kick / Interrupt", MM.DB:ResolveMemory({ id = "interrupt" }).name)
+      assert.equals("Kick / Interrupt", MM.DB:GetPredefinedMemory("interrupt").name)
+      assert.equals("Mine", MM.DB:ResolveMemory({ source = "custom", id = key }).name)
+      assert.is_nil(MM.DB:ResolveMemory(nil))
     end)
 
-    it("clones a custom memory into a new custom memory", function()
+    it("clones a profile memory into a new profile memory", function()
       local source = MM.DB:CreateMemory("Mine")
       MM.DB:AddCandidate(source, { type = "spell", id = 7 })
 
       local clone = MM.DB:CloneMemory({ source = "custom", id = source })
-      local copy = MM.DB:GetCustomMemory(clone)
+      local copy = MM.DB:Memories()[clone]
       assert.equals("Mine Copy", copy.name)
-      assert.are_not.equal(MM.DB:GetCustomMemory(source).candidates, copy.candidates)
+      assert.are_not.equal(MM.DB:Memories()[source].candidates, copy.candidates)
       assert.equals(7, copy.candidates[1].id)
     end)
 
-    it("creates, renames, and deletes a custom memory", function()
+    it("creates, renames, and deletes a profile memory", function()
       local key = MM.DB:CreateMemory("Cleanse")
-      assert.equals("Cleanse", MM.DB:GetCustomMemory(key).name)
+      assert.equals("Cleanse", MM.DB:Memories()[key].name)
 
       assert.is_true(MM.DB:RenameMemory(key, "Purify"))
-      assert.equals("Purify", MM.DB:GetCustomMemory(key).name)
+      assert.equals("Purify", MM.DB:Memories()[key].name)
 
       assert.is_true(MM.DB:DeleteMemory(key))
-      assert.is_nil(MM.DB:GetCustomMemory(key))
+      assert.is_nil(MM.DB:Memories()[key])
     end)
 
-    it("refuses to edit standard memories", function()
+    it("refuses to edit predefined memories", function()
       local ok, reason = MM.DB:RenameMemory("interrupt", "Nope")
       assert.is_false(ok)
-      assert.equals("only custom memories can be renamed", reason)
+      assert.equals("only profile memories can be renamed", reason)
       assert.is_false(MM.DB:AddCandidate("interrupt", { type = "spell", id = 1 }))
     end)
 
@@ -265,13 +364,13 @@ describe("DB", function()
       MM.DB:AddCandidate(key, { type = "spell", id = 33 })
 
       assert.is_true(MM.DB:MoveCandidate(key, 3, 1))
-      local candidates = MM.DB:GetCustomMemory(key).candidates
+      local candidates = MM.DB:Memories()[key].candidates
       assert.equals(33, candidates[1].id)
       assert.equals(11, candidates[2].id)
       assert.equals(22, candidates[3].id)
 
       assert.is_true(MM.DB:RemoveCandidate(key, 2))
-      candidates = MM.DB:GetCustomMemory(key).candidates
+      candidates = MM.DB:Memories()[key].candidates
       assert.equals(2, #candidates)
       assert.equals(33, candidates[1].id)
       assert.equals(22, candidates[2].id)

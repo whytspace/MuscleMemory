@@ -130,8 +130,7 @@ describe("Resolver", function()
     end)
 
     it("resolves a custom memory through the database", function()
-      local root = MM.DB:GetRoot()
-      root.customMemories.mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
+      MM.DB:Memories().mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
       stubs:setSpell(1766, { name = "Kick", known = true })
 
       local resolved = MM.Resolver:ResolveAction({ type = "memory", source = "custom", id = "mine" })

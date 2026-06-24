@@ -24,7 +24,7 @@ Util/Flyouts.lua
 Util/Actions.lua
 
 Data/SpellIds.lua
-Data/StandardMemories.lua
+Data/PredefinedMemories.lua
 
 Database.lua
 Resolver.lua

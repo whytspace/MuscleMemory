@@ -14,7 +14,7 @@ local function ClassSpell(spellId, classes)
   return spell
 end
 
-MM.StandardMemories = {
+MM.PredefinedMemories = {
   lust = {
     name = "Lust",
     candidates = {

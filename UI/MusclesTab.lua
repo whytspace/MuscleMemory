@@ -66,10 +66,10 @@ end
 
 local function memoryList()
   local memories = {}
-  for id, memory in pairs(MM.StandardMemories or {}) do
-    memories[#memories + 1] = { source = "standard", id = id, name = memory.name or id }
+  for id, memory in pairs(MM.PredefinedMemories or {}) do
+    memories[#memories + 1] = { source = "predefined", id = id, name = memory.name or id }
   end
-  for id, memory in pairs(MM.DB:GetRoot().customMemories or {}) do
+  for id, memory in pairs(MM.DB:Memories() or {}) do
     memories[#memories + 1] = { source = "custom", id = id, name = memory.name or id }
   end
   table.sort(memories, function(left, right)
@@ -469,7 +469,7 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
   grid.frame:Show()
 
   grid.title:SetText(muscle and muscle.name or muscleId)
-  if MM.Tables.Count(MM.DB:GetRoot().muscles or {}) <= 1 then
+  if MM.Tables.Count(MM.DB:Muscles() or {}) <= 1 then
     grid.delete:Disable()
   else
     grid.delete:Enable()
@@ -576,7 +576,7 @@ local function statusFor(assignment)
     return "Clears whatever is in this slot when the Muscle applies.", colors.parchment
   end
   if assignment.type == "memory" then
-    local memory = MM.DB:GetMemory({ source = assignment.source, id = assignment.id })
+    local memory = MM.DB:ResolveMemory({ source = assignment.source, id = assignment.id })
     local resolved = resolveMemory(assignment.source, assignment.id)
     if resolved then
       return 'Resolves to "' .. resolved.label .. '" for this character.', colors.goldDim

@@ -53,10 +53,66 @@ function DB:Initialize()
 end
 
 function DB:MigrateSchema(root, savedSchemaVersion)
+  if savedSchemaVersion < 2 then
+    self:MigrateToV2(root)
+  end
   if savedSchemaVersion < MM.SCHEMA_VERSION then
-    -- Version 1 only stamps existing saves; future migrations belong here.
     root.schemaVersion = MM.SCHEMA_VERSION
   end
+end
+
+-- v1 → v2: muscles, memories and the fallback setting move from the account
+-- root into each profile, so every profile is a self-contained data set. The
+-- formerly shared pools are copied wholesale into every profile; the per-muscle
+-- enable flag moves from the activeMuscles entry onto the muscle itself.
+function DB:MigrateToV2(root)
+  local legacyMuscles = root.muscles
+  local legacyMemories = root.customMemories
+  local legacyFallback = root.fallback
+  if not (legacyMuscles or legacyMemories or legacyFallback ~= nil) then
+    return -- fresh DB or already converted
+  end
+
+  for _, profile in pairs(root.profiles or {}) do
+    profile.muscles = MM.Tables.DeepCopy(legacyMuscles or {})
+    profile.memories = MM.Tables.DeepCopy(legacyMemories or {})
+    profile.fallback = profile.fallback or legacyFallback or "keep"
+
+    -- activeMuscles {id, enabled} -> muscleOrder (ids) + muscle.enabled.
+    local order, seen = {}, {}
+    for _, entry in ipairs(profile.activeMuscles or {}) do
+      local muscle = profile.muscles[entry.id]
+      if muscle and not seen[entry.id] then
+        muscle.enabled = entry.enabled ~= false
+        order[#order + 1] = entry.id
+        seen[entry.id] = true
+      end
+    end
+    -- Muscles copied in but not part of this profile stay visible but disabled,
+    -- so what the profile applies is unchanged.
+    for id, muscle in pairs(profile.muscles) do
+      if not seen[id] then
+        muscle.enabled = false
+        order[#order + 1] = id
+        seen[id] = true
+      end
+    end
+    profile.muscleOrder = order
+    profile.activeMuscles = nil
+
+    -- Stored memory references: "standard" source -> "predefined".
+    for _, muscle in pairs(profile.muscles) do
+      for _, assignment in pairs(muscle.slots or {}) do
+        if type(assignment) == "table" and assignment.type == "memory" and assignment.source == "standard" then
+          assignment.source = "predefined"
+        end
+      end
+    end
+  end
+
+  root.muscles = nil
+  root.customMemories = nil
+  root.fallback = nil
 end
 
 function DB:GetRoot()
@@ -85,6 +141,45 @@ function DB:GetProfile(profileId)
   return self:GetRoot().profiles[profileId]
 end
 
+-- The given (or active) profile's muscle pool / memory pool, ensure-initialized.
+-- All muscle and memory CRUD scopes through these, so it operates on the active
+-- profile rather than a shared account-wide table.
+function DB:Muscles(profileId)
+  local profile = self:GetProfile(profileId)
+  if not profile then
+    return {}
+  end
+  profile.muscles = profile.muscles or {}
+  return profile.muscles
+end
+
+function DB:Memories(profileId)
+  local profile = self:GetProfile(profileId)
+  if not profile then
+    return {}
+  end
+  profile.memories = profile.memories or {}
+  return profile.memories
+end
+
+-- The account-wide default profile (what players use unless they pick their own),
+-- self-healing if the stored pointer is stale.
+function DB:GetGlobalProfileId()
+  local root = self:GetRoot()
+  if root.profile and root.profiles[root.profile] then
+    return root.profile
+  end
+  return next(root.profiles)
+end
+
+function DB:SetGlobalProfile(profileId)
+  if not self:GetRoot().profiles[profileId] then
+    return false, "unknown profile"
+  end
+  self:GetRoot().profile = profileId
+  return true
+end
+
 function DB:GetProfileList()
   local list = {}
   for id, profile in pairs(self:GetRoot().profiles) do
@@ -101,19 +196,40 @@ function DB:FindProfileId(target)
 end
 
 function DB:FindMuscleId(target)
-  return matchByName(self:GetRoot().muscles, target)
+  return matchByName(self:Muscles(), target)
 end
 
--- A new profile copies the active profile's muscle selection, so it starts as a
--- variation of your current setup.
+-- A new profile starts empty: its own muscles, memories and fallback.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
-  local source = self:GetProfile()
 
   root.profiles[id] = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
-    activeMuscles = MM.Tables.DeepCopy(source and source.activeMuscles or {}),
+    fallback = "keep",
+    muscleOrder = {},
+    muscles = {},
+    memories = {},
+  }
+  return id, root.profiles[id]
+end
+
+-- Clone an existing profile 1:1 (muscles, memories, order and fallback) under a
+-- new name, fully independent of the source.
+function DB:CloneProfile(sourceId, name)
+  local root = self:GetRoot()
+  local source = self:GetProfile(sourceId)
+  if not source then
+    return nil, "unknown profile"
+  end
+
+  local id = uniqueId(name, "profile", root.profiles)
+  root.profiles[id] = {
+    name = name and name ~= "" and name or ((source.name or "Profile") .. " Copy"),
+    fallback = source.fallback or "keep",
+    muscleOrder = MM.Tables.DeepCopy(source.muscleOrder or {}),
+    muscles = MM.Tables.DeepCopy(source.muscles or {}),
+    memories = MM.Tables.DeepCopy(source.memories or {}),
   }
   return id, root.profiles[id]
 end
@@ -144,6 +260,18 @@ function DB:DeleteProfile(profileId)
   end
 
   root.profiles[profileId] = nil
+
+  -- Repair dangling pointers so the global default and any character override
+  -- never reference a deleted profile.
+  if root.profile == profileId then
+    root.profile = next(root.profiles)
+  end
+  for _, character in pairs(root.characterState or {}) do
+    if character.profile == profileId then
+      character.profile = nil
+    end
+  end
+
   return true
 end
 
@@ -168,14 +296,14 @@ function DB:GetProfileMuscles(profileId)
     return list
   end
 
-  for _, entry in ipairs(profile.activeMuscles or {}) do
-    local muscle = self:GetMuscle(entry.id)
+  for _, id in ipairs(profile.muscleOrder or {}) do
+    local muscle = self:GetMuscle(id, profileId)
     if muscle then
       list[#list + 1] = {
-        id = entry.id,
+        id = id,
         muscle = muscle,
-        name = muscle.name or entry.id,
-        enabled = entry.enabled ~= false,
+        name = muscle.name or id,
+        enabled = muscle.enabled ~= false,
       }
     end
   end
@@ -195,36 +323,35 @@ function DB:GetActiveMuscles(profileId)
 end
 
 function DB:SetMuscleEnabled(muscleId, enabled, profileId)
-  local profile = self:GetProfile(profileId)
-  for _, entry in ipairs(profile and profile.activeMuscles or {}) do
-    if entry.id == muscleId then
-      entry.enabled = enabled and true or false
-      return true
-    end
+  local muscle = self:GetMuscle(muscleId, profileId)
+  if not muscle then
+    return false, "muscle is not part of this profile"
   end
-  return false, "muscle is not part of this profile"
+  muscle.enabled = enabled and true or false
+  return true
 end
 
-function DB:GetMuscle(muscleId)
-  return self:GetRoot().muscles[muscleId]
+function DB:GetMuscle(muscleId, profileId)
+  return self:Muscles(profileId)[muscleId]
 end
 
 function DB:CreateMuscle(name)
-  local root = self:GetRoot()
-  local muscleId = uniqueId(name, "muscle", root.muscles)
+  local muscles = self:Muscles()
+  local muscleId = uniqueId(name, "muscle", muscles)
 
-  root.muscles[muscleId] = {
-    name = name or ("Muscle " .. tostring(MM.Tables.Count(root.muscles) + 1)),
+  muscles[muscleId] = {
+    name = name or ("Muscle " .. tostring(MM.Tables.Count(muscles) + 1)),
     slots = {},
+    enabled = true,
   }
 
   local profile = self:GetProfile()
   if profile then
-    profile.activeMuscles = profile.activeMuscles or {}
-    profile.activeMuscles[#profile.activeMuscles + 1] = { id = muscleId, enabled = true }
+    profile.muscleOrder = profile.muscleOrder or {}
+    profile.muscleOrder[#profile.muscleOrder + 1] = muscleId
   end
 
-  return muscleId, root.muscles[muscleId]
+  return muscleId, muscles[muscleId]
 end
 
 function DB:RenameMuscle(muscleId, name)
@@ -244,21 +371,21 @@ function DB:RenameMuscle(muscleId, name)
 end
 
 function DB:DeleteMuscle(muscleId)
-  local root = self:GetRoot()
-  if not root.muscles[muscleId] then
+  local muscles = self:Muscles()
+  if not muscles[muscleId] then
     return false, "unknown muscle"
   end
-  if MM.Tables.Count(root.muscles or {}) <= 1 then
+  if MM.Tables.Count(muscles) <= 1 then
     return false, "cannot delete the last muscle"
   end
 
-  root.muscles[muscleId] = nil
+  muscles[muscleId] = nil
 
-  for _, profile in pairs(root.profiles or {}) do
-    for index = #(profile.activeMuscles or {}), 1, -1 do
-      if profile.activeMuscles[index].id == muscleId then
-        table.remove(profile.activeMuscles, index)
-      end
+  local profile = self:GetProfile()
+  local order = profile and profile.muscleOrder
+  for index = #(order or {}), 1, -1 do
+    if order[index] == muscleId then
+      table.remove(order, index)
     end
   end
 
@@ -269,8 +396,8 @@ end
 -- active profile). Explicit inputs, single array splice, no selection read.
 function DB:MoveMuscle(muscleId, toIndex, profileId)
   local profile = self:GetProfile(profileId)
-  local muscles = profile and profile.activeMuscles
-  if not muscles then
+  local order = profile and profile.muscleOrder
+  if not order then
     return false, "unknown profile"
   end
 
@@ -278,11 +405,11 @@ function DB:MoveMuscle(muscleId, toIndex, profileId)
   if not toIndex then
     return false, "needs a target position"
   end
-  toIndex = math.max(1, math.min(toIndex, #muscles))
+  toIndex = math.max(1, math.min(toIndex, #order))
 
   local fromIndex
-  for index, entry in ipairs(muscles) do
-    if entry.id == muscleId then
+  for index, id in ipairs(order) do
+    if id == muscleId then
       fromIndex = index
       break
     end
@@ -295,7 +422,7 @@ function DB:MoveMuscle(muscleId, toIndex, profileId)
     return false, "muscle is already at that position"
   end
 
-  table.insert(muscles, toIndex, table.remove(muscles, fromIndex))
+  table.insert(order, toIndex, table.remove(order, fromIndex))
   return true
 end
 
@@ -332,16 +459,16 @@ end
 -- Selection (runtime only) -------------------------------------------------
 
 function DB:GetSelectedMuscleId()
-  local root = self:GetRoot()
-  if session.muscle and root.muscles[session.muscle] then
+  local muscles = self:Muscles()
+  if session.muscle and muscles[session.muscle] then
     return session.muscle
   end
-  session.muscle = next(root.muscles)
+  session.muscle = next(muscles)
   return session.muscle
 end
 
 function DB:SetSelectedMuscleId(muscleId)
-  if self:GetRoot().muscles[muscleId] then
+  if self:Muscles()[muscleId] then
     session.muscle = muscleId
   end
 end
@@ -358,89 +485,98 @@ end
 -- Settings -----------------------------------------------------------------
 
 function DB:GetFallback()
-  return self:GetRoot().fallback or "keep"
+  local profile = self:GetProfile()
+  return (profile and profile.fallback) or "keep"
 end
 
 function DB:SetFallback(value)
   if value ~= "keep" and value ~= "clear" then
     return false, "fallback must be keep or clear"
   end
-  self:GetRoot().fallback = value
+  local profile = self:GetProfile()
+  if not profile then
+    return false, "no active profile"
+  end
+  profile.fallback = value
   return true
 end
 
 -- Memories -------------------------------------------------------------------
+-- Profile memories live in `profile.memories`; index `self:Memories()` directly.
+-- Predefined memories are immutable add-on data.
 
-function DB:GetCustomMemory(memoryId)
-  return self:GetRoot().customMemories[memoryId]
+function DB:GetPredefinedMemory(memoryId)
+  return MM.PredefinedMemories[memoryId]
 end
 
-function DB:GetMemory(reference)
+-- Resolve a stored `{ source, id }` reference: "custom" -> the profile's own
+-- memory, anything else (predefined) -> the built-in memory.
+function DB:ResolveMemory(reference)
   if not reference then
     return nil
   end
 
   if reference.source == "custom" then
-    return self:GetCustomMemory(reference.id)
+    return self:Memories()[reference.id]
   end
 
-  return MM.StandardMemories[reference.id]
+  return self:GetPredefinedMemory(reference.id)
 end
 
--- Copy a standard memory into an editable custom memory. Returns the new key
+-- Copy a predefined memory into an editable profile memory. Returns the new key
 -- (memories are identified by key, so duplicate names are fine).
-function DB:CopyStandardMemory(memoryId, newId, newName)
-  local source = MM.StandardMemories[memoryId]
+function DB:CopyPredefinedMemory(memoryId, newId, newName)
+  local source = MM.PredefinedMemories[memoryId]
   if not source then
-    return nil, "unknown standard memory"
+    return nil, "unknown predefined memory"
   end
 
-  local root = self:GetRoot()
+  local memories = self:Memories()
   local name = newName or (source.name .. " Copy")
-  local key = newId or uniqueId(name, memoryId .. "_copy", root.customMemories)
-  if root.customMemories[key] then
-    return nil, "custom memory already exists"
+  local key = newId or uniqueId(name, memoryId .. "_copy", memories)
+  if memories[key] then
+    return nil, "memory already exists"
   end
 
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  root.customMemories[key] = copy
+  memories[key] = copy
   return key
 end
 
--- Clone any memory (standard or custom) into a new editable custom memory.
+-- Clone any memory (predefined or profile) into a new editable profile memory.
 function DB:CloneMemory(reference)
-  local source = self:GetMemory(reference)
+  local source = self:ResolveMemory(reference)
   if not source then
     return nil, "unknown memory"
   end
 
-  local root = self:GetRoot()
+  local memories = self:Memories()
   local name = (source.name or "Memory") .. " Copy"
-  local key = uniqueId(name, "memory_copy", root.customMemories)
+  local key = uniqueId(name, "memory_copy", memories)
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  root.customMemories[key] = copy
+  memories[key] = copy
   return key
 end
 
--- Standard memories are immutable add-on data, so create / rename / delete and
--- all candidate edits operate only on custom memories.
+-- Predefined memories are immutable add-on data, so create / rename / delete and
+-- all candidate edits operate only on the profile's own memories.
 
 function DB:CreateMemory(name)
-  local root = self:GetRoot()
-  local key = uniqueId(name, "memory", root.customMemories)
-  root.customMemories[key] = {
-    name = name and name ~= "" and name or ("Memory " .. tostring(MM.Tables.Count(root.customMemories) + 1)),
+  local memories = self:Memories()
+  local key = uniqueId(name, "memory", memories)
+  memories[key] = {
+    name = name and name ~= "" and name or ("Memory " .. tostring(MM.Tables.Count(memories) + 1)),
     candidates = {},
   }
-  return key, root.customMemories[key]
+  return key, memories[key]
 end
 
 function DB:RenameMemory(memoryId, name)
-  local memory = self:GetCustomMemory(memoryId)
+  local memory = self:Memories()[memoryId]
   if not memory then
-    return false, "only custom memories can be renamed"
+    return false, "only profile memories can be renamed"
   end
 
   name = string.gsub(name or "", "^%s+", "")
@@ -456,22 +592,22 @@ end
 -- Slots bound to the deleted memory simply stop resolving and fall through on the
 -- next apply, so there's no reference cleanup to do.
 function DB:DeleteMemory(memoryId)
-  local root = self:GetRoot()
-  if not root.customMemories[memoryId] then
-    return false, "unknown custom memory"
+  local memories = self:Memories()
+  if not memories[memoryId] then
+    return false, "unknown memory"
   end
 
-  root.customMemories[memoryId] = nil
+  memories[memoryId] = nil
   return true
 end
 
 -- Candidates -----------------------------------------------------------------
 
--- Append a candidate (a captured assignment) to a custom memory.
+-- Append a candidate (a captured assignment) to a profile memory.
 function DB:AddCandidate(memoryId, assignment)
-  local memory = self:GetCustomMemory(memoryId)
+  local memory = self:Memories()[memoryId]
   if not memory then
-    return false, "only custom memories can be edited"
+    return false, "only profile memories can be edited"
   end
   if not assignment or not assignment.type then
     return false, "no action to add"
@@ -483,9 +619,9 @@ function DB:AddCandidate(memoryId, assignment)
 end
 
 function DB:RemoveCandidate(memoryId, index)
-  local memory = self:GetCustomMemory(memoryId)
+  local memory = self:Memories()[memoryId]
   if not memory then
-    return false, "only custom memories can be edited"
+    return false, "only profile memories can be edited"
   end
 
   index = tonumber(index)
@@ -500,10 +636,10 @@ end
 -- Move the candidate at `fromIndex` to `toIndex` (clamped). Single splice, like
 -- MoveMuscle.
 function DB:MoveCandidate(memoryId, fromIndex, toIndex)
-  local memory = self:GetCustomMemory(memoryId)
+  local memory = self:Memories()[memoryId]
   local candidates = memory and memory.candidates
   if not candidates then
-    return false, "only custom memories can be edited"
+    return false, "only profile memories can be edited"
   end
 
   fromIndex = tonumber(fromIndex)
