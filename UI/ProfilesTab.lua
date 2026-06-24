@@ -14,13 +14,20 @@ local function refresh()
   MM.UI:Refresh()
 end
 
+-- A profile switch can change what applies to this character, so prompt to
+-- apply/preview just like the game events do.
+local function switched()
+  refresh()
+  MM.Events:PromptApplyIfChanged()
+end
+
 -- Mutations ------------------------------------------------------------------
 
 local function newProfile()
   MM.ui.Modals.Input("New Profile", "Name the new (empty) profile", "New Profile", "Create", function(name)
     local id = MM.DB:CreateProfile(name ~= "" and name or nil)
     MM.DB:SetActiveProfile(id)
-    refresh()
+    switched()
   end)
 end
 
@@ -34,7 +41,7 @@ local function cloneProfile(id)
       return
     end
     MM.DB:SetActiveProfile(newId)
-    refresh()
+    switched()
   end)
 end
 
@@ -70,7 +77,7 @@ local function deleteProfile(id)
       if not ok then
         MM:Warn(reason)
       end
-      refresh()
+      switched()
     end
   )
 end
@@ -86,7 +93,7 @@ local function globalData()
       selected = profile.id == current,
       onClick = function()
         MM.DB:SetGlobalProfile(profile.id)
-        refresh()
+        switched()
       end,
     }
   end
@@ -102,7 +109,7 @@ local function playerData()
       selected = override == nil,
       onClick = function()
         MM.DB:SetActiveProfile(nil)
-        refresh()
+        switched()
       end,
     },
   }
@@ -112,7 +119,7 @@ local function playerData()
       selected = profile.id == override,
       onClick = function()
         MM.DB:SetActiveProfile(profile.id)
-        refresh()
+        switched()
       end,
     }
   end
@@ -194,8 +201,14 @@ local function buildRows(self)
     end
     row:SetPoint("RIGHT", self.manageHost, "RIGHT", 0, 0)
 
+    -- A faint bottom separator so the eye connects each name to its buttons
+    -- across the wide gap.
+    local rule = Widgets.Hairline(row, true)
+    rule:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+    rule:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+
     local name = Widgets.Label(row, "GameFontHighlight", profile.name, colors.parchment)
-    name:SetPoint("LEFT", row, "LEFT", 4, 0)
+    name:SetPoint("LEFT", row, "LEFT", 8, 0)
 
     local delete = Widgets.Button(row, "Delete", 74, function()
       deleteProfile(id)

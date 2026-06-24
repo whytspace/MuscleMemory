@@ -14,14 +14,20 @@ function handlers.ACTIONBAR_SLOT_CHANGED(slot)
   end
 end
 
--- Re-check the active profile and prompt if applying would change a slot (not in combat).
-local function reevaluateProfile()
+-- Prompt to apply/preview when applying the active profile would change a slot
+-- and we're not in combat. Shared by game events and the in-game profile switch,
+-- so both behave the same. (Slash commands deliberately don't prompt.)
+function Events:PromptApplyIfChanged()
   if InCombatLockdown and InCombatLockdown() then
     return
   end
   if MM.Applier:HasUnappliedChanges() then
     MM.UI:PromptApply()
   end
+end
+
+local function reevaluateProfile()
+  Events:PromptApplyIfChanged()
 end
 handlers.PLAYER_REGEN_ENABLED = reevaluateProfile
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
