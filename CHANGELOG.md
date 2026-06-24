@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.2.0 - 2026-06-24
+
 - Profiles are now complete, self-contained setups: each profile holds its own muscles and memories, so switching profiles swaps your entire setup rather than just toggling muscles on and off. Existing data is migrated automatically.
 - Creating a profile now starts empty; use Clone to copy an existing profile one-to-one.
 - Moved profile selection out of the header into a dedicated Profiles tab, where you set the account-wide default profile and an optional override for the current character.
