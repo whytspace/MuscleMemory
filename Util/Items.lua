@@ -129,6 +129,20 @@ function Items.IsUsable(itemId)
   return tooltipHasUnmetRequirement(itemId) ~= true
 end
 
+-- The crafting-quality crystal markup for an item, or nil for items without a
+-- quality. The client embeds the crystal atlas in the item link's name, so we
+-- lift it from there: this needs no data of our own and works for any item,
+-- including custom ones (the quality APIs return nil for these items).
+function Items.GetQualityMarkup(itemId)
+  local info = Items.GetInfo(itemId)
+  local link = info and info.link
+  if not link then
+    return nil
+  end
+
+  return link:match("|A:Professions%-ChatIcon%-Quality.-|a")
+end
+
 function Items.Pickup(itemId)
   if C_Item and C_Item.PickupItem then
     C_Item.PickupItem(itemId)

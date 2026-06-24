@@ -140,7 +140,13 @@ local function candidateInfo(candidate)
     return info and info.name or ("Spell " .. tostring(candidate.id)), info and info.icon
   elseif candidate.type == "item" then
     local info = MM.Items.GetInfo(candidate.id)
-    return info and info.name or ("Item " .. tostring(candidate.id)), info and info.icon
+    local name = info and info.name or ("Item " .. tostring(candidate.id))
+    -- Crafted items show their quality crystal, lifted from the item link.
+    local marker = MM.Items.GetQualityMarkup(candidate.id)
+    if marker then
+      name = name .. " " .. marker
+    end
+    return name, info and info.icon
   elseif candidate.type == "mount" then
     local info = MM.Mounts.GetInfo(candidate.id)
     return info and info.name or ("Mount " .. tostring(candidate.id)), info and info.icon

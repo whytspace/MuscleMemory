@@ -85,6 +85,21 @@ describe("Items", function()
     end)
   end)
 
+  describe("GetQualityMarkup", function()
+    it("returns nil for an item whose link has no quality crystal", function()
+      stubs:setItem(6948, {})
+      assert.is_nil(MM.Items.GetQualityMarkup(6948))
+    end)
+
+    it("lifts the quality crystal markup out of the item link", function()
+      local markup = "|A:Professions-ChatIcon-Quality-12-Tier1:17:15::1|a"
+      stubs:setItem(248486, {
+        link = "|cnIQ1:|Hitem:248486::::|h[Emergency Soul Link " .. markup .. "]|h|r",
+      })
+      assert.equals(markup, MM.Items.GetQualityMarkup(248486))
+    end)
+  end)
+
   describe("Pickup", function()
     it("picks the item up onto the cursor", function()
       assert.is_true(MM.Items.Pickup(6948))
