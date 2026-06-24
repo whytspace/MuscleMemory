@@ -23,11 +23,33 @@ function Events:PromptApplyIfChanged()
   end
   if MM.Applier:HasUnappliedChanges() then
     MM.UI:PromptApply()
+  else
+    -- A settled re-eval found nothing to do; clear a prompt an earlier,
+    -- unsettled read may have raised.
+    MM.UI:DismissApplyPrompt()
   end
 end
 
+-- Login fires these events in a burst while pet, spell and action-bar data
+-- stream in. An early read can briefly show a slot as a restorable change
+-- before the data settles (e.g. a pet ability that is actually unavailable).
+-- Trailing-debounce the burst so we evaluate once it quiesces, matching what
+-- /mm preview reports.
+local REEVALUATE_DELAY = 1.0
+local reevaluateGen = 0
+
 local function reevaluateProfile()
-  Events:PromptApplyIfChanged()
+  if not C_Timer then
+    Events:PromptApplyIfChanged()
+    return
+  end
+  reevaluateGen = reevaluateGen + 1
+  local gen = reevaluateGen
+  C_Timer.After(REEVALUATE_DELAY, function()
+    if gen == reevaluateGen then
+      Events:PromptApplyIfChanged()
+    end
+  end)
 end
 handlers.PLAYER_REGEN_ENABLED = reevaluateProfile
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile

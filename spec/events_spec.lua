@@ -2,15 +2,19 @@ local addon = require("spec.helpers.addon")
 
 describe("Events", function()
   local MM, stubs
-  local prompts
+  local prompts, dismissals
 
   before_each(function()
     MM, stubs = addon.fresh()
     prompts = 0
+    dismissals = 0
     -- UI is not loaded in the harness; stand in for the apply prompt.
     MM.UI = {
       PromptApply = function()
         prompts = prompts + 1
+      end,
+      DismissApplyPrompt = function()
+        dismissals = dismissals + 1
       end,
     }
     stubs:setSpell(1766, { name = "Kick", known = true })
@@ -32,6 +36,15 @@ describe("Events", function()
     stubs:setSlot(10, { actionType = "spell", id = 1766 })
     MM.Events:OnEvent("SPELLS_CHANGED")
     assert.equals(0, prompts)
+  end)
+
+  it("dismisses a stale prompt when a settled re-eval finds no changes", function()
+    -- A settled read with nothing to apply clears a prompt that an earlier,
+    -- unsettled read may have raised.
+    stubs:setSlot(10, { actionType = "spell", id = 1766 })
+    MM.Events:OnEvent("SPELLS_CHANGED")
+    assert.equals(0, prompts)
+    assert.equals(1, dismissals)
   end)
 
   it("does not prompt to apply on a bare action bar edit", function()

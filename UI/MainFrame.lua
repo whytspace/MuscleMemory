@@ -294,3 +294,9 @@ function UI:PromptApply()
     dialog.mmCloseX:Show()
   end
 end
+
+function UI:DismissApplyPrompt()
+  if StaticPopup_Hide then
+    StaticPopup_Hide(APPLY_DIALOG)
+  end
+end
