@@ -367,6 +367,15 @@ function MusclesTab:BuildSlotCell(parent, slot)
     local assignment = muscle and muscle.slots and muscle.slots[slot]
     if assignment then
       GameTooltip:AddLine(MM.Actions.GetAssignmentLabel(assignment), 1, 1, 1)
+      -- For a memory-driven slot, show what it resolves to for this character.
+      if assignment.type == "memory" then
+        local resolved = MM.Resolver:ResolveAction(assignment)
+        if resolved then
+          GameTooltip:AddLine("Resolves to: " .. resolved.label, Widgets.unpackColor(colors.goldDim))
+        else
+          GameTooltip:AddLine("No usable candidate", 0.9, 0.4, 0.4)
+        end
+      end
     else
       GameTooltip:AddLine("Not managed \226\128\148 click to manage", 0.7, 0.7, 0.7)
     end
@@ -624,6 +633,15 @@ local function memoryBindRowInit(row, data)
         assignSlot(muscleId, slot, { type = "memory", source = m.source, id = m.id })
       end
     end)
+
+    -- Tooltip on the icon only; shows the resolved spell/item.
+    Widgets.AttachIconTooltip(row.tile, function(r)
+      local m = r.data and r.data.memory
+      local resolved = m and resolveMemory(m.source, m.id)
+      if resolved then
+        Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
+      end
+    end)
   end
 
   row.data = data
@@ -687,6 +705,19 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   local icon = Widgets.Icon(inset, 36)
   icon:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
   paintSlot(icon, muscle, slot)
+  Widgets.AttachIconTooltip(icon, function()
+    if not assignment then
+      return
+    end
+    if assignment.type == "memory" then
+      local resolved = resolveMemory(assignment.source, assignment.id)
+      if resolved then
+        Widgets.SetActionTooltip(icon, resolved.kind, resolved.id, resolved.label)
+      end
+    else
+      Widgets.SetActionTooltip(icon, assignment.type, assignment.id, MM.Actions.GetAssignmentLabel(assignment))
+    end
+  end)
 
   local title = Widgets.Label(inset, "GameFontHighlight", MM.Actions.GetAssignmentLabel(assignment))
   title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, -2)

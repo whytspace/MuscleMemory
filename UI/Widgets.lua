@@ -552,6 +552,57 @@ local function decorateRow(row)
 end
 Widgets.decorateRow = decorateRow
 
+-- Populate GameTooltip with the rich client tooltip for an action identified by
+-- kind + id — a memory candidate, or whatever a memory/slot resolves to. Falls
+-- back to plain text for kinds with no native tooltip (macro, equipment set, …).
+-- Callers hide the tooltip themselves on leave.
+function Widgets.SetActionTooltip(owner, kind, id, fallbackText, anchor)
+  GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
+  if kind == "item" and id and GameTooltip.SetItemByID then
+    GameTooltip:SetItemByID(id)
+  elseif kind == "spell" and id and GameTooltip.SetSpellByID then
+    GameTooltip:SetSpellByID(id)
+  elseif kind == "mount" and id and GameTooltip.SetSpellByID then
+    local info = MM.Mounts.GetInfo(id)
+    GameTooltip:SetSpellByID(info and info.spellId or id)
+  elseif fallbackText then
+    GameTooltip:SetText(fallbackText)
+  else
+    GameTooltip:Hide()
+    return
+  end
+  GameTooltip:Show()
+end
+
+-- Show a tooltip while hovering just an icon (from Widgets.Icon), not the whole
+-- row. Clicks and drags still fall through to the row. The tooltip appears after a
+-- short hover delay. `show` receives the icon's parent row so it can read the live
+-- row data.
+local TOOLTIP_DELAY = 0.35
+
+function Widgets.AttachIconTooltip(icon, show)
+  icon:SetMouseClickEnabled(false)
+  icon:SetMouseMotionEnabled(true)
+  icon:SetScript("OnEnter", function(self)
+    if self.tooltipTimer then
+      self.tooltipTimer:Cancel()
+    end
+    self.tooltipTimer = C_Timer.NewTimer(TOOLTIP_DELAY, function()
+      self.tooltipTimer = nil
+      if self:IsMouseOver() then
+        show(self:GetParent())
+      end
+    end)
+  end)
+  icon:SetScript("OnLeave", function(self)
+    if self.tooltipTimer then
+      self.tooltipTimer:Cancel()
+      self.tooltipTimer = nil
+    end
+    GameTooltip:Hide()
+  end)
+end
+
 -- A selectable list row (muscle rail, memory rail, slot-editor memory options).
 -- Returns a Button with a highlight, a left accent bar, and a `.label`.
 function Widgets.ListRow(parent, height)

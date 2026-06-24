@@ -160,6 +160,15 @@ local function candidateInfo(candidate)
   return MM.Actions.GetAssignmentLabel(candidate), nil
 end
 
+-- Show the rich client tooltip for a candidate (spell/item/…), anchored to its icon.
+local function showCandidateTooltip(row)
+  local candidate = row.data and row.data.candidate
+  if not candidate then
+    return
+  end
+  Widgets.SetActionTooltip(row.tile, candidate.type, candidate.id, (candidateInfo(candidate)))
+end
+
 -- Left rail ------------------------------------------------------------------
 
 -- Initializer for a memory rail row (recycled by Widgets.DataList).
@@ -191,6 +200,14 @@ local function memoryRowInit(row, data)
     row:SetScript("OnClick", function(self)
       if self.data then
         selectMemory({ source = self.data.memory.source, id = self.data.memory.id })
+      end
+    end)
+
+    -- Tooltip on the icon only; shows what the memory resolves to (its spell/item/…).
+    Widgets.AttachIconTooltip(row.tile, function(r)
+      local resolved = r.data and resolveMemory(r.data.memory)
+      if resolved then
+        Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
       end
     end)
   end
@@ -324,6 +341,9 @@ local function candidateRowInit(row, data)
         refresh()
       end
     end)
+
+    -- Tooltip on the icon only, not the whole row.
+    Widgets.AttachIconTooltip(row.tile, showCandidateTooltip)
   end
 
   row.data = data
@@ -498,6 +518,9 @@ function MemoriesTab:BuildRule(parent, memory)
     tile:SetGlyph("?", colors.faint)
   end
   tile:SetBorder(1, colors.managed, 0.7)
+  Widgets.AttachIconTooltip(tile, function()
+    Widgets.SetActionTooltip(tile, candidate.type, candidate.id, name)
+  end)
 
   local title = Widgets.Label(inset, "GameFontHighlight", name)
   title:SetPoint("TOPLEFT", tile, "TOPRIGHT", 10, -1)
