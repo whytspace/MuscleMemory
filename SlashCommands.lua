@@ -77,7 +77,29 @@ local function profileNew(args)
   local id = MM.DB:CreateProfile(name ~= "" and name or nil)
   MM.DB:SetActiveProfile(id)
   refresh()
-  MM:Print("created and activated profile " .. MM.DB:GetProfile(id).name .. ".")
+  MM:Print("created and activated empty profile " .. MM.DB:GetProfile(id).name .. ".")
+end
+
+local function profileClone(args)
+  local name = table.concat(args, " ")
+  local source = MM.DB:GetActiveProfileId()
+  local id, reason = MM.DB:CloneProfile(source, name ~= "" and name or nil)
+  if not id then
+    MM:Warn(reason or "could not clone profile")
+    return
+  end
+  MM.DB:SetActiveProfile(id)
+  refresh()
+  MM:Print("cloned profile to " .. MM.DB:GetProfile(id).name .. " and activated it.")
+end
+
+local function profileDefault(args)
+  local id = MM.DB:FindProfileId(table.concat(args, " "))
+  if not id then
+    MM:Warn("usage: /mm profile default <name>")
+    return
+  end
+  report("account default profile is now " .. MM.DB:GetProfile(id).name .. ".", MM.DB:SetGlobalProfile(id))
 end
 
 local function profileSelect(args)
@@ -364,9 +386,11 @@ local tree = {
       desc = "manage profiles",
       commands = {
         list = { desc = "list profiles", run = profileList },
-        new = { desc = "create a profile and use it on this character", args = "<name>", run = profileNew },
+        new = { desc = "create an empty profile and use it on this character", args = "<name>", run = profileNew },
+        clone = { desc = "clone the active profile and use it on this character", args = "<name>", run = profileClone },
         select = { desc = "use a profile on this character", args = "<name>", run = profileSelect },
         inherit = { desc = "use the account default profile on this character", run = profileInherit },
+        default = { desc = "set the account default profile", args = "<name>", run = profileDefault },
         rename = { desc = "rename a profile", args = "<old> <new>", run = profileRename },
         delete = { desc = "delete a profile", args = "<name>", run = profileDelete },
       },

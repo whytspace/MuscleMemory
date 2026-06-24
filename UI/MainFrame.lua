@@ -18,93 +18,24 @@ local TABS = {
   { id = "muscles", label = "Muscles" },
   { id = "memories", label = "Memories" },
   { id = "settings", label = "Settings" },
+  { id = "profiles", label = "Profiles" },
   { id = "about", label = "About" },
 }
 
 local TAB_DESCRIPTIONS = {
   muscles = "Muscles are stacked rules that decide what each action-bar slot becomes. Higher Muscles win; slots they don't touch show the Muscle beneath.",
   memories = "Memories are named stand-ins for an action (Interrupt, Taunt, Lust). Each resolves to whichever ability the current character actually has.",
+  profiles = "Profiles are self-contained setups, each with its own Muscles and Memories. Choose the account-wide default and an optional per-character override.",
 }
 
 local function tabBuilder(id)
   return ({
     muscles = MM.ui.MusclesTab,
     memories = MM.ui.MemoriesTab,
+    profiles = MM.ui.ProfilesTab,
     settings = MM.ui.SettingsTab,
     about = MM.ui.AboutTab,
   })[id]
-end
-
--- Profiles --------------------------------------------------------------------
-
-local function newProfile()
-  MM.ui.Modals.Input("New Profile", "Name the new profile", "New Profile", "Create", function(name)
-    local id = MM.DB:CreateProfile(name ~= "" and name or nil)
-    MM.DB:SetActiveProfile(id)
-    UI:Refresh()
-  end)
-end
-
-local function renameProfile()
-  local id = MM.DB:GetActiveProfileId()
-  local profile = MM.DB:GetProfile(id)
-  MM.ui.Modals.Input(
-    "Rename Profile",
-    "New name for this profile",
-    profile and profile.name or "",
-    "Rename",
-    function(name)
-      if name == "" then
-        return
-      end
-      local ok, reason = MM.DB:RenameProfile(id, name)
-      if not ok then
-        MM:Warn(reason)
-      end
-      UI:Refresh()
-    end
-  )
-end
-
-local function deleteProfile()
-  local id = MM.DB:GetActiveProfileId()
-  local profile = MM.DB:GetProfile(id)
-  local name = profile and profile.name or id
-  MM.ui.Modals.Confirm(
-    "Delete Profile",
-    string.format(
-      'Delete profile "%s"? Its set of applied Muscles is removed \226\128\148 your Muscles, their order, and the fallback are untouched.',
-      name
-    ),
-    "Delete",
-    function()
-      local ok, reason = MM.DB:DeleteProfile(id)
-      if not ok then
-        MM:Warn(reason)
-      end
-      UI:Refresh()
-    end
-  )
-end
-
-local function openProfileMenu(button)
-  MenuUtil.CreateContextMenu(button, function(_, root)
-    root:CreateTitle("Profiles")
-    for _, profile in ipairs(MM.DB:GetProfileList()) do
-      root:CreateRadio(profile.name, function()
-        return profile.id == MM.DB:GetActiveProfileId()
-      end, function()
-        MM.DB:SetActiveProfile(profile.id)
-        UI:Refresh()
-      end)
-    end
-    root:CreateDivider()
-    root:CreateButton("New profile\226\128\166", newProfile)
-    root:CreateButton("Rename current\226\128\166", renameProfile)
-    if #MM.DB:GetProfileList() > 1 then
-      root:CreateButton("Delete current\226\128\166", deleteProfile)
-    end
-  end)
 end
 
 -- Chrome ----------------------------------------------------------------------
@@ -222,11 +153,6 @@ function UI:CreateFrame()
   end)
   preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
-  self.profileButton = MM.ui.Widgets.Button(frame, "Profile", 168, function(button)
-    openProfileMenu(button)
-  end)
-  self.profileButton:SetPoint("RIGHT", preview, "LEFT", -10, 0)
-
   -- Tab description line.
   self.description = MM.ui.Widgets.Hint(frame, "")
   self.description:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -86)
@@ -260,9 +186,6 @@ function UI:ShowContent()
   for id, button in pairs(self.tabButtons) do
     button:SetActive(id == tab)
   end
-
-  local profile = MM.DB:GetProfile()
-  self.profileButton:SetText("Profile:  " .. (profile and profile.name or "\226\128\148"))
 
   local description = TAB_DESCRIPTIONS[tab]
   self.description:SetText(description or "")

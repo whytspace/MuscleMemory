@@ -39,5 +39,6 @@ UI/ConditionsEditor.lua
 UI/MainFrame.lua
 UI/MusclesTab.lua
 UI/MemoriesTab.lua
+UI/ProfilesTab.lua
 UI/SettingsTab.lua
 UI/AboutTab.lua
