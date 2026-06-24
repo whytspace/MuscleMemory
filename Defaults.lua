@@ -20,6 +20,7 @@ MM.seed = {
     Default = {
       name = "Default",
       fallback = "keep",
+      response = "popup",
       muscleOrder = { "Core" },
       muscles = {
         Core = {

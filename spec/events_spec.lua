@@ -2,12 +2,14 @@ local addon = require("spec.helpers.addon")
 
 describe("Events", function()
   local MM, stubs
-  local prompts, dismissals
+  local prompts, dismissals, previews, applies
 
   before_each(function()
     MM, stubs = addon.fresh()
     prompts = 0
     dismissals = 0
+    previews = 0
+    applies = 0
     -- UI is not loaded in the harness; stand in for the apply prompt.
     MM.UI = {
       PromptApply = function()
@@ -17,6 +19,13 @@ describe("Events", function()
         dismissals = dismissals + 1
       end,
     }
+    -- Count the print / auto-apply branches without exercising the real plan.
+    MM.Applier.PreviewProfile = function()
+      previews = previews + 1
+    end
+    MM.Applier.ApplyProfile = function()
+      applies = applies + 1
+    end
     stubs:setSpell(1766, { name = "Kick", known = true })
     MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
   end)
@@ -45,6 +54,28 @@ describe("Events", function()
     MM.Events:OnEvent("SPELLS_CHANGED")
     assert.equals(0, prompts)
     assert.equals(1, dismissals)
+  end)
+
+  it("prints instead of prompting when the response is print", function()
+    MM.DB:SetResponse("print")
+    MM.Events:OnEvent("SPELLS_CHANGED")
+    assert.equals(0, prompts)
+    assert.equals(1, previews)
+  end)
+
+  it("auto-applies when the response is apply", function()
+    MM.DB:SetResponse("apply")
+    MM.Events:OnEvent("SPELLS_CHANGED")
+    assert.equals(0, prompts)
+    assert.equals(1, applies)
+  end)
+
+  it("does nothing on changes when the response is ignore", function()
+    MM.DB:SetResponse("ignore")
+    MM.Events:OnEvent("SPELLS_CHANGED")
+    assert.equals(0, prompts)
+    assert.equals(0, previews)
+    assert.equals(0, applies)
   end)
 
   it("does not prompt to apply on a bare action bar edit", function()

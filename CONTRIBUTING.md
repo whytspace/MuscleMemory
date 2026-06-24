@@ -53,6 +53,14 @@ current retail only. In particular: `WowScrollBox` + `MinimalScrollBar` for scro
 `UIPanelScrollFrameTemplate`), `MenuUtil` context menus (not `UIDropDownMenu`), and the
 `TabSystem` for tabs. When unsure, mirror a recent Blizzard panel (Communities, Settings).
 
+## Commands
+
+Every user-facing feature must also be reachable from a slash command, not just the UI. When you
+add a setting or action, add the matching node to the `/mm` command tree in `SlashCommands.lua`
+(e.g. a new setting in `config`, mirroring `/mm config fallback` and `/mm config response`). The
+tree is self-documenting — `help` and an empty argument list print a branch's children — so a new
+node is automatically surfaced once registered.
+
 ## Textures and assets
 
 The game can't load PNG/SVG at runtime — UI textures must be **TGA** (32-bit RGBA,
@@ -123,5 +131,7 @@ managed slot can't resolve an assignment, the active profile's `fallback` settin
 set via `/mm config fallback`) decides whether to leave the existing action or clear the slot.
 
 A few events (spec change, spells changed, leaving combat) — and switching the active profile —
-re-evaluate it. If applying it would change a slot, `Events` raises a popup offering to apply —
-nothing is stored or auto-applied; "pending" is just computed live from the current bars.
+re-evaluate it. If applying it would change a slot, `Events` reacts according to the active
+profile's `response` setting (`ignore`, `print`, `popup` or `apply`; default `popup`):
+do nothing, print the plan, raise a popup offering to apply, or apply automatically. Either way
+"pending" is computed live from the current bars — nothing is stored.

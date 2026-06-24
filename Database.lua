@@ -501,6 +501,27 @@ function DB:SetFallback(value)
   return true
 end
 
+-- How the add-on reacts when a re-scan finds changes to apply. Stored per
+-- profile alongside the fallback; defaults to the popup (the historical behavior).
+local RESPONSES = { ignore = true, print = true, popup = true, apply = true }
+
+function DB:GetResponse()
+  local profile = self:GetProfile()
+  return (profile and profile.response) or "popup"
+end
+
+function DB:SetResponse(value)
+  if not RESPONSES[value] then
+    return false, "response must be ignore, print, popup or apply"
+  end
+  local profile = self:GetProfile()
+  if not profile then
+    return false, "no active profile"
+  end
+  profile.response = value
+  return true
+end
+
 -- Memories -------------------------------------------------------------------
 -- Profile memories live in `profile.memories`; index `self:Memories()` directly.
 -- Predefined memories are immutable add-on data.

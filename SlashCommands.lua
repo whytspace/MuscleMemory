@@ -370,6 +370,14 @@ local function configFallback(args)
   report("fallback set to " .. args[1] .. ".", MM.DB:SetFallback(args[1]))
 end
 
+local function configResponse(args)
+  if not args[1] then
+    MM:Print("response: " .. MM.DB:GetResponse() .. " (how to react when an event finds changes).")
+    return
+  end
+  report("response set to " .. args[1] .. ".", MM.DB:SetResponse(args[1]))
+end
+
 local function toggleDebug()
   local root = MM.DB:GetRoot()
   root.debug = not root.debug
@@ -431,6 +439,11 @@ local tree = {
       desc = "settings",
       commands = {
         fallback = { desc = "what to do with an unresolved slot", args = "<keep|clear>", run = configFallback },
+        response = {
+          desc = "how to react when an event finds changes",
+          args = "<ignore|print|popup|apply>",
+          run = configResponse,
+        },
       },
     },
     preview = { desc = "preview the active profile", run = preview },

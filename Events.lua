@@ -21,12 +21,23 @@ function Events:PromptApplyIfChanged()
   if InCombatLockdown and InCombatLockdown() then
     return
   end
-  if MM.Applier:HasUnappliedChanges() then
-    MM.UI:PromptApply()
-  else
+  if not MM.Applier:HasUnappliedChanges() then
     -- A settled re-eval found nothing to do; clear a prompt an earlier,
     -- unsettled read may have raised.
     MM.UI:DismissApplyPrompt()
+    return
+  end
+
+  -- The active profile decides how to react to detected changes.
+  local response = MM.DB:GetResponse()
+  if response == "ignore" then
+    return
+  elseif response == "print" then
+    MM.Applier:PreviewProfile()
+  elseif response == "apply" then
+    MM.Applier:ApplyProfile()
+  else
+    MM.UI:PromptApply()
   end
 end
 
