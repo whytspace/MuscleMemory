@@ -13,6 +13,11 @@ local function hashString(text)
 end
 
 function Macros.HashBody(body)
+  -- The client appends a trailing newline when it persists a macro, so the body
+  -- read back after a reload (46 bytes) differs from what we render (45). Strip
+  -- trailing whitespace before hashing so the idempotency check survives a reload
+  -- instead of reporting a permanent pending change.
+  body = (body or ""):gsub("%s+$", "")
   return hashString(body)
 end
 

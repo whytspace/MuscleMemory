@@ -20,6 +20,13 @@ describe("Macros", function()
     it("treats nil as the empty string", function()
       assert.equals(MM.Macros.HashBody(""), MM.Macros.HashBody(nil))
     end)
+
+    it("ignores the trailing newline the client appends on persist", function()
+      -- A reloaded macro body comes back with a trailing \n; it must hash the
+      -- same as the body we rendered so the slot doesn't read as a pending change.
+      local body = "#showtooltip\n/use [@focus,harm][] Mind Freeze"
+      assert.equals(MM.Macros.HashBody(body), MM.Macros.HashBody(body .. "\n"))
+    end)
   end)
 
   describe("GetMacroScope", function()
