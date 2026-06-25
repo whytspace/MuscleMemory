@@ -17,28 +17,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Only this tag's notes; the full CHANGELOG.md still ships in the zip.
+      - name: Generate the release changelog
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          section="$(awk -v v="$ver" '
+            $0 ~ "^## " v "( |$)" { grab = 1; next }
+            grab && /^## / { exit }
+            grab { print }
+          ' CHANGELOG.md)"
+          if [ -n "$(printf '%s' "$section" | tr -d '[:space:]')" ]; then
+            printf '%s\n' "$section" > CHANGELOG-latest.md
+            echo "Wrote the $ver section to CHANGELOG-latest.md."
+          else
+            cp CHANGELOG.md CHANGELOG-latest.md
+            echo "No CHANGELOG section for $ver; using the full changelog."
+          fi
+
+      # Drives both the CurseForge upload and the GitHub release body from CHANGELOG-latest.md.
       - name: Package addon
         uses: BigWigsMods/packager@v2
         env:
           # @v2's release.sh reads GITHUB_OAUTH / CF_API_KEY; the *_TOKEN names are master-only.
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
           CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
-
-      # The packager sets the release body to the whole CHANGELOG.md; replace it with just
-      # this tag's section so the release shows only the latest changes.
-      - name: Trim release notes to the latest version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ver="${GITHUB_REF_NAME#v}"
-          notes="$(awk -v v="$ver" '
-            $0 ~ "^## " v "( |$)" { grab=1; next }
-            grab && /^## / { exit }
-            grab { print }
-          ' CHANGELOG.md)"
-          if [ -n "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
-            gh release edit "$GITHUB_REF_NAME" --notes "$notes"
-            echo "Set $GITHUB_REF_NAME notes to the $ver section."
-          else
-            echo "No CHANGELOG section for $ver; leaving notes as-is."
-          fi

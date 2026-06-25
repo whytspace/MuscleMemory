@@ -1,7 +1,8 @@
 package-as: MuscleMemory
 
+# CHANGELOG-latest.md is generated in CI with only the released version's notes.
 manual-changelog:
-  filename: CHANGELOG.md
+  filename: CHANGELOG-latest.md
   markup-type: markdown
 
 ignore:

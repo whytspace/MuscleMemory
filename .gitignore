@@ -2,4 +2,7 @@
 luacov.stats.out
 luacov.report.out
 
+# Per-release changelog generated in CI
+CHANGELOG-latest.md
+
 .DS_Store
