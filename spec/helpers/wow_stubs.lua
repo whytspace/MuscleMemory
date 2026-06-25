@@ -46,6 +46,7 @@ function Stubs.new()
     race = "Gnome", -- the raceFile UnitRace returns as its 2nd value
     inCombat = false,
     macroLimit = 120,
+    charMacroLimit = 30,
 
     spells = {}, -- [id] = { name, icon, known }
     items = {}, -- [id] = { name, link, icon, count, equipped }
@@ -331,6 +332,7 @@ function Stubs.new()
 
     -- Macros ---------------------------------------------------------------
     MAX_ACCOUNT_MACROS = world.macroLimit,
+    MAX_CHARACTER_MACROS = world.charMacroLimit,
     GetNumMacros = function()
       return #world.globalMacros, #world.charMacros
     end,
@@ -343,6 +345,30 @@ function Stubs.new()
     end,
     PickupMacro = function(index)
       world.cursor = { type = "macro", id = index }
+    end,
+    CreateMacro = function(name, icon, body, perCharacter)
+      local list = perCharacter and world.charMacros or world.globalMacros
+      list[#list + 1] = { name = name, icon = icon, body = body }
+      if perCharacter then
+        return world.macroLimit + #list
+      end
+      return #list
+    end,
+    EditMacro = function(index, name, icon, body)
+      local macro = macroAt(index)
+      if macro then
+        macro.name = name or macro.name
+        macro.icon = icon or macro.icon
+        macro.body = body or macro.body
+      end
+      return index
+    end,
+    DeleteMacro = function(index)
+      if index <= #world.globalMacros then
+        table.remove(world.globalMacros, index)
+      else
+        table.remove(world.charMacros, index - world.macroLimit)
+      end
     end,
 
     -- Action bars ----------------------------------------------------------

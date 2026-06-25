@@ -51,7 +51,9 @@ end
 
 local function selectMemory(ref)
   MM.ui.state.memory = ref
-  MM.ui.state.candidate = 1
+  -- Open with no candidate selected, so the rule panel shows the memory's own
+  -- settings (macro mode), mirroring the muscles tab's "no slot selected" state.
+  MM.ui.state.candidate = nil
   MM.ui.state.condsOpen = false
   refresh()
 end
@@ -309,7 +311,9 @@ local function candidateRowInit(row, data)
         end
         return
       end
-      selectCandidate(index)
+      -- Clicking the selected candidate again clears the selection, returning the
+      -- rule panel to the memory-level (macro) settings.
+      selectCandidate(MM.ui.state.candidate == index and nil or index)
     end)
 
     -- Drag a candidate onto another to reorder (the target is whichever row the
@@ -350,7 +354,7 @@ local function candidateRowInit(row, data)
   local index, candidate = data.index, data.candidate
   local locked = (selectedRef() or {}).source == "predefined"
 
-  row:SetSelected(index == (MM.ui.state.candidate or 1))
+  row:SetSelected(index == MM.ui.state.candidate)
 
   row.order:SetText(tostring(index))
   row.order:ClearAllPoints()
@@ -492,6 +496,121 @@ end
 
 -- Right: condition editor ------------------------------------------------------
 
+-- The rule panel when no candidate is selected: how the memory is executed.
+-- Custom memories can switch to macro mode and edit the template; predefined
+-- memories show a read-only note.
+function MemoriesTab:BuildMacroPanel(inset, memory)
+  local ref = selectedRef()
+  local editable = ref and ref.source == "custom"
+
+  local header = Widgets.SectionHeader(inset, "Execution")
+  header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -16)
+
+  if not editable then
+    local asMacro = memory and MM.Macros.EffectiveMode(memory) == "macro"
+    local note = Widgets.Hint(
+      inset,
+      asMacro and "This predefined memory is rendered as a macro. Clone it to change the body."
+        or "Predefined memories place the resolved spell or item directly. Clone this memory to render it as a macro instead."
+    )
+    note:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
+    note:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+    note:SetJustifyH("LEFT")
+
+    if asMacro then
+      local body = Widgets.Label(inset, "GameFontDisableSmall", memory.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
+      body:SetPoint("TOPLEFT", note, "BOTTOMLEFT", 0, -10)
+      body:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+      body:SetJustifyH("LEFT")
+    end
+    return
+  end
+
+  local isMacro = memory and memory.mode == "macro"
+
+  local box = Widgets.Checkbox(inset, isMacro, function(button)
+    MM.DB:SetMemoryMode(ref.id, button:GetChecked() and "macro" or "normal")
+    refresh()
+  end)
+  box:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -4, -6)
+
+  local boxLabel = Widgets.Label(inset, "GameFontHighlight", "Render as a macro")
+  boxLabel:SetPoint("LEFT", box, "RIGHT", 2, 0)
+
+  local intro = Widgets.Hint(
+    inset,
+    "Put a generated macro on the bar instead of the raw action, so you can add mouseover, focus and other conditions while the memory still resolves the right spell or item for this character."
+  )
+  intro:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 4, -6)
+  intro:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  intro:SetJustifyH("LEFT")
+
+  if not isMacro then
+    return
+  end
+
+  local anchor = intro
+  if not MM.Macros.CandidatesCompatible(memory) then
+    local badge = Widgets.Label(
+      inset,
+      "GameFontHighlightSmall",
+      "Macro mode supports spell, item, toy and mount candidates only.",
+      colors.warn
+    )
+    badge:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -10)
+    badge:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+    badge:SetJustifyH("LEFT")
+    anchor = badge
+  end
+
+  local example = Widgets.Hint(inset, "Use %name% for the resolved action. Example:")
+  example:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -12)
+  example:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  example:SetJustifyH("LEFT")
+
+  local sample =
+    Widgets.Label(inset, "GameFontDisableSmall", "#showtooltip\n/use [@mouseover,help][@focus,help][] %name%")
+  sample:SetPoint("TOPLEFT", example, "BOTTOMLEFT", 0, -4)
+  sample:SetJustifyH("LEFT")
+
+  local bodyHeader = Widgets.SectionHeader(inset, "Macro Body")
+  bodyHeader:SetPoint("TOPLEFT", sample, "BOTTOMLEFT", 0, -12)
+
+  -- Live count of the longest body any candidate would produce (the macro grows
+  -- when %name% is filled in). Turns red past the 255 cap, where macro mode goes
+  -- inactive and the memory falls back to placing the action directly.
+  local count = Widgets.Label(inset, "GameFontHighlightSmall", "", colors.muted)
+
+  local function updateCount(template)
+    local worst = MM.Macros.WorstCaseLength(memory, template)
+    local over = worst > MM.MACRO_BODY_LIMIT
+    local text = string.format("Longest result: %d / %d characters", worst, MM.MACRO_BODY_LIMIT)
+    if over then
+      text = text .. " \226\128\148 over the macro limit, macro mode is inactive until it fits."
+    end
+    count:SetText(text)
+    count:SetTextColor(Widgets.unpackColor(over and colors.danger or colors.muted))
+  end
+
+  local input = Widgets.MultiLineInput(
+    inset,
+    memory.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT,
+    MM.MACRO_TEMPLATE_LIMIT,
+    function(text)
+      MM.DB:SetMemoryTemplate(ref.id, text)
+      updateCount(text)
+    end
+  )
+  input:SetPoint("TOPLEFT", bodyHeader, "BOTTOMLEFT", 0, -6)
+  input:SetPoint("RIGHT", inset, "RIGHT", -16, 0)
+  input:SetHeight(84)
+
+  count:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 0, -8)
+  count:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  count:SetJustifyH("LEFT")
+  updateCount(memory.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
+end
+
 function MemoriesTab:BuildRule(parent, memory)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
@@ -499,12 +618,10 @@ function MemoriesTab:BuildRule(parent, memory)
   inset:SetWidth(RULE_WIDTH + 2)
 
   local candidates = memory and memory.candidates or {}
-  local candidate = candidates[MM.ui.state.candidate or 1]
+  local candidate = MM.ui.state.candidate and candidates[MM.ui.state.candidate]
   if not candidate then
-    local note = Widgets.Label(inset, "GameFontDisableSmall", "Select a candidate to see when it is used.")
-    note:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -20)
-    note:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -16, -20)
-    note:SetJustifyH("LEFT")
+    -- No candidate selected: the rule panel edits the memory itself (macro mode).
+    self:BuildMacroPanel(inset, memory)
     return
   end
 
@@ -571,8 +688,8 @@ function MemoriesTab:BuildContent(parent)
 
   local memory = MM.DB:ResolveMemory(ref)
   local candidateCount = memory and memory.candidates and #memory.candidates or 0
-  if (MM.ui.state.candidate or 1) > candidateCount then
-    MM.ui.state.candidate = 1
+  if MM.ui.state.candidate and MM.ui.state.candidate > candidateCount then
+    MM.ui.state.candidate = nil
   end
 
   self:BuildRail(parent)

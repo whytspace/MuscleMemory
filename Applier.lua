@@ -149,7 +149,14 @@ function Applier:PreviewProfile(profileId)
           )
         else
           changed = changed + 1
-          MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), entry.resolved.label))
+          local label = entry.resolved.label
+          local macroBody = MM.Macros.ResolvedAsMacro(entry.resolved)
+          if macroBody then
+            local record = MM.DB:GetMacroRecord(entry.muscleId, slot)
+            local verb = MM.Macros.WouldUpdate(record, macroBody) and "updates the macro" or "creates a macro"
+            label = label .. " (" .. verb .. ")"
+          end
+          MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), label))
         end
       elseif entry.fallback == "clear" then
         if HasAction and HasAction(slot) then
@@ -264,6 +271,14 @@ function Applier:ApplyEntry(entry)
     return false, "action is not currently available"
   end
 
+  -- Macro mode: a memory can render as a generated macro instead of the raw
+  -- action. A body that won't render (action outside the family, or too long after
+  -- substitution) falls back to placing the action directly rather than failing.
+  local body = MM.Macros.ResolvedAsMacro(entry.resolved)
+  if body then
+    return self:ApplyMacroEntry(entry, slot, entry.resolved.memory, body)
+  end
+
   local pickedUp
   if entry.resolved.kind == "spell" then
     pickedUp = MM.Spells.Pickup(entry.resolved.id)
@@ -289,6 +304,78 @@ function Applier:ApplyEntry(entry)
   end
 
   return MM.Actions.PlaceCursor(slot)
+end
+
+-- Reconcile the macro for `entry`'s slot to the already-rendered `body` (reuse /
+-- edit / create) through the per-character registry, and place it.
+function Applier:ApplyMacroEntry(entry, slot, memory, body)
+  local record = MM.DB:GetMacroRecord(entry.muscleId, slot)
+  local macro, result = MM.Macros.EnsureMacro(record, MM.Macros.MacroName(memory), body)
+  if not macro then
+    return false, result
+  end
+  MM.DB:SetMacroRecord(entry.muscleId, slot, result)
+
+  -- Expose the macro on the resolved action so IsResolvedInSlot recognises it.
+  entry.resolved.macro = macro
+
+  if not MM.Macros.Pickup(macro) or not GetCursorInfo or not GetCursorInfo() then
+    ClearCursor()
+    return false, "could not pick up macro"
+  end
+  return MM.Actions.PlaceCursor(slot)
+end
+
+-- Delete generated macros no plan slot wants anymore (memory switched off macro
+-- mode, slot reassigned, muscle/memory deleted). Runs after applying, so a slot
+-- that still wants its macro has refreshed the registry first.
+function Applier:CleanupMacroOrphans(plan)
+  local registry = MM.DB:GetMacroRegistry()
+
+  local wanted = {}
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local entry = plan.slots[slot]
+    if entry and entry.resolved and MM.Macros.ResolvedAsMacro(entry.resolved) then
+      wanted[entry.muscleId] = wanted[entry.muscleId] or {}
+      wanted[entry.muscleId][slot] = true
+    end
+  end
+
+  for muscleId, slots in pairs(registry) do
+    for slot, record in pairs(slots) do
+      if not (wanted[muscleId] and wanted[muscleId][slot]) then
+        MM.Macros.DeleteOwned(record)
+        slots[slot] = nil
+      end
+    end
+    if next(slots) == nil then
+      registry[muscleId] = nil
+    end
+  end
+
+  -- Safety net: delete any macro carrying our owner marker that no surviving
+  -- registry record accounts for, recovering from a lost or desynced registry.
+  local referenced = {}
+  for _, slots in pairs(registry) do
+    for _, record in pairs(slots) do
+      referenced[(record.name or "") .. "\0" .. (record.bodyHash or "")] = true
+    end
+  end
+
+  local orphanIndices = {}
+  for _, macro in ipairs(MM.Macros.Scan()) do
+    if MM.Macros.IsOwned(macro) and not referenced[macro.name .. "\0" .. macro.bodyHash] then
+      orphanIndices[#orphanIndices + 1] = macro.index
+    end
+  end
+  -- Delete from the highest index down so DeleteMacro's renumbering can't shift a
+  -- still-pending target.
+  table.sort(orphanIndices, function(left, right)
+    return left > right
+  end)
+  for _, index in ipairs(orphanIndices) do
+    MM.Macros.Delete(index)
+  end
 end
 
 function Applier:ApplyProfile(profileId, options)
@@ -344,6 +431,8 @@ function Applier:ApplyProfile(profileId, options)
       end
     end
   end
+
+  self:CleanupMacroOrphans(plan)
 
   MM:Print(
     string.format(

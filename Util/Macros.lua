@@ -164,3 +164,279 @@ function Macros.Pickup(macro)
 
   return false
 end
+
+-- Macro mode -----------------------------------------------------------------
+-- A memory whose every candidate is in this family can render as a generated
+-- macro: the `/use` verb invokes spell, item (incl. toys) and mount by name, so a
+-- single `%name%` template covers them all. Battle pets (`/summonpet`), equipment
+-- sets (`/equipset`) and flyouts have no place in such a macro and are excluded.
+Macros.FAMILY = { spell = true, item = true, mount = true }
+
+-- True only when the memory has candidates and every one is macro-able. Derived,
+-- never stored: the toggle persists as intent, compatibility follows the list.
+function Macros.CandidatesCompatible(memory)
+  local candidates = memory and memory.candidates
+  if not candidates or #candidates == 0 then
+    return false
+  end
+  for _, candidate in ipairs(candidates) do
+    if not Macros.FAMILY[candidate.type] then
+      return false
+    end
+  end
+  return true
+end
+
+-- The display name a candidate contributes to %name%. Only the macro-able family
+-- matters; others can't be in a macro-mode memory anyway.
+local function candidateName(candidate)
+  if candidate.type == "spell" then
+    local info = MM.Spells.GetInfo(candidate.id)
+    return info and info.name
+  elseif candidate.type == "item" then
+    local info = MM.Items.GetInfo(candidate.id)
+    return info and info.name
+  elseif candidate.type == "mount" then
+    local info = MM.Mounts.GetInfo(candidate.id)
+    return info and info.name
+  end
+  return nil
+end
+
+-- Length of the body `template` would produce for a given name/id, uncapped (so
+-- the editor can show how far over the limit it is).
+function Macros.RenderedLength(template, name, id)
+  local body = (template or ""):gsub("%%name%%", (tostring(name or ""):gsub("%%", "%%%%")))
+  body = body:gsub("%%id%%", (tostring(id or ""):gsub("%%", "%%%%")))
+  return #body
+end
+
+-- The longest body any candidate would render to: the candidate whose name pushes
+-- the macro closest to (or past) the 255 cap. Candidates with names not yet known
+-- are skipped; the applier's own render cap is the final guard for those.
+function Macros.WorstCaseLength(memory, template)
+  template = template or (memory and memory.macroTemplate) or MM.MACRO_TEMPLATE_DEFAULT
+  local worst = Macros.RenderedLength(template, "", "")
+  for _, candidate in ipairs(memory and memory.candidates or {}) do
+    if Macros.FAMILY[candidate.type] then
+      local name = candidateName(candidate)
+      if name then
+        local length = Macros.RenderedLength(template, name, candidate.id)
+        if length > worst then
+          worst = length
+        end
+      end
+    end
+  end
+  return worst
+end
+
+-- True when every candidate's rendered body fits the 255-char macro cap.
+function Macros.FitsLimit(memory, template)
+  return Macros.WorstCaseLength(memory, template) <= MM.MACRO_BODY_LIMIT
+end
+
+-- The mode actually used at apply time: "macro" only when the memory opted in, its
+-- candidates are all macro-able, AND the body fits the 255-char cap; else "normal".
+-- Single source of truth shared by the applier, the idempotency check, the editor.
+function Macros.EffectiveMode(memory)
+  if memory and memory.mode == "macro" and Macros.CandidatesCompatible(memory) and Macros.FitsLimit(memory) then
+    return "macro"
+  end
+  return "normal"
+end
+
+-- Substitute the resolved action into a template: %name% -> its display name,
+-- %id% -> its numeric id. Replacement values are %-escaped so a name containing
+-- "%" can't corrupt the body. Fails if the result would exceed the 255 cap.
+function Macros.RenderTemplate(template, resolved)
+  template = template or MM.MACRO_TEMPLATE_DEFAULT
+  if not resolved then
+    return nil, "nothing resolved to substitute"
+  end
+
+  local function escape(value)
+    return (tostring(value or ""):gsub("%%", "%%%%"))
+  end
+
+  local body = template:gsub("%%name%%", escape(resolved.label))
+  body = body:gsub("%%id%%", escape(resolved.id))
+
+  if #body > MM.MACRO_BODY_LIMIT then
+    return nil, "macro body exceeds " .. MM.MACRO_BODY_LIMIT .. " characters"
+  end
+  return body
+end
+
+-- The macro body a resolved action should be placed as, or nil if it should go on
+-- the bar directly: nil unless its memory is in (effective) macro mode, the action
+-- is in the macro-able family, and the body fits the cap. Single decision point
+-- shared by the applier, the idempotency check, cleanup, and preview.
+function Macros.ResolvedAsMacro(resolved)
+  local memory = resolved and resolved.memory
+  if memory and Macros.EffectiveMode(memory) == "macro" and Macros.FAMILY[resolved.kind] then
+    return Macros.RenderTemplate(memory.macroTemplate, resolved)
+  end
+  return nil
+end
+
+-- Trim `text` to at most `maxBytes`, without splitting a UTF-8 sequence (so a
+-- localized macro name never ends in a broken half-character).
+local function truncateBytes(text, maxBytes)
+  if #text <= maxBytes then
+    return text
+  end
+  local cut = maxBytes
+  -- Back off while the next byte is a UTF-8 continuation byte (0x80-0xBF), i.e. the
+  -- cut falls inside a multi-byte character.
+  while cut > 0 do
+    local nextByte = string.byte(text, cut + 1)
+    if not nextByte or nextByte < 0x80 or nextByte >= 0xC0 then
+      break
+    end
+    cut = cut - 1
+  end
+  return text:sub(1, cut)
+end
+
+-- A generated macro is named after its memory, plus an owner marker so we can
+-- recognise our macros, truncated to fit the 16-char cap. The name is cosmetic
+-- (it labels the bar button); tracking keys on the registry, so collisions between
+-- two memories sharing a prefix are harmless.
+function Macros.MacroName(memory)
+  local name = memory and memory.name or "Memory"
+  if name == "" then
+    name = "Memory"
+  end
+  local marker = MM.MACRO_NAME_MARKER
+  return truncateBytes(name, MM.MACRO_NAME_LIMIT - #marker) .. marker
+end
+
+-- True for a macro we generated — recognised by the owner marker on its name.
+-- Used as a cleanup safety net when the tracking registry is lost.
+function Macros.IsOwned(macro)
+  local marker = MM.MACRO_NAME_MARKER
+  local name = macro and macro.name
+  return type(name) == "string" and #name >= #marker and name:sub(-#marker) == marker
+end
+
+-- Thin guarded wrappers over the global macro API (none of which exist under the
+-- test harness, matching how Pickup guards PickupMacro).
+function Macros.Create(name, body)
+  if not CreateMacro then
+    return nil, "macro API unavailable"
+  end
+  local _, characterCount = GetNumMacros()
+  if (characterCount or 0) >= (MAX_CHARACTER_MACROS or 30) then
+    return nil, "character macro slots are full"
+  end
+  local index = CreateMacro(name, MM.MACRO_DYNAMIC_ICON, body, true)
+  return index
+end
+
+function Macros.Edit(index, name, body)
+  if not EditMacro then
+    return false
+  end
+  EditMacro(index, name, MM.MACRO_DYNAMIC_ICON, body)
+  return true
+end
+
+function Macros.Delete(index)
+  if not DeleteMacro then
+    return false
+  end
+  DeleteMacro(index)
+  return true
+end
+
+-- Reconcile the macro for a slot to `name` + `body`, reusing where possible:
+--   * a character macro already holding this exact body -> reuse it (renaming it
+--     if the desired name changed, e.g. the memory was renamed),
+--   * our previous macro still untouched at its index   -> edit in place,
+--   * otherwise                                         -> create a new one.
+-- Returns (macro, record) or (nil, reason); `record` is what to persist.
+function Macros.EnsureMacro(reference, name, body)
+  local bodyHash = Macros.HashBody(body)
+
+  local existing = Macros.Resolve({
+    scope = "character",
+    bodyHash = bodyHash,
+    indexHint = reference and reference.indexHint,
+  })
+  if existing then
+    -- The body is unchanged but the title may not be (a rename only changes the
+    -- name), so bring the reused macro's name up to date.
+    if existing.name ~= name then
+      Macros.Edit(existing.index, name, body)
+      existing.name = name
+    end
+    return existing, { name = name, scope = "character", bodyHash = bodyHash, indexHint = existing.index }
+  end
+
+  -- Edit in place only if our last macro is verifiably still there (same name and
+  -- the body we wrote), so a shifted index never clobbers an unrelated macro.
+  if reference and reference.indexHint and GetMacroInfo then
+    local currentName, _, currentBody = GetMacroInfo(reference.indexHint)
+    if currentName == reference.name and currentBody and Macros.HashBody(currentBody) == reference.bodyHash then
+      if Macros.Edit(reference.indexHint, name, body) then
+        local macro =
+          { index = reference.indexHint, scope = "character", name = name, body = body, bodyHash = bodyHash }
+        return macro, { name = name, scope = "character", bodyHash = bodyHash, indexHint = reference.indexHint }
+      end
+    end
+  end
+
+  local index, reason = Macros.Create(name, body)
+  if not index then
+    return nil, reason
+  end
+  local macro = { index = index, scope = "character", name = name, body = body, bodyHash = bodyHash }
+  return macro, { name = name, scope = "character", bodyHash = bodyHash, indexHint = index }
+end
+
+-- Would EnsureMacro reuse/edit an existing macro for this slot (true) or create a
+-- fresh one (false)? Mirrors EnsureMacro's reuse + edit-in-place conditions so the
+-- preview wording matches what apply actually does. `record` is the slot's stored
+-- registry entry (may be nil).
+function Macros.WouldUpdate(record, body)
+  local bodyHash = Macros.HashBody(body)
+
+  -- Reuse: a character macro already holds this exact body.
+  if Macros.Resolve({ scope = "character", bodyHash = bodyHash, indexHint = record and record.indexHint }) then
+    return true
+  end
+
+  -- Edit in place: our previous macro is still where we left it, unchanged.
+  if record and record.indexHint and GetMacroInfo then
+    local name, _, currentBody = GetMacroInfo(record.indexHint)
+    if name == record.name and currentBody and Macros.HashBody(currentBody) == record.bodyHash then
+      return true
+    end
+  end
+
+  return false
+end
+
+-- Delete a generated macro, but only after confirming the record still points at
+-- the macro we created (by name + the body we wrote), so we never remove a
+-- macro the player made. Falls back to a name+hash scan if the index shifted.
+function Macros.DeleteOwned(record)
+  if not record or not GetMacroInfo then
+    return false
+  end
+
+  if record.indexHint then
+    local name, _, body = GetMacroInfo(record.indexHint)
+    if name == record.name and body and Macros.HashBody(body) == record.bodyHash then
+      return Macros.Delete(record.indexHint)
+    end
+  end
+
+  for _, macro in ipairs(Macros.Scan()) do
+    if macro.name == record.name and macro.bodyHash == record.bodyHash then
+      return Macros.Delete(macro.index)
+    end
+  end
+  return false
+end

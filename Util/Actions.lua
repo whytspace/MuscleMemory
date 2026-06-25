@@ -508,6 +508,37 @@ function Actions.IsResolvedInSlot(resolved, slot)
     return false
   end
 
+  -- A memory in macro mode places a generated macro, not the raw action. Match the
+  -- slot against the macro's current name AND rendered body: a memory rename changes
+  -- the name (not the body), so a stale-named macro must read as a pending change.
+  -- A body that won't render falls through to plain matching, like the applier.
+  local body = MM.Macros.ResolvedAsMacro(resolved)
+  if body then
+    local info = Actions.GetInfo(slot)
+    if not info or info.actionType ~= "macro" then
+      return false
+    end
+    local expectedName = MM.Macros.MacroName(resolved.memory)
+    local expectedHash = MM.Macros.HashBody(body)
+
+    if GetMacroInfo then
+      local liveName, _, liveBody = GetMacroInfo(info.id)
+      if liveName == expectedName and liveBody and MM.Macros.HashBody(liveBody) == expectedHash then
+        return true
+      end
+    end
+    -- Fallback for clients where the slot's id isn't a usable macro index: match by
+    -- the slot's macro name plus a name+hash scan.
+    if GetActionText and GetActionText(slot) == expectedName then
+      for _, macro in ipairs(MM.Macros.Scan()) do
+        if macro.name == expectedName and macro.bodyHash == expectedHash then
+          return true
+        end
+      end
+    end
+    return false
+  end
+
   return slotMatches(slot, {
     kind = resolved.kind,
     id = resolved.id,

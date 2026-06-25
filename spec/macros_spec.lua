@@ -118,4 +118,192 @@ describe("Macros", function()
       assert.equals("macro body hash not found", reason)
     end)
   end)
+
+  describe("CandidatesCompatible / EffectiveMode", function()
+    it("accepts memories whose candidates are all spell/item/mount", function()
+      local memory = { candidates = { { type = "spell" }, { type = "item" }, { type = "mount" } } }
+      assert.is_true(MM.Macros.CandidatesCompatible(memory))
+    end)
+
+    it("rejects an empty candidate list", function()
+      assert.is_false(MM.Macros.CandidatesCompatible({ candidates = {} }))
+    end)
+
+    it("rejects a memory containing a non-family candidate", function()
+      local memory = { candidates = { { type = "spell" }, { type = "battlepet" } } }
+      assert.is_false(MM.Macros.CandidatesCompatible(memory))
+    end)
+
+    it("is macro only when opted in and compatible", function()
+      local ok = { mode = "macro", candidates = { { type = "spell" } } }
+      local incompatible = { mode = "macro", candidates = { { type = "equipmentset" } } }
+      local normal = { candidates = { { type = "spell" } } }
+      assert.equals("macro", MM.Macros.EffectiveMode(ok))
+      assert.equals("normal", MM.Macros.EffectiveMode(incompatible))
+      assert.equals("normal", MM.Macros.EffectiveMode(normal))
+    end)
+  end)
+
+  describe("WorstCaseLength / FitsLimit", function()
+    it("measures the candidate whose name renders longest", function()
+      stubs:setSpell(1, { name = "Kick" })
+      stubs:setSpell(2, { name = string.rep("A", 40) })
+      local memory = {
+        macroTemplate = "/use %name%",
+        candidates = { { type = "spell", id = 1 }, { type = "spell", id = 2 } },
+      }
+      assert.equals(#("/use " .. string.rep("A", 40)), MM.Macros.WorstCaseLength(memory))
+      assert.is_true(MM.Macros.FitsLimit(memory))
+    end)
+
+    it("reports over the cap and forces normal mode", function()
+      stubs:setSpell(1, { name = string.rep("Z", 260) })
+      local memory = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      assert.is_false(MM.Macros.FitsLimit(memory))
+      assert.equals("normal", MM.Macros.EffectiveMode(memory))
+    end)
+  end)
+
+  describe("ResolvedAsMacro", function()
+    it("returns the rendered body for a macro-mode family action", function()
+      stubs:setSpell(1, { name = "Kick" })
+      local memory = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      local resolved = { kind = "spell", id = 1, label = "Kick", memory = memory }
+      assert.equals("/use Kick", MM.Macros.ResolvedAsMacro(resolved))
+    end)
+
+    it("returns nil when the memory is not in macro mode", function()
+      local resolved =
+        { kind = "spell", id = 1, label = "Kick", memory = { candidates = { { type = "spell", id = 1 } } } }
+      assert.is_nil(MM.Macros.ResolvedAsMacro(resolved))
+    end)
+
+    it("returns nil when there is no backing memory (a direct assignment)", function()
+      assert.is_nil(MM.Macros.ResolvedAsMacro({ kind = "spell", id = 1, label = "Kick" }))
+    end)
+  end)
+
+  describe("RenderTemplate", function()
+    it("substitutes the resolved name and id", function()
+      local body = MM.Macros.RenderTemplate("#showtooltip\n/use [@focus] %name%; %name%", { label = "Kick", id = 1766 })
+      assert.equals("#showtooltip\n/use [@focus] Kick; Kick", body)
+    end)
+
+    it("substitutes %id%", function()
+      local body = MM.Macros.RenderTemplate("/use item:%id%", { label = "Healthstone", id = 5512 })
+      assert.equals("/use item:5512", body)
+    end)
+
+    it("escapes percent signs in the resolved name", function()
+      local body = MM.Macros.RenderTemplate("/use %name%", { label = "50%% Off", id = 1 })
+      assert.equals("/use 50%% Off", body)
+    end)
+
+    it("rejects a body that would exceed the 255 cap", function()
+      local body, reason =
+        MM.Macros.RenderTemplate("/use " .. string.rep("x", 260) .. "%name%", { label = "A", id = 1 })
+      assert.is_nil(body)
+      assert.matches("255", reason)
+    end)
+  end)
+
+  describe("MacroName", function()
+    local marker = MM.MACRO_NAME_MARKER
+
+    it("appends the owner marker, truncating to the byte cap", function()
+      local long = "Interrupt the Boss Adds"
+      local name = MM.Macros.MacroName({ name = long })
+      assert.is_true(#name <= MM.MACRO_NAME_LIMIT)
+      assert.is_true(MM.Macros.IsOwned({ name = name }))
+      -- The visible part stays a prefix of the memory name.
+      local base = name:sub(1, #name - #marker)
+      assert.equals(base, long:sub(1, #base))
+    end)
+
+    it("falls back to a default for an empty name", function()
+      local name = MM.Macros.MacroName({ name = "" })
+      assert.is_true(MM.Macros.IsOwned({ name = name }))
+      assert.equals("Memory", name:sub(1, #name - #marker))
+    end)
+
+    it("recognises only marked macros as owned", function()
+      assert.is_false(MM.Macros.IsOwned({ name = "Kick" }))
+      assert.is_true(MM.Macros.IsOwned({ name = "Kick" .. marker }))
+    end)
+  end)
+
+  describe("EnsureMacro", function()
+    it("creates a new character macro when none exists", function()
+      local macro, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      assert.equals(121, macro.index)
+      assert.equals("character", record.scope)
+      assert.equals(121, record.indexHint)
+      assert.equals(1, #stubs.world.charMacros)
+    end)
+
+    it("reuses an existing macro with the same body without creating another", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      local macro = MM.Macros.EnsureMacro(record, "Kick", "/use Kick")
+      assert.equals(121, macro.index)
+      assert.equals(1, #stubs.world.charMacros) -- still one macro, reused
+    end)
+
+    it("renames a reused macro when the desired name changed", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      local macro, newRecord = MM.Macros.EnsureMacro(record, "Kicker", "/use Kick")
+      assert.equals(record.indexHint, macro.index) -- same macro, reused
+      assert.equals("Kicker", macro.name)
+      assert.equals("Kicker", newRecord.name)
+      assert.equals(1, #stubs.world.charMacros)
+      assert.equals("Kicker", stubs.world.charMacros[1].name)
+    end)
+
+    it("edits in place when the body changes", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      local macro = MM.Macros.EnsureMacro(record, "Kick", "/use [@focus] Kick")
+      assert.equals(121, macro.index)
+      assert.equals(1, #stubs.world.charMacros) -- edited, not duplicated
+      assert.equals("/use [@focus] Kick", stubs.world.charMacros[1].body)
+    end)
+
+    it("fails softly when character macro slots are full", function()
+      for index = 1, stubs.world.charMacroLimit do
+        stubs:addCharacterMacro({ name = "M" .. index, body = "/cast " .. index })
+      end
+      local macro, reason = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      assert.is_nil(macro)
+      assert.matches("full", reason)
+    end)
+  end)
+
+  describe("WouldUpdate", function()
+    it("is false when no macro exists yet", function()
+      assert.is_false(MM.Macros.WouldUpdate(nil, "/use Kick"))
+    end)
+
+    it("is true when a macro already holds the body (e.g. a rename)", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      assert.is_true(MM.Macros.WouldUpdate(record, "/use Kick"))
+    end)
+
+    it("is true when our macro exists but the body changed", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      assert.is_true(MM.Macros.WouldUpdate(record, "/use [@focus] Kick"))
+    end)
+  end)
+
+  describe("DeleteOwned", function()
+    it("deletes a macro that still matches the record", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      assert.is_true(MM.Macros.DeleteOwned(record))
+      assert.equals(0, #stubs.world.charMacros)
+    end)
+
+    it("leaves a macro the player changed alone", function()
+      local _, record = MM.Macros.EnsureMacro(nil, "Kick", "/use Kick")
+      stubs.world.charMacros[1].body = "/say hijacked"
+      assert.is_false(MM.Macros.DeleteOwned(record))
+      assert.equals(1, #stubs.world.charMacros)
+    end)
+  end)
 end)

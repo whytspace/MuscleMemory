@@ -352,6 +352,45 @@ function Widgets.DataList(parent, key, opts)
   return list
 end
 
+-- A multi-line text box for free-form input (macro bodies). Built on Blizzard's
+-- InputScrollFrameTemplate so it scrolls and caps length natively. `onChange`
+-- fires with the current text on every edit. Anchor it and set its height.
+function Widgets.MultiLineInput(parent, text, maxLetters, onChange)
+  local frame = CreateFrame("ScrollFrame", nil, parent, "InputScrollFrameTemplate")
+  local edit = frame.EditBox
+  edit:SetMaxLetters(maxLetters or 0)
+  edit:SetFontObject("ChatFontNormal")
+  edit:SetMultiLine(true)
+  if frame.CharCount then
+    frame.CharCount:Hide()
+  end
+
+  -- Keep the edit box pinned to the scroll frame's width so long lines wrap down
+  -- instead of running off the right edge. The width isn't known until the frame
+  -- is laid out, so sync it whenever the frame resizes (and once up front).
+  local function syncWidth()
+    local width = frame:GetWidth()
+    if width and width > 0 then
+      edit:SetWidth(width)
+    end
+  end
+  frame:HookScript("OnSizeChanged", syncWidth)
+  syncWidth()
+
+  edit:SetText(text or "")
+  -- Hook, don't replace: InputScrollFrameTemplate wires its own OnTextChanged to
+  -- keep the caret scrolled into view. Overwriting it makes the cursor jump.
+  edit:HookScript("OnTextChanged", function(self)
+    if onChange then
+      onChange(self:GetText())
+    end
+  end)
+  edit:SetScript("OnEscapePressed", function(self)
+    self:ClearFocus()
+  end)
+  return frame
+end
+
 -- The little three-bar "priority list" badge that marks a memory-driven slot.
 -- Pinned to the bottom-right corner of `parent`.
 function Widgets.MemoryBadge(parent, size)

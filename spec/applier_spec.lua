@@ -183,6 +183,93 @@ describe("Applier", function()
       assert.is_true(printedMatches(stubs.world, "applied 0 slots, skipped 1 unchanged"))
     end)
 
+    it("renders a macro for a macro-mode memory and stays idempotent", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+
+      assert.is_true(MM.Applier:ApplyProfile())
+
+      -- A character macro is placed, not the spell itself.
+      assert.equals("macro", stubs.world.slots[10].actionType)
+      assert.equals(1, #stubs.world.charMacros)
+      assert.equals("#showtooltip\n/use Kick", stubs.world.charMacros[1].body)
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+
+      -- The macro carries the owner marker so it can be recognised later.
+      assert.is_true(MM.Macros.IsOwned(stubs.world.charMacros[1]))
+
+      -- Re-applying reuses the macro rather than creating a second one.
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(1, #stubs.world.charMacros)
+    end)
+
+    it("treats a memory rename as a pending change and updates the macro title", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      assert.is_true(MM.Applier:ApplyProfile())
+      local originalName = stubs.world.charMacros[1].name
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+
+      MM.DB:RenameMemory(key, "Kicker")
+      -- The macro title is now stale, so a change is pending.
+      assert.is_true(MM.Applier:HasUnappliedChanges())
+
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(1, #stubs.world.charMacros) -- renamed in place, not duplicated
+      assert.are_not.equal(originalName, stubs.world.charMacros[1].name)
+      assert.is_true(MM.Macros.IsOwned(stubs.world.charMacros[1]))
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+    end)
+
+    it("sweeps a marked macro the registry no longer tracks", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(1, #stubs.world.charMacros)
+
+      -- Simulate a lost registry: the marked macro is now untracked.
+      MM.DB:GetCharacterState().macroRegistry = {}
+      MM.DB:SetSlot("Core", 10, { type = "empty" })
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(0, #stubs.world.charMacros)
+    end)
+
+    it("falls back to placing the action when the macro body is over the limit", function()
+      stubs:setSpell(9001, { name = string.rep("Q", 260), icon = 7, known = true })
+      local key = MM.DB:CreateMemory("Long")
+      MM.DB:AddCandidate(key, { type = "spell", id = 9001 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+
+      assert.is_true(MM.Applier:ApplyProfile())
+      -- Too long to be a macro, so the spell is placed directly and no macro made.
+      assert.equals("spell", stubs.world.slots[10].actionType)
+      assert.equals(9001, stubs.world.slots[10].id)
+      assert.equals(0, #stubs.world.charMacros)
+    end)
+
+    it("cleans up the generated macro when a memory leaves macro mode", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(1, #stubs.world.charMacros)
+
+      MM.DB:SetMemoryMode(key, "normal")
+      assert.is_true(MM.Applier:ApplyProfile())
+      -- The slot now holds the spell directly and the orphaned macro is gone.
+      assert.equals("spell", stubs.world.slots[10].actionType)
+      assert.equals(1766, stubs.world.slots[10].id)
+      assert.equals(0, #stubs.world.charMacros)
+    end)
+
     it("restores a mount via its summon spell and stays idempotent", function()
       -- Capture stores the id the bar reports for a mount, which is its summon
       -- spellId (253007), not the journal mountId (219). GetInfo maps it back, so
@@ -259,6 +346,28 @@ describe("Applier", function()
       setHunterLustSlot(10)
       MM.Applier:PreviewProfile()
       assert.is_true(printedMatches(stubs.world, "no changes"))
+    end)
+
+    it("notes that a macro-mode slot will create a macro", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+
+      MM.Applier:PreviewProfile()
+      assert.is_true(printedMatches(stubs.world, "Kick %(creates a macro%)"))
+    end)
+
+    it("notes that an existing macro will be updated after a rename", function()
+      local key = MM.DB:CreateMemory("Kick")
+      MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
+      MM.DB:SetMemoryMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.Applier:ApplyProfile()
+
+      MM.DB:RenameMemory(key, "Kicker")
+      MM.Applier:PreviewProfile()
+      assert.is_true(printedMatches(stubs.world, "Kick %(updates the macro%)"))
     end)
   end)
 end)

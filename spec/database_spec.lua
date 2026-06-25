@@ -309,7 +309,7 @@ describe("DB", function()
     it("copies a predefined memory into an editable profile one", function()
       local key = MM.DB:CopyPredefinedMemory("interrupt")
       local copy = MM.DB:Memories()[key]
-      assert.equals("Kick / Interrupt Copy", copy.name)
+      assert.equals("Interrupt Copy", copy.name)
       assert.are_not.equal(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
       assert.same(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
     end)
@@ -322,8 +322,8 @@ describe("DB", function()
 
     it("resolves predefined memories by id and profile ones by source", function()
       local key = MM.DB:CopyPredefinedMemory("interrupt", "mine", "Mine")
-      assert.equals("Kick / Interrupt", MM.DB:ResolveMemory({ id = "interrupt" }).name)
-      assert.equals("Kick / Interrupt", MM.DB:GetPredefinedMemory("interrupt").name)
+      assert.equals("Interrupt", MM.DB:ResolveMemory({ id = "interrupt" }).name)
+      assert.equals("Interrupt", MM.DB:GetPredefinedMemory("interrupt").name)
       assert.equals("Mine", MM.DB:ResolveMemory({ source = "custom", id = key }).name)
       assert.is_nil(MM.DB:ResolveMemory(nil))
     end)
@@ -348,6 +348,33 @@ describe("DB", function()
 
       assert.is_true(MM.DB:DeleteMemory(key))
       assert.is_nil(MM.DB:Memories()[key])
+    end)
+
+    it("toggles macro mode, seeding and keeping the template", function()
+      local key = MM.DB:CreateMemory("Kick")
+
+      assert.is_true(MM.DB:SetMemoryMode(key, "macro"))
+      local memory = MM.DB:Memories()[key]
+      assert.equals("macro", memory.mode)
+      assert.equals(MM.MACRO_TEMPLATE_DEFAULT, memory.macroTemplate)
+
+      MM.DB:SetMemoryTemplate(key, "#showtooltip\n/use [@focus] %name%")
+      assert.is_true(MM.DB:SetMemoryMode(key, "normal"))
+      assert.is_nil(memory.mode)
+      -- The body is preserved across the round-trip so toggling never loses it.
+      assert.equals("#showtooltip\n/use [@focus] %name%", memory.macroTemplate)
+    end)
+
+    it("clamps the template to the limit and rejects bad modes", function()
+      local key = MM.DB:CreateMemory("Kick")
+      local ok, reason = MM.DB:SetMemoryMode(key, "bogus")
+      assert.is_false(ok)
+      assert.matches("normal or macro", reason)
+
+      MM.DB:SetMemoryTemplate(key, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 50))
+      assert.equals(MM.MACRO_TEMPLATE_LIMIT, #MM.DB:Memories()[key].macroTemplate)
+
+      assert.is_false((MM.DB:SetMemoryMode("interrupt", "macro")))
     end)
 
     it("refuses to edit predefined memories", function()

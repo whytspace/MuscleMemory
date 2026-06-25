@@ -39,7 +39,12 @@ MM.PredefinedMemories = {
     },
   },
   interrupt = {
-    name = "Kick / Interrupt",
+    name = "Interrupt",
+    -- Shipped as a macro so the interrupt fires at your focus target (falling back
+    -- to your current target via the empty conditional), while still resolving to
+    -- each class's own ability.
+    mode = "macro",
+    macroTemplate = "#showtooltip\n/use [@focus,harm][] %name%",
     candidates = {
       Spell(S.SOLAR_BEAM),
       Spell(S.SKULL_BASH),

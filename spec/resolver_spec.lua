@@ -126,7 +126,7 @@ describe("Resolver", function()
       local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "interrupt" })
       assert.equals("spell", resolved.kind)
       assert.equals(S.PUMMEL, resolved.id)
-      assert.equals("Kick / Interrupt", resolved.memory.name)
+      assert.equals("Interrupt", resolved.memory.name)
     end)
 
     it("falls through to an owned, usable engineering item for a non-rez class", function()

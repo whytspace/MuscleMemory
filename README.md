@@ -10,9 +10,14 @@ Muscle Memory keeps your action bars consistent across characters. You capture h
 set up into reusable *muscles*, and Muscle Memory restores them on any character — putting the
 right spell, item, macro, mount, or equipment set back into each slot.
 
-Slots can also point to purpose-based **memories** such as Kick / Interrupt, Taunt, or Lust.
+Slots can also point to purpose-based **memories** such as Interrupt, Taunt, or Lust.
 Each character gets whatever ability it actually has for that purpose, so one muscle works across
 many classes.
+
+A memory can also be rendered as a **macro** rather than a plain button — giving you mouseover,
+focus, modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`) while the memory
+still resolves the right spell or item for each character. Muscle Memory writes and maintains the
+per-character macro for you.
 
 ![Muscle Memory muscle grid](docs/images/muscles.png)
 

@@ -610,6 +610,43 @@ function DB:RenameMemory(memoryId, name)
   return true
 end
 
+-- Switch a memory between "normal" (place the resolved action) and "macro"
+-- (place a generated macro). Enabling macro mode seeds the default template once;
+-- the template is kept when switching back so toggling never loses the user's body.
+function DB:SetMemoryMode(memoryId, mode)
+  local memory = self:Memories()[memoryId]
+  if not memory then
+    return false, "only profile memories can be edited"
+  end
+  if mode ~= "normal" and mode ~= "macro" then
+    return false, "mode must be normal or macro"
+  end
+
+  if mode == "macro" then
+    memory.mode = "macro"
+    if not memory.macroTemplate or memory.macroTemplate == "" then
+      memory.macroTemplate = MM.MACRO_TEMPLATE_DEFAULT
+    end
+  else
+    memory.mode = nil
+  end
+  return true
+end
+
+function DB:SetMemoryTemplate(memoryId, template)
+  local memory = self:Memories()[memoryId]
+  if not memory then
+    return false, "only profile memories can be edited"
+  end
+
+  template = tostring(template or "")
+  if #template > MM.MACRO_TEMPLATE_LIMIT then
+    template = template:sub(1, MM.MACRO_TEMPLATE_LIMIT)
+  end
+  memory.macroTemplate = template
+  return true
+end
+
 -- Slots bound to the deleted memory simply stop resolving and fall through on the
 -- next apply, so there's no reference cleanup to do.
 function DB:DeleteMemory(memoryId)
@@ -690,4 +727,24 @@ function DB:GetCharacterState()
   local key = self:GetCharacterKey()
   root.characterState[key] = root.characterState[key] or {}
   return root.characterState[key]
+end
+
+-- Generated macros are physical, per-character resources, so the registry that
+-- tracks them (keyed by muscle + slot) lives in character state. Each record is
+-- { name, scope, bodyHash, indexHint } — enough to find, reuse or delete the macro.
+function DB:GetMacroRegistry()
+  local state = self:GetCharacterState()
+  state.macroRegistry = state.macroRegistry or {}
+  return state.macroRegistry
+end
+
+function DB:GetMacroRecord(muscleId, slot)
+  local muscle = self:GetMacroRegistry()[muscleId]
+  return muscle and muscle[tonumber(slot)]
+end
+
+function DB:SetMacroRecord(muscleId, slot, record)
+  local registry = self:GetMacroRegistry()
+  registry[muscleId] = registry[muscleId] or {}
+  registry[muscleId][tonumber(slot)] = record
 end
