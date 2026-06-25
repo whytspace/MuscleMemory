@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.3.0 - 2026-06-25
+
 - Memories can now be rendered as a macro instead of placing the spell or item directly, so you get macro flexibility (mouseover, focus, modifier and conditional casts) while the memory still resolves the right action for your class, spec, and what you actually have. Turn it on per memory in the Memories tab and write a body with `%name%` where the resolved spell or item goes, e.g. `/use [@mouseover,help][@focus] %name%`. The add-on creates and maintains a per-character macro for you and removes it once it is no longer used. Available for memories whose candidates are all spells, items, toys, or mounts.
 - The predefined "Interrupt" memory now ships as a macro that interrupts your focus target (falling back to your current target): `/use [@focus,harm][] %name%`, still resolving to each class's own interrupt.
 - Added a predefined "Battle Rez" memory covering the Druid, Death Knight, Warlock, and Paladin combat resurrection spells plus the engineering battle-rez items (Emergency Soul Link, Convincingly Realistic Jumper Cables, and earlier expansions'), resolving to whichever you can currently use.
