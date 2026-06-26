@@ -74,6 +74,20 @@ scripts/build-textures.sh 512    # override the size
 Needs ImageMagick (`brew install imagemagick`). Reference textures by path without extension,
 e.g. `Interface\AddOns\MuscleMemory\Assets\logo`.
 
+## README screenshots
+
+The `/mm shot tour` capture pairs become the named README images via:
+
+```sh
+scripts/process-shots.sh         # all tour views, in order
+scripts/process-shots.sh layers  # just the newest pair
+```
+
+Outputs land in `docs/images/`. Beyond ImageMagick, this quantizes each PNG with `pngquant`
+(TinyPNG-style, ~3x smaller, same dimensions) and squeezes it losslessly with `oxipng`
+(`brew install pngquant oxipng`). Both are optional — the script warns and passes the image
+through untouched if they're missing.
+
 ## Testing
 
 Unit tests run under [Busted](https://lunarmodules.github.io/busted/) in the dev container:
