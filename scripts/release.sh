@@ -74,6 +74,10 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   die "tag $tag already exists"
 fi
 
+devc luacheck .
+devc busted
+devc stylua --check .
+
 toc_tmp="$(mktemp "$toc.XXXXXX")"
 if ! awk -v version="$version" '
   BEGIN { updated = 0 }
@@ -107,10 +111,6 @@ if ! awk -v version="$version" -v today="$today" '
   die "could not find '## Unreleased' in $changelog"
 fi
 mv "$changelog_tmp" "$changelog"
-
-devc luacheck .
-devc busted
-devc stylua --check .
 
 git add "$toc" "$changelog"
 if git diff --cached --quiet; then
