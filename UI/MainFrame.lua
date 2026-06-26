@@ -145,6 +145,12 @@ function UI:CreateFrame()
   titleRegion:SetScript("OnDragStop", function()
     frame:StopMovingOrSizing()
   end)
+  -- Right-click the title bar to snap the window back to centre.
+  titleRegion:SetScript("OnMouseUp", function(_, button)
+    if button == "RightButton" then
+      self:ResetPosition()
+    end
+  end)
 
   -- Header row: tabs (left) + profile / Preview / Apply (right).
   self.tabButtons = {}
@@ -257,6 +263,14 @@ function UI:Refresh()
   if self.frame and self.frame:IsShown() then
     self:ShowContent()
   end
+end
+
+-- Snap the window back to the centre of the screen — handy after dragging it
+-- around, e.g. to line up repeatable screenshots.
+function UI:ResetPosition()
+  self:CreateFrame()
+  self.frame:ClearAllPoints()
+  self.frame:SetPoint("CENTER")
 end
 
 function UI:Open()
