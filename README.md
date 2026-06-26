@@ -102,8 +102,9 @@ or `/mm <topic> help`, to explore it. The essentials:
 | | |
 |---|---|
 | ![Layers](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png) | ![Dynamic actions](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png) |
-| ![Macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png) | ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) |
-| ![Profiles](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/profiles.png) | |
+| ![Profiles](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/profiles.png) | ![Macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png) |
+| ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) | |
+ |
 
 ## License
 
