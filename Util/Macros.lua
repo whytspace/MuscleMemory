@@ -310,7 +310,7 @@ local function truncateBytes(text, maxBytes)
 end
 
 -- A generated macro is named after its dynamicAction, plus an owner marker so we can
--- recognise our macros, truncated to fit the 16-char cap. The name is cosmetic
+-- recognise our macros, truncated to fit the 64-byte name cap. The name is cosmetic
 -- (it labels the bar button); tracking keys on the registry, so collisions between
 -- two dynamicActions sharing a prefix are harmless.
 function Macros.MacroName(dynamicAction)
