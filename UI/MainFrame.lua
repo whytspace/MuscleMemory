@@ -305,51 +305,26 @@ function UI:PromptApply()
     return
   end
 
-  -- Layout note: a two-button StaticPopup puts button1 on the left and button2
-  -- on the right, so Preview is button1 and Apply is button2. button2 fires the
-  -- OnCancel slot, hence Apply lives there; the corner X and Escape dismiss
-  -- without applying (our own UIPanelCloseButton below + noCancelOnEscape).
+  -- Standard Blizzard two-button layout: button1 (left, OnAccept) is the OK
+  -- action -- Apply -- and button2 (right, OnCancel) just dismisses. Apply lives
+  -- on OnAccept, which the framework only fires on a real button1 click, so the
+  -- recycle/displace path (which routes through OnCancel) can never apply.
   StaticPopupDialogs[APPLY_DIALOG] = StaticPopupDialogs[APPLY_DIALOG]
     or {
-      text = "Muscle Memory: action bar changes are available. Apply them?",
-      button1 = "Preview\226\128\166",
-      button2 = "Apply",
-      -- Preview prints the plan to chat; the framework dismisses the popup on any
-      -- click, so re-present it next frame to keep Apply in reach.
+      text = "Muscle Memory: action bar changes are available. Apply them now?\nUse /mm to open the window, or /mm preview to review first.",
+      button1 = "Apply",
+      button2 = "Cancel",
       OnAccept = function()
-        MM.Applier:PreviewProfile()
-        if C_Timer then
-          C_Timer.After(0, function()
-            MM.UI:PromptApply()
-          end)
-        end
-      end,
-      OnCancel = function()
         MM.Applier:ApplyProfile()
       end,
-      -- The built-in closeButton renders as a minimize/"hide" underscore in this
-      -- client, not an X, so we suppress it and add a real UIPanelCloseButton below.
-      closeButton = false,
-      noCancelOnEscape = true,
+      -- Cancel just closes; no apply on any dismissal path.
       timeout = 0,
       whileDead = true,
       hideOnEscape = true,
       preferredIndex = 3,
     }
 
-  local dialog = StaticPopup_Show(APPLY_DIALOG)
-  -- Attach the canonical red X (UIPanelCloseButton) once per popup frame. The X
-  -- only dismisses; it never routes through the Apply (OnCancel) slot.
-  if dialog then
-    if not dialog.mmCloseX then
-      dialog.mmCloseX = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-      dialog.mmCloseX:SetPoint("TOPRIGHT", -2, -2)
-      dialog.mmCloseX:SetScript("OnClick", function(button)
-        StaticPopup_Hide(button:GetParent().which)
-      end)
-    end
-    dialog.mmCloseX:Show()
-  end
+  StaticPopup_Show(APPLY_DIALOG)
 end
 
 function UI:DismissApplyPrompt()
