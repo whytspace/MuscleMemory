@@ -106,12 +106,25 @@ function UI:CreateFrame()
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "PortraitFrameTemplate")
   frame:SetSize(1010, 720)
   frame:SetPoint("CENTER")
-  frame:SetFrameStrata("HIGH")
+  frame:SetFrameStrata("MEDIUM")
+  frame:SetToplevel(true)
   frame:Hide()
   frame:SetMovable(true)
   frame:EnableMouse(true)
 
-  tinsert(UISpecialFrames, "MuscleMemoryFrame")
+  -- NOT in UISpecialFrames: the panel manager sweeps that list and would close
+  -- us whenever a managed panel (spellbook, talents) opens. Handle Escape
+  -- ourselves so the window stays put alongside Blizzard panels.
+  frame:EnableKeyboard(true)
+  frame:SetPropagateKeyboardInput(true)
+  frame:SetScript("OnKeyDown", function(f, key)
+    if key == "ESCAPE" then
+      f:SetPropagateKeyboardInput(false)
+      f:Hide()
+    else
+      f:SetPropagateKeyboardInput(true)
+    end
+  end)
 
   if frame.SetTitle then
     frame:SetTitle("Muscle Memory")
