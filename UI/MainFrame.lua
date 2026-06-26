@@ -155,7 +155,9 @@ function UI:CreateFrame()
     if previousTab then
       button:SetPoint("LEFT", previousTab, "RIGHT", 6, 0)
     else
-      button:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -52)
+      -- Start the row clear of the top-left portrait rather than tucked under it,
+      -- and high enough to reclaim the empty band below the title bar.
+      button:SetPoint("TOPLEFT", frame, "TOPLEFT", 64, -34)
     end
     previousTab = button
     self.tabButtons[tab.id] = button
@@ -165,34 +167,41 @@ function UI:CreateFrame()
     MM.Applier:ApplyProfile()
     self:Refresh()
   end)
-  apply:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -52)
+  apply:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -34)
 
   local preview = MM.ui.Widgets.Button(frame, "Preview\226\128\166", 86, function()
     MM.Applier:PreviewProfile()
   end)
   preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
-  -- Tab description line.
-  self.description = MM.ui.Widgets.Hint(frame, "")
-  self.description:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -86)
-  self.description:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -86)
+  -- One shared inset sits behind all tab content so the three panels read as a
+  -- single recessed surface; tabs separate their panels with groove dividers. It
+  -- starts right under the tab row.
+  self.contentInset = MM.ui.Widgets.Inset(frame)
+  self.contentInset:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -60)
+  self.contentInset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 12)
+
+  -- The tab description sits at the top of the inset, above the tab body, with a
+  -- hairline separating the two. Both hide for tabs that have no description.
+  self.description = MM.ui.Widgets.Hint(self.contentInset, "")
+  self.description:SetPoint("TOPLEFT", self.contentInset, "TOPLEFT", 14, -12)
+  self.description:SetPoint("TOPRIGHT", self.contentInset, "TOPRIGHT", -14, -12)
   self.description:SetJustifyH("LEFT")
 
-  self.divider = MM.ui.Widgets.Hairline(frame, true)
-  self.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -106)
-  self.divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -106)
-
-  -- One shared inset sits behind all tab content so the three panels read as a
-  -- single recessed surface; tabs separate their panels with groove dividers.
-  self.contentInset = MM.ui.Widgets.Inset(frame)
-  self.contentInset:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -112)
-  self.contentInset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 12)
+  self.divider = MM.ui.Widgets.Hairline(self.contentInset, true)
+  self.divider:SetPoint("TOPLEFT", self.description, "BOTTOMLEFT", 0, -10)
+  self.divider:SetPoint("TOPRIGHT", self.description, "BOTTOMRIGHT", 0, -10)
 
   self.frame = frame
 end
 
-local function anchorContent(frame, inset)
-  frame:SetPoint("TOPLEFT", inset, "TOPLEFT", 5, -5)
+local function anchorContent(frame, inset, divider)
+  if divider then
+    -- Below the description's hairline; left edge still flush with the inset.
+    frame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", -9, -6)
+  else
+    frame:SetPoint("TOPLEFT", inset, "TOPLEFT", 5, -5)
+  end
   frame:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -5, 5)
 end
 
@@ -209,6 +218,7 @@ function UI:ShowContent()
   local description = TAB_DESCRIPTIONS[tab]
   self.description:SetText(description or "")
   self.description:SetShown(description ~= nil)
+  self.divider:SetShown(description ~= nil)
 
   self.tabFrames = self.tabFrames or {}
   for id, frame in pairs(self.tabFrames) do
@@ -222,7 +232,7 @@ function UI:ShowContent()
   local firstBuild = frame == nil
   if not frame then
     frame = CreateFrame("Frame", nil, self.frame)
-    anchorContent(frame, self.contentInset)
+    anchorContent(frame, self.contentInset, description ~= nil and self.divider or nil)
     self.tabFrames[tab] = frame
     if builder then
       builder:Build(frame)
