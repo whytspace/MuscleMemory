@@ -104,7 +104,7 @@ function UI:CreateFrame()
   end
 
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "PortraitFrameTemplate")
-  frame:SetSize(1110, 720)
+  frame:SetSize(1010, 720)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("HIGH")
   frame:Hide()

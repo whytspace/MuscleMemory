@@ -10,8 +10,8 @@ MM.ui.LayersTab = LayersTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local RAIL_WIDTH = 250
-local EDITOR_WIDTH = 330
+local RAIL_WIDTH = 220
+local EDITOR_WIDTH = 260
 local CELL = 28
 local CELL_GAP = 4
 local LABEL_WIDTH = 64
@@ -707,7 +707,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
       scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
       local editor = MM.ui.ConditionsEditor:Build(content, layer.conditions, true, function()
         refresh()
-      end)
+      end, EDITOR_WIDTH - 40)
       editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
       editor:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, 0)
       content:SetHeight(editor:GetHeight())

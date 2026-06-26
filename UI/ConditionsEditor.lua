@@ -161,10 +161,11 @@ local function makeChip(parent, text, active, editable, onClick)
   return chip
 end
 
--- A wrap-flow row of toggle chips for a list-valued dimension. Returns the y at
--- the bottom of the last chip row.
-local function chipGroup(parent, top, conditions, field, options, editable, onChange)
-  local x, y, rowHeight, right = 0, 0, 22, 290
+-- A wrap-flow row of toggle chips for a list-valued dimension. `right` is the
+-- wrap boundary (the usable content width). Returns the y at the bottom of the
+-- last chip row.
+local function chipGroup(parent, top, conditions, field, options, editable, onChange, right)
+  local x, y, rowHeight = 0, 0, 22
   for _, option in ipairs(options) do
     local active = listHas(conditions[field], option.token)
     local chip = makeChip(parent, option.name, active, editable, function()
@@ -242,8 +243,11 @@ end
 -- Builds into a frame the caller anchors (top-left + a width via a right anchor).
 -- Each dimension is a collapsible section: only the headers show until one is
 -- opened, and a section with selections opens itself so it's visible "in use".
-function ConditionsEditor:Build(parent, conditions, editable, onChange)
+-- `width` is the usable content width the chip rows wrap within (the panel width
+-- the caller renders into). Falls back to a sane default if omitted.
+function ConditionsEditor:Build(parent, conditions, editable, onChange, width)
   local frame = CreateFrame("Frame", nil, parent)
+  local right = width or 290
   local y = 0
 
   local sections = {
@@ -273,7 +277,7 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange)
       y = chipGroup(frame, y, conditions, sec.field, sec.options, editable, function()
         ConditionsEditor.open[sec.title] = true
         onChange()
-      end)
+      end, right)
     end
   end
 

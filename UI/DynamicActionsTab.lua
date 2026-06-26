@@ -10,8 +10,8 @@ MM.ui.DynamicActionsTab = DynamicActionsTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local RAIL_WIDTH = 250
-local RULE_WIDTH = 330
+local RAIL_WIDTH = 220
+local RULE_WIDTH = 260
 
 local function refresh()
   MM.UI:Refresh()
@@ -688,7 +688,7 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
   local editor = MM.ui.ConditionsEditor:Build(content, candidate.conditions or {}, editable, function()
     refresh()
-  end)
+  end, RULE_WIDTH - 40)
   editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
   editor:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, 0)
   content:SetHeight(editor:GetHeight())
