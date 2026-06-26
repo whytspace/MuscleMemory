@@ -6,54 +6,104 @@
 
 **Bind buttons by purpose, not just spell.**
 
-Muscle Memory keeps your action bars consistent across characters. You capture how your bars are
-set up into reusable **action bar layers**, and Muscle Memory restores them on any character —
-putting the right spell, item, macro, mount, or equipment set back into each slot.
+Muscle Memory keeps your action bars consistent across every character. Capture your setup into
+reusable **[layers](#layers-not-snapshots)**, then put the right spell, item, macro, mount, or
+equipment set back into each slot on any character — with one click.
 
-Slots can also point to purpose-based **dynamic actions** such as Interrupt, Taunt, or Lust.
-Each character gets whatever ability it actually has for that purpose, so one layer works across
-many classes.
+A slot can also point to a **[dynamic action](#dynamic-actions)** instead of a fixed spell. Bind a
+button to *Interrupt*, *Taunt*, or *Bloodlust*, and every character gets whatever ability it actually
+has for the job. One binding, every class.
 
-A dynamic action can also be rendered as a **macro** rather than a plain button — giving you
-mouseover, focus, modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`) while
-the dynamic action still resolves the right spell or item for each character. Muscle Memory writes
-and maintains the per-character macro for you.
+> ⚠️ **Early development:** things mostly work, but bugs can occur. Please report issues on
+> [GitHub](https://github.com/whytspace/MuscleMemory/issues).
 
-![Muscle Memory layers tab](docs/images/muscles.png)
+![Muscle Memory layers tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png)
+
+## Features
+
+- **Set up your bars once.** Snapshot your live bars into layers and apply them on any character —
+  no rebuilding the same layout on every alt.
+- **Slots that follow your class.** Build your own dynamic actions that resolve to whatever ability
+  each character actually has — plus built-ins for the staples like Bloodlust, Interrupt, and Battle
+  Rez.
+- **Real macros when you need them.** Render a dynamic action as a macro for mouseover, focus,
+  modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`); Muscle Memory writes and
+  maintains the per-character macro for you.
+- **Everything that lives on a bar.** Spells, items, macros, mounts, toys, battle pets, flyouts, and
+  equipment sets.
+- **No surprises.** Preview shows what Apply would change first, and Apply is blocked in combat or
+  with something on the cursor — it waits rather than half-applying.
+- **Scriptable.** Everything in the window is also a slash command 😉
+- **Separate setups.** Profiles keep independent configurations you can switch at once — an
+  account-wide default, or a dedicated one per character.
+
+## Layers, not snapshots
+
+Most bar-saving addons store one monolithic snapshot and stamp the whole thing back down. Muscle
+Memory never applies a full bar in one piece. A profile is an ordered stack of **layers**, each
+owning only the slots it cares about. For every slot, Apply takes the **first** layer with something
+to say — so higher layers win and lower ones fill in the rest.
+
+That ordering makes layers composable:
+
+- Put a specific layer **on top** — a class/spec overlay or one character's tweaks — and it overrides
+  the shared layers beneath without touching them.
+- Keep a **shared base layer** underneath for the buttons every character has in the same place. Edit
+  it once and everyone who doesn't override that slot updates.
+- Scope any layer with **conditions** so it only applies to the characters it's meant for.
+- Drop **dynamic-action slots** into any layer, so one button resolves per character without forking
+  the layer.
+
+## Dynamic actions
+
+A **dynamic action** is a named stand-in for an ability — *Interrupt*, *Bloodlust*, *Taunt* — rather
+than a fixed spell. Behind the name is an ordered list of candidates, and each character resolves to
+the **first one it can actually use**, checking class, spec, known spells, owned items, profession,
+and level. One slot becomes Pummel on your Warrior, Mind Freeze on your Death Knight, and
+Counterspell on your Mage.
+
+![Muscle Memory dynamic actions tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png)
+
+Built-ins cover Bloodlust, Interrupt, Stun, Hard CC, Soft CC, Battle Rez, Taunt, and Movement — and
+you can build your own:
+
+- **Mix anything castable.** Candidates can blend spells, items, toys, and mounts — so *Bloodlust*
+  resolves through each class's own version (Bloodlust, Heroism, Time Warp, Fury of the Aspects) and
+  then to **War Drums** for the classes that have none. Every character brings the haste.
+- **Order is priority.** Candidates are tried top to bottom, so you decide what wins.
+- **Render as a macro.** Keep conditional logic (`[@focus,harm][]`, modifiers, mouseover) while
+  `%name%` resolves per character. The built-in Interrupt ships this way — it hits your focus, falling
+  back to your current target.
+
+Muscle Memory writes and maintains the real per-character macro for you — edit the dynamic action and
+the macro follows:
+
+![Muscle Memory macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png)
 
 ## Getting started
 
-- Type **`/mm`** to open the window.
-- Click a faded slot to capture whatever is on that action bar button right now.
-- Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
+1. Type **`/mm`** to open the window.
+2. Click a faded slot to capture whatever is on that action bar button.
+3. Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
 
 ## Commands
 
-Everything in the window is also a slash command. The commands form a self-documenting tree —
-type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
+Everything in the window is also a slash command, in a self-documenting tree — type **`/mm help`**,
+or `/mm <topic> help`, to explore it. The essentials:
 
 - `/mm` — open the window
 - `/mm apply` — restore your bars from the active profile
 - `/mm preview` — show what Apply would change, without touching your bars
 - `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
-- `/mm profile` · `/mm layer` · `/mm action` — manage profiles, action bar layers, and dynamic actions
+- `/mm profile` · `/mm layer` · `/mm action` — manage profiles, layers, and dynamic actions
 
 ## Screenshots
 
-![Muscle Memory dynamic actions tab](docs/images/memories.png)
-
-![Muscle Memory profiles tab](docs/images/profiles.png)
-
-![Muscle Memory apply prompt](docs/images/apply-prompt.png)
-
-## Notes
-
-- **Apply is blocked in combat** and while you're holding something on the cursor — it waits and
-  tells you rather than half-applying.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and how the add-on is structured.
+| | |
+|---|---|
+| ![Layers](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png) | ![Dynamic actions](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png) |
+| ![Macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png) | ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) |
+| ![Profiles](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/profiles.png) | |
 
 ## License
 
