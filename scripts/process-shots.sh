@@ -37,12 +37,22 @@ command -v magick >/dev/null 2>&1 || {
 }
 mkdir -p "$OUT_DIR"
 
-# Difference matte: alpha = 1 - (white - black); colour = black / alpha (un-
-# premultiplied), then trim the surrounding transparency.
+# Difference matte. The plates aren't pure black/white — WoW renders the page
+# over a #161616 backdrop — so sample each plate's corner for its true backdrop
+# (b0, b1) and use the general matte: alpha = 1 - (white - black)/(b1 - b0),
+# colour = (black - (1 - alpha)*b0) / alpha (un-premultiplied), then trim.
+# Assuming pure black here leaves a ~9% white haze where there should be none.
 matte() { # black white out
+  local b0 b1 low
+  b0=$(magick "$1" -format '%[fx:(p{0,0}.r+p{0,0}.g+p{0,0}.b)/3]' info:)
+  b1=$(magick "$2" -format '%[fx:(p{0,0}.r+p{0,0}.g+p{0,0}.b)/3]' info:)
+  low=$(awk -v a="$b0" -v b="$b1" 'BEGIN{printf "%.4f", (1 + a - b) * 100}')
   magick \
-    \( "$1" "$2" -compose Mathematics -define compose:args=0,-1,1,1 -composite \) -write mpr:alpha +delete \
-    "$1" mpr:alpha -compose Divide -composite \
+    \( "$1" "$2" -compose Mathematics -define compose:args=0,-1,1,1 -composite \
+       -level "${low}%,100%" \) -write mpr:alpha +delete \
+    \( mpr:alpha -negate -evaluate multiply "$b0" \) -write mpr:bg +delete \
+    "$1" mpr:bg -compose Mathematics -define compose:args=0,-1,1,0 -composite \
+    mpr:alpha -compose Divide -composite \
     mpr:alpha -alpha off -compose CopyOpacity -composite \
     -trim +repage "$3"
 }
