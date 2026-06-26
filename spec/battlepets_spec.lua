@@ -70,7 +70,7 @@ describe("BattlePets", function()
       stubs:setSlot(8, { actionType = "summonpet", id = GUID })
 
       assert.is_true(MM.Capture:CaptureSlot("Core", 8))
-      assert.same({ type = "battlepet", id = GUID }, MM.DB:GetMuscle("Core").slots[8])
+      assert.same({ type = "battlepet", id = GUID }, MM.DB:GetLayer("Core").slots[8])
 
       stubs.world.slots[8] = nil
       assert.is_true(MM.Applier:ApplyProfile())

@@ -88,8 +88,8 @@ describe("Actions", function()
       assert.equals("Equipment Set: Tank", MM.Actions.GetAssignmentLabel({ type = "equipmentset", name = "Tank" }))
     end)
 
-    it("labels a memory by its display name", function()
-      assert.equals("Lust", MM.Actions.GetAssignmentLabel({ type = "memory", id = "lust" }))
+    it("labels a dynamic action by its display name", function()
+      assert.equals("Lust", MM.Actions.GetAssignmentLabel({ type = "dynamicaction", id = "lust" }))
     end)
   end)
 

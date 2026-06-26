@@ -1,6 +1,6 @@
 local ADDON_NAME, MM = ...
 
--- Shared condition evaluation for memory candidates and muscles. A `conditions`
+-- Shared condition evaluation for dynamicAction candidates and layers. A `conditions`
 -- table carries optional dimensions — classes / specs / roles / factions / races
 -- (lists) and levelMin / levelMax — and every present, non-empty dimension must
 -- match the current character. Absent dimensions don't restrict, so an empty (or
@@ -93,7 +93,7 @@ function Conditions.Match(conditions)
   return true
 end
 
--- Whether any dimension is actually set, so the UI can flag a conditioned muscle
+-- Whether any dimension is actually set, so the UI can flag a conditioned layer
 -- or candidate.
 function Conditions.Any(conditions)
   if not conditions then

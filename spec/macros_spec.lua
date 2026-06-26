@@ -127,18 +127,18 @@ describe("Macros", function()
   end)
 
   describe("CandidatesCompatible / EffectiveMode", function()
-    it("accepts memories whose candidates are all spell/item/mount", function()
-      local memory = { candidates = { { type = "spell" }, { type = "item" }, { type = "mount" } } }
-      assert.is_true(MM.Macros.CandidatesCompatible(memory))
+    it("accepts dynamic actions whose candidates are all spell/item/mount", function()
+      local dynamicAction = { candidates = { { type = "spell" }, { type = "item" }, { type = "mount" } } }
+      assert.is_true(MM.Macros.CandidatesCompatible(dynamicAction))
     end)
 
     it("rejects an empty candidate list", function()
       assert.is_false(MM.Macros.CandidatesCompatible({ candidates = {} }))
     end)
 
-    it("rejects a memory containing a non-family candidate", function()
-      local memory = { candidates = { { type = "spell" }, { type = "battlepet" } } }
-      assert.is_false(MM.Macros.CandidatesCompatible(memory))
+    it("rejects a dynamic action containing a non-family candidate", function()
+      local dynamicAction = { candidates = { { type = "spell" }, { type = "battlepet" } } }
+      assert.is_false(MM.Macros.CandidatesCompatible(dynamicAction))
     end)
 
     it("is macro only when opted in and compatible", function()
@@ -155,37 +155,39 @@ describe("Macros", function()
     it("measures the candidate whose name renders longest", function()
       stubs:setSpell(1, { name = "Kick" })
       stubs:setSpell(2, { name = string.rep("A", 40) })
-      local memory = {
+      local dynamicAction = {
         macroTemplate = "/use %name%",
         candidates = { { type = "spell", id = 1 }, { type = "spell", id = 2 } },
       }
-      assert.equals(#("/use " .. string.rep("A", 40)), MM.Macros.WorstCaseLength(memory))
-      assert.is_true(MM.Macros.FitsLimit(memory))
+      assert.equals(#("/use " .. string.rep("A", 40)), MM.Macros.WorstCaseLength(dynamicAction))
+      assert.is_true(MM.Macros.FitsLimit(dynamicAction))
     end)
 
     it("reports over the cap and forces normal mode", function()
       stubs:setSpell(1, { name = string.rep("Z", 260) })
-      local memory = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
-      assert.is_false(MM.Macros.FitsLimit(memory))
-      assert.equals("normal", MM.Macros.EffectiveMode(memory))
+      local dynamicAction =
+        { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      assert.is_false(MM.Macros.FitsLimit(dynamicAction))
+      assert.equals("normal", MM.Macros.EffectiveMode(dynamicAction))
     end)
   end)
 
   describe("ResolvedAsMacro", function()
     it("returns the rendered body for a macro-mode family action", function()
       stubs:setSpell(1, { name = "Kick" })
-      local memory = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
-      local resolved = { kind = "spell", id = 1, label = "Kick", memory = memory }
+      local dynamicAction =
+        { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      local resolved = { kind = "spell", id = 1, label = "Kick", dynamicAction = dynamicAction }
       assert.equals("/use Kick", MM.Macros.ResolvedAsMacro(resolved))
     end)
 
-    it("returns nil when the memory is not in macro mode", function()
+    it("returns nil when the dynamic action is not in macro mode", function()
       local resolved =
-        { kind = "spell", id = 1, label = "Kick", memory = { candidates = { { type = "spell", id = 1 } } } }
+        { kind = "spell", id = 1, label = "Kick", dynamicAction = { candidates = { { type = "spell", id = 1 } } } }
       assert.is_nil(MM.Macros.ResolvedAsMacro(resolved))
     end)
 
-    it("returns nil when there is no backing memory (a direct assignment)", function()
+    it("returns nil when there is no backing dynamic action (a direct assignment)", function()
       assert.is_nil(MM.Macros.ResolvedAsMacro({ kind = "spell", id = 1, label = "Kick" }))
     end)
   end)
@@ -222,7 +224,7 @@ describe("Macros", function()
       local name = MM.Macros.MacroName({ name = long })
       assert.is_true(#name <= MM.MACRO_NAME_LIMIT)
       assert.is_true(MM.Macros.IsOwned({ name = name }))
-      -- The visible part stays a prefix of the memory name.
+      -- The visible part stays a prefix of the dynamicAction name.
       local base = name:sub(1, #name - #marker)
       assert.equals(base, long:sub(1, #base))
     end)
@@ -230,7 +232,7 @@ describe("Macros", function()
     it("falls back to a default for an empty name", function()
       local name = MM.Macros.MacroName({ name = "" })
       assert.is_true(MM.Macros.IsOwned({ name = name }))
-      assert.equals("Memory", name:sub(1, #name - #marker))
+      assert.equals("Dynamic Action", name:sub(1, #name - #marker))
     end)
 
     it("recognises only marked macros as owned", function()

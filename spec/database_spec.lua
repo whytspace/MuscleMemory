@@ -9,21 +9,23 @@ describe("DB", function()
   describe("Initialize", function()
     it("merges defaults into an empty saved-variables table", function()
       local root = MM.DB:GetRoot()
-      assert.equals(2, root.schemaVersion)
+      assert.equals(3, root.schemaVersion)
       assert.is_nil(root.fallback)
-      assert.is_nil(root.muscles)
-      assert.is_nil(root.customMemories)
+      assert.is_nil(root.layers)
+      assert.is_nil(root.customDynamicActions)
 
       local default = root.profiles.Default
       assert.is_table(default)
       assert.equals("keep", default.fallback)
-      assert.same({ "Core" }, default.muscleOrder)
-      assert.is_table(default.muscles.Core)
-      assert.same({}, default.memories)
+      assert.same({ "Core" }, default.layerOrder)
+      assert.is_table(default.layers.Core)
+      assert.same({}, default.dynamicActions)
     end)
 
-    it("migrates a v1 save: muscles, memories and fallback move into each profile", function()
+    it("migrates a v1 save: layers, dynamic actions and fallback move into each profile", function()
       local loadedMM, _, env = addon.load()
+      -- v1 on-disk shape: the historical key names (muscles / customMemories /
+      -- activeMuscles / type = "memory"), which MigrateToV2 reads literally.
       env.MuscleMemoryDB = {
         schemaVersion = 1,
         fallback = "clear",
@@ -44,34 +46,69 @@ describe("DB", function()
       loadedMM.DB:Initialize()
       local root = loadedMM.DB:GetRoot()
 
-      assert.equals(2, root.schemaVersion)
-      assert.is_nil(root.muscles)
-      assert.is_nil(root.customMemories)
+      assert.equals(3, root.schemaVersion)
+      assert.is_nil(root.layers)
+      assert.is_nil(root.customDynamicActions)
       assert.is_nil(root.fallback)
 
       local solo = root.profiles.Solo
       assert.equals("clear", solo.fallback)
       -- Full copy of the shared pool into the profile.
-      assert.is_table(solo.muscles.A)
-      assert.is_table(solo.muscles.B)
-      assert.is_table(solo.muscles.C)
-      assert.equals("Mine", solo.memories.mine.name)
-      -- activeMuscles -> muscleOrder, enabled carried onto the muscle.
-      assert.is_nil(solo.activeMuscles)
-      assert.same({ "A", "B", "C" }, solo.muscleOrder)
-      assert.is_true(solo.muscles.A.enabled)
-      assert.is_false(solo.muscles.B.enabled)
-      -- Muscle carried in but not part of this profile stays visible but disabled.
-      assert.is_false(solo.muscles.C.enabled)
-      -- Stored memory source rewritten standard -> predefined.
-      assert.equals("predefined", solo.muscles.A.slots[1].source)
+      assert.is_table(solo.layers.A)
+      assert.is_table(solo.layers.B)
+      assert.is_table(solo.layers.C)
+      assert.equals("Mine", solo.dynamicActions.mine.name)
+      -- activeLayers -> layerOrder, enabled carried onto the layer.
+      assert.is_nil(solo.activeLayers)
+      assert.same({ "A", "B", "C" }, solo.layerOrder)
+      assert.is_true(solo.layers.A.enabled)
+      assert.is_false(solo.layers.B.enabled)
+      -- Layer carried in but not part of this profile stays visible but disabled.
+      assert.is_false(solo.layers.C.enabled)
+      -- Stored dynamicAction source rewritten standard -> predefined.
+      assert.equals("predefined", solo.layers.A.slots[1].source)
 
       local duo = root.profiles.Duo
-      assert.equals("B", duo.muscleOrder[1])
-      assert.equals(3, #duo.muscleOrder)
-      assert.is_true(duo.muscles.B.enabled)
-      assert.is_false(duo.muscles.A.enabled)
-      assert.is_false(duo.muscles.C.enabled)
+      assert.equals("B", duo.layerOrder[1])
+      assert.equals(3, #duo.layerOrder)
+      assert.is_true(duo.layers.B.enabled)
+      assert.is_false(duo.layers.A.enabled)
+      assert.is_false(duo.layers.C.enabled)
+    end)
+
+    it("migrates a v2 save: muscles/memories rename to layers/dynamic actions", function()
+      local loadedMM, _, env = addon.load()
+      -- v2 on-disk shape: per-profile muscles / memories / muscleOrder and the
+      -- "memory" slot discriminator, all renamed in place by MigrateToV3.
+      env.MuscleMemoryDB = {
+        schemaVersion = 2,
+        profile = "Solo",
+        profiles = {
+          Solo = {
+            name = "Solo",
+            fallback = "keep",
+            muscleOrder = { "A" },
+            muscles = {
+              A = { name = "A", enabled = true, slots = { [1] = { type = "memory", source = "custom", id = "mine" } } },
+            },
+            memories = { mine = { name = "Mine", candidates = {} } },
+          },
+        },
+        characterState = {},
+      }
+
+      loadedMM.DB:Initialize()
+      local solo = loadedMM.DB:GetRoot().profiles.Solo
+
+      assert.equals(3, loadedMM.DB:GetRoot().schemaVersion)
+      assert.is_nil(solo.muscles)
+      assert.is_nil(solo.memories)
+      assert.is_nil(solo.muscleOrder)
+      assert.same({ "A" }, solo.layerOrder)
+      assert.equals("A", solo.layers.A.name)
+      assert.equals("Mine", solo.dynamicActions.mine.name)
+      -- slot discriminator renamed "memory" -> "dynamicaction".
+      assert.equals("dynamicaction", solo.layers.A.slots[1].type)
     end)
   end)
 
@@ -128,25 +165,25 @@ describe("DB", function()
       local _, profile = MM.DB:CreateProfile("Raid")
       assert.equals("Raid", profile.name)
       assert.equals("keep", profile.fallback)
-      assert.same({}, profile.muscleOrder)
-      assert.same({}, profile.muscles)
-      assert.same({}, profile.memories)
+      assert.same({}, profile.layerOrder)
+      assert.same({}, profile.layers)
+      assert.same({}, profile.dynamicActions)
     end)
 
     it("clones a profile 1:1, fully independent of the source", function()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 42 })
-      MM.DB:CreateMemory("Mine")
+      MM.DB:CreateDynamicAction("Mine")
 
       local id, clone = MM.DB:CloneProfile("Default", "Raid")
       assert.equals("Raid", clone.name)
-      assert.same({ "Core" }, clone.muscleOrder)
-      assert.equals(42, clone.muscles.Core.slots[1].id)
-      assert.is_table(next(clone.memories) and clone.memories)
+      assert.same({ "Core" }, clone.layerOrder)
+      assert.equals(42, clone.layers.Core.slots[1].id)
+      assert.is_table(next(clone.dynamicActions) and clone.dynamicActions)
 
       -- Mutating the clone must not touch the source.
-      clone.muscles.Core.slots[1].id = 99
-      assert.equals(42, MM.DB:GetProfile("Default").muscles.Core.slots[1].id)
-      assert.are_not.equal(MM.DB:GetProfile("Default").muscles, clone.muscles)
+      clone.layers.Core.slots[1].id = 99
+      assert.equals(42, MM.DB:GetProfile("Default").layers.Core.slots[1].id)
+      assert.are_not.equal(MM.DB:GetProfile("Default").layers, clone.layers)
       assert.is_string(id)
     end)
 
@@ -186,85 +223,85 @@ describe("DB", function()
       assert.is_nil(MM.DB:FindProfileId("nope"))
     end)
 
-    it("scopes muscles and memories to the active profile", function()
-      MM.DB:CreateMuscle("Shared")
+    it("scopes layers and dynamic actions to the active profile", function()
+      MM.DB:CreateLayer("Shared")
       local other = MM.DB:CreateProfile("Other")
 
-      -- The new profile starts empty; the active profile's muscle is not visible.
+      -- The new profile starts empty; the active profile's layer is not visible.
       MM.DB:SetActiveProfile(other)
-      assert.is_nil(MM.DB:FindMuscleId("Shared"))
-      assert.equals(0, #MM.DB:GetProfileMuscles())
+      assert.is_nil(MM.DB:FindLayerId("Shared"))
+      assert.equals(0, #MM.DB:GetProfileLayers())
     end)
   end)
 
-  describe("muscles", function()
-    it("creates a muscle and appends it to the active profile order", function()
-      local id = MM.DB:CreateMuscle("PvP")
+  describe("layers", function()
+    it("creates a layer and appends it to the active profile order", function()
+      local id = MM.DB:CreateLayer("PvP")
       local profile = MM.DB:GetProfile()
-      assert.equals(id, profile.muscleOrder[#profile.muscleOrder])
-      assert.is_table(MM.DB:GetMuscle(id))
-      assert.is_true(MM.DB:GetMuscle(id).enabled)
+      assert.equals(id, profile.layerOrder[#profile.layerOrder])
+      assert.is_table(MM.DB:GetLayer(id))
+      assert.is_true(MM.DB:GetLayer(id).enabled)
     end)
 
-    it("enables and disables a muscle (flag stored on the muscle)", function()
-      assert.is_true(MM.DB:SetMuscleEnabled("Core", false))
-      assert.is_false(MM.DB:GetMuscle("Core").enabled)
-      assert.equals(0, #MM.DB:GetActiveMuscles())
-      assert.is_true(MM.DB:SetMuscleEnabled("Core", true))
-      assert.equals(1, #MM.DB:GetActiveMuscles())
+    it("enables and disables a layer (flag stored on the layer)", function()
+      assert.is_true(MM.DB:SetLayerEnabled("Core", false))
+      assert.is_false(MM.DB:GetLayer("Core").enabled)
+      assert.equals(0, #MM.DB:GetActiveLayers())
+      assert.is_true(MM.DB:SetLayerEnabled("Core", true))
+      assert.equals(1, #MM.DB:GetActiveLayers())
     end)
 
-    it("reports enabling a muscle not in the profile", function()
-      local ok, reason = MM.DB:SetMuscleEnabled("ghost", true)
+    it("reports enabling a layer not in the profile", function()
+      local ok, reason = MM.DB:SetLayerEnabled("ghost", true)
       assert.is_false(ok)
-      assert.equals("muscle is not part of this profile", reason)
+      assert.equals("layer is not part of this profile", reason)
     end)
 
-    it("deletes a muscle and prunes it from the order", function()
-      local id = MM.DB:CreateMuscle("PvP")
-      assert.is_true(MM.DB:DeleteMuscle(id))
-      assert.is_nil(MM.DB:GetMuscle(id))
-      for _, ordered in ipairs(MM.DB:GetProfile().muscleOrder) do
+    it("deletes a layer and prunes it from the order", function()
+      local id = MM.DB:CreateLayer("PvP")
+      assert.is_true(MM.DB:DeleteLayer(id))
+      assert.is_nil(MM.DB:GetLayer(id))
+      for _, ordered in ipairs(MM.DB:GetProfile().layerOrder) do
         assert.are_not.equal(id, ordered)
       end
     end)
 
-    it("refuses to delete the last muscle", function()
-      local ok, reason = MM.DB:DeleteMuscle("Core")
+    it("refuses to delete the last layer", function()
+      local ok, reason = MM.DB:DeleteLayer("Core")
       assert.is_false(ok)
-      assert.equals("cannot delete the last muscle", reason)
+      assert.equals("cannot delete the last layer", reason)
     end)
 
-    describe("MoveMuscle", function()
+    describe("MoveLayer", function()
       local a, b, c
       before_each(function()
-        a, b, c = "Core", MM.DB:CreateMuscle("B"), MM.DB:CreateMuscle("C")
+        a, b, c = "Core", MM.DB:CreateLayer("B"), MM.DB:CreateLayer("C")
       end)
 
       local function order()
-        return MM.DB:GetProfile().muscleOrder
+        return MM.DB:GetProfile().layerOrder
       end
 
-      it("moves a muscle to a new position", function()
-        assert.is_true(MM.DB:MoveMuscle(c, 1))
+      it("moves a layer to a new position", function()
+        assert.is_true(MM.DB:MoveLayer(c, 1))
         assert.same({ c, a, b }, order())
       end)
 
       it("clamps the target index into range", function()
-        assert.is_true(MM.DB:MoveMuscle(a, 99))
+        assert.is_true(MM.DB:MoveLayer(a, 99))
         assert.same({ b, c, a }, order())
       end)
 
       it("rejects moving to its current position", function()
-        local ok, reason = MM.DB:MoveMuscle(a, 1)
+        local ok, reason = MM.DB:MoveLayer(a, 1)
         assert.is_false(ok)
-        assert.equals("muscle is already at that position", reason)
+        assert.equals("layer is already at that position", reason)
       end)
 
-      it("rejects a muscle that is not in the profile", function()
-        local ok, reason = MM.DB:MoveMuscle("ghost", 1)
+      it("rejects a layer that is not in the profile", function()
+        local ok, reason = MM.DB:MoveLayer("ghost", 1)
         assert.is_false(ok)
-        assert.equals("muscle is not part of this profile", reason)
+        assert.equals("layer is not part of this profile", reason)
       end)
     end)
   end)
@@ -272,17 +309,17 @@ describe("DB", function()
   describe("slots", function()
     it("sets an assignment on a valid slot only", function()
       assert.is_true(MM.DB:SetSlot("Core", 5, { type = "empty" }))
-      assert.same({ type = "empty" }, MM.DB:GetMuscle("Core").slots[5])
+      assert.same({ type = "empty" }, MM.DB:GetLayer("Core").slots[5])
       assert.is_false(MM.DB:SetSlot("Core", 0, { type = "empty" }))
       assert.is_false(MM.DB:SetSlot("ghost", 5, { type = "empty" }))
     end)
 
     it("fills every slot then clears them all", function()
-      assert.is_true(MM.DB:SetAllMuscleSlots("Core", true))
-      assert.equals(MM.MAX_ACTION_SLOT, MM.Tables.Count(MM.DB:GetMuscle("Core").slots))
+      assert.is_true(MM.DB:SetAllLayerSlots("Core", true))
+      assert.equals(MM.MAX_ACTION_SLOT, MM.Tables.Count(MM.DB:GetLayer("Core").slots))
 
-      assert.is_true(MM.DB:SetAllMuscleSlots("Core", false))
-      assert.same({}, MM.DB:GetMuscle("Core").slots)
+      assert.is_true(MM.DB:SetAllLayerSlots("Core", false))
+      assert.same({}, MM.DB:GetLayer("Core").slots)
     end)
   end)
 
@@ -305,106 +342,106 @@ describe("DB", function()
     end)
   end)
 
-  describe("memories", function()
-    it("copies a predefined memory into an editable profile one", function()
-      local key = MM.DB:CopyPredefinedMemory("interrupt")
-      local copy = MM.DB:Memories()[key]
+  describe("dynamicActions", function()
+    it("copies a predefined dynamic action into an editable profile one", function()
+      local key = MM.DB:CopyPredefinedDynamicAction("interrupt")
+      local copy = MM.DB:DynamicActions()[key]
       assert.equals("Interrupt Copy", copy.name)
-      assert.are_not.equal(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
-      assert.same(MM.PredefinedMemories.interrupt.candidates, copy.candidates)
+      assert.are_not.equal(MM.PredefinedDynamicActions.interrupt.candidates, copy.candidates)
+      assert.same(MM.PredefinedDynamicActions.interrupt.candidates, copy.candidates)
     end)
 
-    it("rejects copying an unknown predefined memory", function()
-      local key, reason = MM.DB:CopyPredefinedMemory("ghost")
+    it("rejects copying an unknown predefined dynamic action", function()
+      local key, reason = MM.DB:CopyPredefinedDynamicAction("ghost")
       assert.is_nil(key)
-      assert.equals("unknown predefined memory", reason)
+      assert.equals("unknown predefined dynamic action", reason)
     end)
 
-    it("resolves predefined memories by id and profile ones by source", function()
-      local key = MM.DB:CopyPredefinedMemory("interrupt", "mine", "Mine")
-      assert.equals("Interrupt", MM.DB:ResolveMemory({ id = "interrupt" }).name)
-      assert.equals("Interrupt", MM.DB:GetPredefinedMemory("interrupt").name)
-      assert.equals("Mine", MM.DB:ResolveMemory({ source = "custom", id = key }).name)
-      assert.is_nil(MM.DB:ResolveMemory(nil))
+    it("resolves predefined dynamic actions by id and profile ones by source", function()
+      local key = MM.DB:CopyPredefinedDynamicAction("interrupt", "mine", "Mine")
+      assert.equals("Interrupt", MM.DB:ResolveDynamicAction({ id = "interrupt" }).name)
+      assert.equals("Interrupt", MM.DB:GetPredefinedDynamicAction("interrupt").name)
+      assert.equals("Mine", MM.DB:ResolveDynamicAction({ source = "custom", id = key }).name)
+      assert.is_nil(MM.DB:ResolveDynamicAction(nil))
     end)
 
-    it("clones a profile memory into a new profile memory", function()
-      local source = MM.DB:CreateMemory("Mine")
+    it("clones a profile dynamic action into a new profile dynamic action", function()
+      local source = MM.DB:CreateDynamicAction("Mine")
       MM.DB:AddCandidate(source, { type = "spell", id = 7 })
 
-      local clone = MM.DB:CloneMemory({ source = "custom", id = source })
-      local copy = MM.DB:Memories()[clone]
+      local clone = MM.DB:CloneDynamicAction({ source = "custom", id = source })
+      local copy = MM.DB:DynamicActions()[clone]
       assert.equals("Mine Copy", copy.name)
-      assert.are_not.equal(MM.DB:Memories()[source].candidates, copy.candidates)
+      assert.are_not.equal(MM.DB:DynamicActions()[source].candidates, copy.candidates)
       assert.equals(7, copy.candidates[1].id)
     end)
 
-    it("creates, renames, and deletes a profile memory", function()
-      local key = MM.DB:CreateMemory("Cleanse")
-      assert.equals("Cleanse", MM.DB:Memories()[key].name)
+    it("creates, renames, and deletes a profile dynamic action", function()
+      local key = MM.DB:CreateDynamicAction("Cleanse")
+      assert.equals("Cleanse", MM.DB:DynamicActions()[key].name)
 
-      assert.is_true(MM.DB:RenameMemory(key, "Purify"))
-      assert.equals("Purify", MM.DB:Memories()[key].name)
+      assert.is_true(MM.DB:RenameDynamicAction(key, "Purify"))
+      assert.equals("Purify", MM.DB:DynamicActions()[key].name)
 
-      assert.is_true(MM.DB:DeleteMemory(key))
-      assert.is_nil(MM.DB:Memories()[key])
+      assert.is_true(MM.DB:DeleteDynamicAction(key))
+      assert.is_nil(MM.DB:DynamicActions()[key])
     end)
 
     it("toggles macro mode, seeding and keeping the template", function()
-      local key = MM.DB:CreateMemory("Kick")
+      local key = MM.DB:CreateDynamicAction("Kick")
 
-      assert.is_true(MM.DB:SetMemoryMode(key, "macro"))
-      local memory = MM.DB:Memories()[key]
-      assert.equals("macro", memory.mode)
-      assert.equals(MM.MACRO_TEMPLATE_DEFAULT, memory.macroTemplate)
+      assert.is_true(MM.DB:SetDynamicActionMode(key, "macro"))
+      local dynamicAction = MM.DB:DynamicActions()[key]
+      assert.equals("macro", dynamicAction.mode)
+      assert.equals(MM.MACRO_TEMPLATE_DEFAULT, dynamicAction.macroTemplate)
 
-      MM.DB:SetMemoryTemplate(key, "#showtooltip\n/use [@focus] %name%")
-      assert.is_true(MM.DB:SetMemoryMode(key, "normal"))
-      assert.is_nil(memory.mode)
+      MM.DB:SetDynamicActionTemplate(key, "#showtooltip\n/use [@focus] %name%")
+      assert.is_true(MM.DB:SetDynamicActionMode(key, "normal"))
+      assert.is_nil(dynamicAction.mode)
       -- The body is preserved across the round-trip so toggling never loses it.
-      assert.equals("#showtooltip\n/use [@focus] %name%", memory.macroTemplate)
+      assert.equals("#showtooltip\n/use [@focus] %name%", dynamicAction.macroTemplate)
     end)
 
     it("clamps the template to the limit and rejects bad modes", function()
-      local key = MM.DB:CreateMemory("Kick")
-      local ok, reason = MM.DB:SetMemoryMode(key, "bogus")
+      local key = MM.DB:CreateDynamicAction("Kick")
+      local ok, reason = MM.DB:SetDynamicActionMode(key, "bogus")
       assert.is_false(ok)
       assert.matches("normal or macro", reason)
 
-      MM.DB:SetMemoryTemplate(key, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 50))
-      assert.equals(MM.MACRO_TEMPLATE_LIMIT, #MM.DB:Memories()[key].macroTemplate)
+      MM.DB:SetDynamicActionTemplate(key, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 50))
+      assert.equals(MM.MACRO_TEMPLATE_LIMIT, #MM.DB:DynamicActions()[key].macroTemplate)
 
-      assert.is_false((MM.DB:SetMemoryMode("interrupt", "macro")))
+      assert.is_false((MM.DB:SetDynamicActionMode("interrupt", "macro")))
     end)
 
-    it("refuses to edit predefined memories", function()
-      local ok, reason = MM.DB:RenameMemory("interrupt", "Nope")
+    it("refuses to edit predefined dynamic actions", function()
+      local ok, reason = MM.DB:RenameDynamicAction("interrupt", "Nope")
       assert.is_false(ok)
-      assert.equals("only profile memories can be renamed", reason)
+      assert.equals("only profile dynamic actions can be renamed", reason)
       assert.is_false(MM.DB:AddCandidate("interrupt", { type = "spell", id = 1 }))
     end)
 
     it("adds, removes, and reorders candidates", function()
-      local key = MM.DB:CreateMemory("Custom")
+      local key = MM.DB:CreateDynamicAction("Custom")
       MM.DB:AddCandidate(key, { type = "spell", id = 11 })
       MM.DB:AddCandidate(key, { type = "spell", id = 22 })
       MM.DB:AddCandidate(key, { type = "spell", id = 33 })
 
       assert.is_true(MM.DB:MoveCandidate(key, 3, 1))
-      local candidates = MM.DB:Memories()[key].candidates
+      local candidates = MM.DB:DynamicActions()[key].candidates
       assert.equals(33, candidates[1].id)
       assert.equals(11, candidates[2].id)
       assert.equals(22, candidates[3].id)
 
       assert.is_true(MM.DB:RemoveCandidate(key, 2))
-      candidates = MM.DB:Memories()[key].candidates
+      candidates = MM.DB:DynamicActions()[key].candidates
       assert.equals(2, #candidates)
       assert.equals(33, candidates[1].id)
       assert.equals(22, candidates[2].id)
     end)
 
     it("rejects bad candidate edits", function()
-      local key = MM.DB:CreateMemory("Custom")
+      local key = MM.DB:CreateDynamicAction("Custom")
       local ok = MM.DB:RemoveCandidate(key, 1)
       assert.is_false(ok)
       assert.is_false((MM.DB:AddCandidate(key)))

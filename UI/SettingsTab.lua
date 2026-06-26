@@ -1,7 +1,7 @@
 local ADDON_NAME, MM = ...
 
 -- The Settings tab: the active profile's fallback, which decides what happens to
--- a managed slot whose memory can't resolve for the current character. The design
+-- a managed slot whose dynamicAction can't resolve for the current character. The design
 -- shows an Ignore/Clear segmented control; natively that's a pair of radios.
 -- "Ignore" maps to the stored fallback value "keep".
 local SettingsTab = {}
@@ -70,7 +70,7 @@ function SettingsTab:Build(parent)
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "These settings belong to the active profile. If a Memory has no usable ability for the current character, decide what happens to that action-bar slot when a Muscle is applied."
+    "These settings belong to the active profile. If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."
   )
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)

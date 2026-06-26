@@ -148,7 +148,7 @@ function Widgets.IconButton(parent, texture, tooltip, onClick)
   return button
 end
 
--- A checkbox (used for the per-muscle "applied in this profile" toggle).
+-- A checkbox (used for the per-layer "applied in this profile" toggle).
 function Widgets.Checkbox(parent, checked, onClick)
   local box = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
   box:SetSize(22, 22)
@@ -391,9 +391,9 @@ function Widgets.MultiLineInput(parent, text, maxLetters, onChange)
   return frame
 end
 
--- The little three-bar "priority list" badge that marks a memory-driven slot.
+-- The little three-bar "priority list" badge that marks a dynamicAction-driven slot.
 -- Pinned to the bottom-right corner of `parent`.
-function Widgets.MemoryBadge(parent, size)
+function Widgets.DynamicActionBadge(parent, size)
   size = size or 13
   local badge = CreateFrame("Frame", nil, parent)
   badge:SetSize(size, size)
@@ -459,7 +459,7 @@ local function setBorder(border, thickness, color, alpha)
 end
 
 -- A reusable icon cell: background, the action icon, an optional centred glyph
--- (∅ / ⚠ for empty / unresolved), an optional memory badge, and a settable
+-- (∅ / ⚠ for empty / unresolved), an optional dynamicAction badge, and a settable
 -- border. Returned object exposes Set* helpers so callers stay declarative.
 function Widgets.Icon(parent, size)
   local icon = CreateFrame("Frame", nil, parent)
@@ -541,7 +541,7 @@ function Widgets.Icon(parent, size)
 
   function icon:SetBadge(show)
     if show and not self.badge then
-      self.badge = Widgets.MemoryBadge(self, math.max(11, math.floor(size * 0.36)))
+      self.badge = Widgets.DynamicActionBadge(self, math.max(11, math.floor(size * 0.36)))
     end
     if self.badge then
       self.badge:SetShown(show)
@@ -592,7 +592,7 @@ end
 Widgets.decorateRow = decorateRow
 
 -- Populate GameTooltip with the rich client tooltip for an action identified by
--- kind + id — a memory candidate, or whatever a memory/slot resolves to. Falls
+-- kind + id — a dynamicAction candidate, or whatever a dynamicAction/slot resolves to. Falls
 -- back to plain text for kinds with no native tooltip (macro, equipment set, …).
 -- Callers hide the tooltip themselves on leave.
 function Widgets.SetActionTooltip(owner, kind, id, fallbackText, anchor)
@@ -642,7 +642,7 @@ function Widgets.AttachIconTooltip(icon, show)
   end)
 end
 
--- A selectable list row (muscle rail, memory rail, slot-editor memory options).
+-- A selectable list row (layer rail, dynamicAction rail, slot-editor dynamicAction options).
 -- Returns a Button with a highlight, a left accent bar, and a `.label`.
 function Widgets.ListRow(parent, height)
   local row = CreateFrame("Button", nil, parent)
@@ -656,7 +656,7 @@ local PINNABLE = { spell = true, item = true, mount = true, macro = true, equipm
 
 -- A drop overlay that covers a panel (set via :Attach) while a pinnable action is
 -- on the cursor, so dropping anywhere on the panel runs the attached callback.
--- Shared by the Slot Editor (pin to slot) and the Memories candidate list (add a
+-- Shared by the Slot Editor (pin to slot) and the DynamicActions candidate list (add a
 -- candidate). One per consumer; re-Attach it to the current panel each rebuild.
 function Widgets.DropZone(labelText)
   local overlay = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
@@ -712,7 +712,7 @@ function Widgets.DropZone(labelText)
   return overlay
 end
 
--- Header text for the centre column of a tab (active muscle / memory name).
+-- Header text for the centre column of a tab (active layer / dynamicAction name).
 function Widgets.Title(parent, text)
   local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetText(text or "")

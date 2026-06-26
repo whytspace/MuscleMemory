@@ -8,30 +8,30 @@ local UI = {}
 MM.UI = UI
 MM:RegisterModule("UI", UI)
 
-MM.ui.state = MM.ui.state or { tab = "muscles" }
+MM.ui.state = MM.ui.state or { tab = "layers" }
 
 -- The packaged logo texture (Assets/logo.tga; regenerate from logo.png with
 -- scripts/build-textures.sh). Used for the title-bar portrait and the About page.
 MM.ui.LOGO_TEXTURE = "Interface\\AddOns\\MuscleMemory\\Assets\\logo"
 
 local TABS = {
-  { id = "muscles", label = "Muscles" },
-  { id = "memories", label = "Memories" },
+  { id = "layers", label = "Layers" },
+  { id = "dynamicActions", label = "Dynamic Actions" },
   { id = "settings", label = "Settings" },
   { id = "profiles", label = "Profiles" },
   { id = "about", label = "About" },
 }
 
 local TAB_DESCRIPTIONS = {
-  muscles = "Muscles are stacked rules that decide what each action-bar slot becomes. Higher Muscles win; slots they don't touch show the Muscle beneath.",
-  memories = "Memories are named stand-ins for an action (Interrupt, Taunt, Lust). Each resolves to whichever ability the current character actually has.",
-  profiles = "Profiles are self-contained setups, each with its own Muscles and Memories. Choose the account-wide default and an optional per-character override.",
+  layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; slots they don't touch show the Layer beneath.",
+  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Lust). Each resolves to whichever ability the current character actually has.",
+  profiles = "Profiles are self-contained setups, each with its own Layers and Dynamic Actions. Choose the account-wide default and an optional per-character override.",
 }
 
 local function tabBuilder(id)
   return ({
-    muscles = MM.ui.MusclesTab,
-    memories = MM.ui.MemoriesTab,
+    layers = MM.ui.LayersTab,
+    dynamicActions = MM.ui.DynamicActionsTab,
     profiles = MM.ui.ProfilesTab,
     settings = MM.ui.SettingsTab,
     about = MM.ui.AboutTab,

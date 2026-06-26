@@ -5,7 +5,7 @@ MM.ItemIds = {
   -- out-of-combat "defibrillate" tools (Goblin Jumper Cables, Gnomish Army
   -- Knives) are deliberately excluded. Profession and minimum level are enforced
   -- at resolve time by Items.IsUsable; the maximum usable level has no API and is
-  -- passed as a levelMax condition (see PredefinedMemories).
+  -- passed as a levelMax condition (see PredefinedDynamicActions).
   --
   -- Crafted items (Dragonflight onward) have a separate id per quality tier, so
   -- every tier is listed and whichever the player owns is matched. Ordered low

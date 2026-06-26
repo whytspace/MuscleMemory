@@ -1,10 +1,10 @@
 local ADDON_NAME, MM = ...
 
 -- A reusable editor for a `conditions` table (the one Conditions.Match reads),
--- used by both memory candidates and muscles. Builds into `parent`, mutates the
+-- used by both dynamicAction candidates and layers. Builds into `parent`, mutates the
 -- passed `conditions` table in place, and calls `onChange` after each edit. When
 -- `editable` is false it renders the same controls read-only (for predefined
--- memories). Returns the container frame with its height set.
+-- dynamicActions). Returns the container frame with its height set.
 local ConditionsEditor = {}
 MM.ui.ConditionsEditor = ConditionsEditor
 

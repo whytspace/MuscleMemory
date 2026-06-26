@@ -27,7 +27,7 @@ local function Item(itemId, conditions)
   }
 end
 
-MM.PredefinedMemories = {
+MM.PredefinedDynamicActions = {
   lust = {
     name = "Lust",
     candidates = {

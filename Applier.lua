@@ -10,28 +10,28 @@ function Applier:BuildPlan(profileId)
     return nil, "profile not found"
   end
 
-  -- A muscle whose conditions don't match the current character is skipped, a
+  -- A layer whose conditions don't match the current character is skipped, a
   -- dynamic complement to the per-profile enable toggle.
   local plan = {
     profileId = profileId or MM.DB:GetActiveProfileId(),
     slots = {},
     conflicts = {},
-    muscles = {},
+    layers = {},
   }
-  for _, activeMuscle in ipairs(MM.DB:GetActiveMuscles(profileId)) do
-    if MM.Conditions.Match(activeMuscle.muscle.conditions) then
-      plan.muscles[#plan.muscles + 1] = activeMuscle
+  for _, activeLayer in ipairs(MM.DB:GetActiveLayers(profileId)) do
+    if MM.Conditions.Match(activeLayer.layer.conditions) then
+      plan.layers[#plan.layers + 1] = activeLayer
     end
   end
 
-  for _, activeMuscle in ipairs(plan.muscles) do
-    for slot in pairs(activeMuscle.muscle.slots or {}) do
+  for _, activeLayer in ipairs(plan.layers) do
+    for slot in pairs(activeLayer.layer.slots or {}) do
       local numericSlot = tonumber(slot)
       if not MM.Actions.IsValidSlot(numericSlot) then
         plan.conflicts[#plan.conflicts + 1] = {
           slot = tostring(slot),
-          firstMuscle = activeMuscle.id,
-          secondMuscle = "invalid slot",
+          firstLayer = activeLayer.id,
+          secondLayer = "invalid slot",
         }
       end
     end
@@ -41,15 +41,15 @@ function Applier:BuildPlan(profileId)
     local finalEntry
     local terminalEntry
 
-    for _, activeMuscle in ipairs(plan.muscles) do
-      local muscle = activeMuscle.muscle
-      local assignment = muscle.slots and muscle.slots[slot]
+    for _, activeLayer in ipairs(plan.layers) do
+      local layer = activeLayer.layer
+      local assignment = layer.slots and layer.slots[slot]
       if assignment then
         local resolved, reason = MM.Resolver:ResolveAction(assignment)
         local entry = {
           slot = slot,
-          muscleId = activeMuscle.id,
-          muscle = muscle,
+          layerId = activeLayer.id,
+          layer = layer,
           assignment = assignment,
           resolved = resolved,
           unresolvedReason = reason,
@@ -112,10 +112,10 @@ function Applier:PreviewProfile(profileId)
     for _, conflict in ipairs(plan.conflicts) do
       MM:Warn(
         string.format(
-          "muscle %s contains invalid slot %s (%s).",
-          conflict.firstMuscle,
+          "layer %s contains invalid slot %s (%s).",
+          conflict.firstLayer,
           tostring(conflict.slot),
-          conflict.secondMuscle
+          conflict.secondLayer
         )
       )
     end
@@ -152,7 +152,7 @@ function Applier:PreviewProfile(profileId)
           local label = entry.resolved.label
           local macroBody = MM.Macros.ResolvedAsMacro(entry.resolved)
           if macroBody then
-            local record = MM.DB:GetMacroRecord(entry.muscleId, slot)
+            local record = MM.DB:GetMacroRecord(entry.layerId, slot)
             local verb = MM.Macros.WouldUpdate(record, macroBody) and "updates the macro" or "creates a macro"
             label = label .. " (" .. verb .. ")"
           end
@@ -271,12 +271,12 @@ function Applier:ApplyEntry(entry)
     return false, "action is not currently available"
   end
 
-  -- Macro mode: a memory can render as a generated macro instead of the raw
+  -- Macro mode: a dynamicAction can render as a generated macro instead of the raw
   -- action. A body that won't render (action outside the family, or too long after
   -- substitution) falls back to placing the action directly rather than failing.
   local body = MM.Macros.ResolvedAsMacro(entry.resolved)
   if body then
-    return self:ApplyMacroEntry(entry, slot, entry.resolved.memory, body)
+    return self:ApplyMacroEntry(entry, slot, entry.resolved.dynamicAction, body)
   end
 
   local pickedUp
@@ -308,13 +308,13 @@ end
 
 -- Reconcile the macro for `entry`'s slot to the already-rendered `body` (reuse /
 -- edit / create) through the per-character registry, and place it.
-function Applier:ApplyMacroEntry(entry, slot, memory, body)
-  local record = MM.DB:GetMacroRecord(entry.muscleId, slot)
-  local macro, result = MM.Macros.EnsureMacro(record, MM.Macros.MacroName(memory), body)
+function Applier:ApplyMacroEntry(entry, slot, dynamicAction, body)
+  local record = MM.DB:GetMacroRecord(entry.layerId, slot)
+  local macro, result = MM.Macros.EnsureMacro(record, MM.Macros.MacroName(dynamicAction), body)
   if not macro then
     return false, result
   end
-  MM.DB:SetMacroRecord(entry.muscleId, slot, result)
+  MM.DB:SetMacroRecord(entry.layerId, slot, result)
 
   -- Expose the macro on the resolved action so IsResolvedInSlot recognises it.
   entry.resolved.macro = macro
@@ -326,8 +326,8 @@ function Applier:ApplyMacroEntry(entry, slot, memory, body)
   return MM.Actions.PlaceCursor(slot)
 end
 
--- Delete generated macros no plan slot wants anymore (memory switched off macro
--- mode, slot reassigned, muscle/memory deleted). Runs after applying, so a slot
+-- Delete generated macros no plan slot wants anymore (dynamicAction switched off macro
+-- mode, slot reassigned, layer/dynamicAction deleted). Runs after applying, so a slot
 -- that still wants its macro has refreshed the registry first.
 function Applier:CleanupMacroOrphans(plan)
   local registry = MM.DB:GetMacroRegistry()
@@ -336,20 +336,20 @@ function Applier:CleanupMacroOrphans(plan)
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
     if entry and entry.resolved and MM.Macros.ResolvedAsMacro(entry.resolved) then
-      wanted[entry.muscleId] = wanted[entry.muscleId] or {}
-      wanted[entry.muscleId][slot] = true
+      wanted[entry.layerId] = wanted[entry.layerId] or {}
+      wanted[entry.layerId][slot] = true
     end
   end
 
-  for muscleId, slots in pairs(registry) do
+  for layerId, slots in pairs(registry) do
     for slot, record in pairs(slots) do
-      if not (wanted[muscleId] and wanted[muscleId][slot]) then
+      if not (wanted[layerId] and wanted[layerId][slot]) then
         MM.Macros.DeleteOwned(record)
         slots[slot] = nil
       end
     end
     if next(slots) == nil then
-      registry[muscleId] = nil
+      registry[layerId] = nil
     end
   end
 
@@ -394,7 +394,7 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   if #plan.conflicts > 0 and not options.allowConflicts then
-    MM:Warn("cannot apply because active muscles contain invalid slots. Use /mm preview for details.")
+    MM:Warn("cannot apply because active layers contain invalid slots. Use /mm preview for details.")
     return false
   end
 

@@ -171,16 +171,16 @@ function Macros.Pickup(macro)
 end
 
 -- Macro mode -----------------------------------------------------------------
--- A memory whose every candidate is in this family can render as a generated
+-- A dynamicAction whose every candidate is in this family can render as a generated
 -- macro: the `/use` verb invokes spell, item (incl. toys) and mount by name, so a
 -- single `%name%` template covers them all. Battle pets (`/summonpet`), equipment
 -- sets (`/equipset`) and flyouts have no place in such a macro and are excluded.
 Macros.FAMILY = { spell = true, item = true, mount = true }
 
--- True only when the memory has candidates and every one is macro-able. Derived,
+-- True only when the dynamicAction has candidates and every one is macro-able. Derived,
 -- never stored: the toggle persists as intent, compatibility follows the list.
-function Macros.CandidatesCompatible(memory)
-  local candidates = memory and memory.candidates
+function Macros.CandidatesCompatible(dynamicAction)
+  local candidates = dynamicAction and dynamicAction.candidates
   if not candidates or #candidates == 0 then
     return false
   end
@@ -193,7 +193,7 @@ function Macros.CandidatesCompatible(memory)
 end
 
 -- The display name a candidate contributes to %name%. Only the macro-able family
--- matters; others can't be in a macro-mode memory anyway.
+-- matters; others can't be in a macro-mode dynamicAction anyway.
 local function candidateName(candidate)
   if candidate.type == "spell" then
     local info = MM.Spells.GetInfo(candidate.id)
@@ -219,10 +219,10 @@ end
 -- The longest body any candidate would render to: the candidate whose name pushes
 -- the macro closest to (or past) the 255 cap. Candidates with names not yet known
 -- are skipped; the applier's own render cap is the final guard for those.
-function Macros.WorstCaseLength(memory, template)
-  template = template or (memory and memory.macroTemplate) or MM.MACRO_TEMPLATE_DEFAULT
+function Macros.WorstCaseLength(dynamicAction, template)
+  template = template or (dynamicAction and dynamicAction.macroTemplate) or MM.MACRO_TEMPLATE_DEFAULT
   local worst = Macros.RenderedLength(template, "", "")
-  for _, candidate in ipairs(memory and memory.candidates or {}) do
+  for _, candidate in ipairs(dynamicAction and dynamicAction.candidates or {}) do
     if Macros.FAMILY[candidate.type] then
       local name = candidateName(candidate)
       if name then
@@ -237,15 +237,20 @@ function Macros.WorstCaseLength(memory, template)
 end
 
 -- True when every candidate's rendered body fits the 255-char macro cap.
-function Macros.FitsLimit(memory, template)
-  return Macros.WorstCaseLength(memory, template) <= MM.MACRO_BODY_LIMIT
+function Macros.FitsLimit(dynamicAction, template)
+  return Macros.WorstCaseLength(dynamicAction, template) <= MM.MACRO_BODY_LIMIT
 end
 
--- The mode actually used at apply time: "macro" only when the memory opted in, its
+-- The mode actually used at apply time: "macro" only when the dynamicAction opted in, its
 -- candidates are all macro-able, AND the body fits the 255-char cap; else "normal".
 -- Single source of truth shared by the applier, the idempotency check, the editor.
-function Macros.EffectiveMode(memory)
-  if memory and memory.mode == "macro" and Macros.CandidatesCompatible(memory) and Macros.FitsLimit(memory) then
+function Macros.EffectiveMode(dynamicAction)
+  if
+    dynamicAction
+    and dynamicAction.mode == "macro"
+    and Macros.CandidatesCompatible(dynamicAction)
+    and Macros.FitsLimit(dynamicAction)
+  then
     return "macro"
   end
   return "normal"
@@ -274,13 +279,13 @@ function Macros.RenderTemplate(template, resolved)
 end
 
 -- The macro body a resolved action should be placed as, or nil if it should go on
--- the bar directly: nil unless its memory is in (effective) macro mode, the action
+-- the bar directly: nil unless its dynamicAction is in (effective) macro mode, the action
 -- is in the macro-able family, and the body fits the cap. Single decision point
 -- shared by the applier, the idempotency check, cleanup, and preview.
 function Macros.ResolvedAsMacro(resolved)
-  local memory = resolved and resolved.memory
-  if memory and Macros.EffectiveMode(memory) == "macro" and Macros.FAMILY[resolved.kind] then
-    return Macros.RenderTemplate(memory.macroTemplate, resolved)
+  local dynamicAction = resolved and resolved.dynamicAction
+  if dynamicAction and Macros.EffectiveMode(dynamicAction) == "macro" and Macros.FAMILY[resolved.kind] then
+    return Macros.RenderTemplate(dynamicAction.macroTemplate, resolved)
   end
   return nil
 end
@@ -304,14 +309,14 @@ local function truncateBytes(text, maxBytes)
   return text:sub(1, cut)
 end
 
--- A generated macro is named after its memory, plus an owner marker so we can
+-- A generated macro is named after its dynamicAction, plus an owner marker so we can
 -- recognise our macros, truncated to fit the 16-char cap. The name is cosmetic
 -- (it labels the bar button); tracking keys on the registry, so collisions between
--- two memories sharing a prefix are harmless.
-function Macros.MacroName(memory)
-  local name = memory and memory.name or "Memory"
+-- two dynamicActions sharing a prefix are harmless.
+function Macros.MacroName(dynamicAction)
+  local name = dynamicAction and dynamicAction.name or "Dynamic Action"
   if name == "" then
-    name = "Memory"
+    name = "Dynamic Action"
   end
   local marker = MM.MACRO_NAME_MARKER
   return truncateBytes(name, MM.MACRO_NAME_LIMIT - #marker) .. marker
@@ -357,7 +362,7 @@ end
 
 -- Reconcile the macro for a slot to `name` + `body`, reusing where possible:
 --   * a character macro already holding this exact body -> reuse it (renaming it
---     if the desired name changed, e.g. the memory was renamed),
+--     if the desired name changed, e.g. the dynamicAction was renamed),
 --   * our previous macro still untouched at its index   -> edit in place,
 --   * otherwise                                         -> create a new one.
 -- Returns (macro, record) or (nil, reason); `record` is what to persist.

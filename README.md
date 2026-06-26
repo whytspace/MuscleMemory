@@ -7,25 +7,25 @@
 **Bind buttons by purpose, not just spell.**
 
 Muscle Memory keeps your action bars consistent across characters. You capture how your bars are
-set up into reusable *muscles*, and Muscle Memory restores them on any character — putting the
-right spell, item, macro, mount, or equipment set back into each slot.
+set up into reusable **action bar layers**, and Muscle Memory restores them on any character —
+putting the right spell, item, macro, mount, or equipment set back into each slot.
 
-Slots can also point to purpose-based **memories** such as Interrupt, Taunt, or Lust.
-Each character gets whatever ability it actually has for that purpose, so one muscle works across
+Slots can also point to purpose-based **dynamic actions** such as Interrupt, Taunt, or Lust.
+Each character gets whatever ability it actually has for that purpose, so one layer works across
 many classes.
 
-A memory can also be rendered as a **macro** rather than a plain button — giving you mouseover,
-focus, modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`) while the memory
-still resolves the right spell or item for each character. Muscle Memory writes and maintains the
-per-character macro for you.
+A dynamic action can also be rendered as a **macro** rather than a plain button — giving you
+mouseover, focus, modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`) while
+the dynamic action still resolves the right spell or item for each character. Muscle Memory writes
+and maintains the per-character macro for you.
 
-![Muscle Memory muscle grid](docs/images/muscles.png)
+![Muscle Memory layers tab](docs/images/muscles.png)
 
 ## Getting started
 
 - Type **`/mm`** to open the window.
 - Click a faded slot to capture whatever is on that action bar button right now.
-- Switch character, then press **Apply** (or run `/mm apply`) to restore the muscle.
+- Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
 
 ## Commands
 
@@ -35,12 +35,12 @@ type **`/mm help`**, or `/mm <topic> help`, to explore it. The essentials:
 - `/mm` — open the window
 - `/mm apply` — restore your bars from the active profile
 - `/mm preview` — show what Apply would change, without touching your bars
-- `/mm muscle capture [slot|all]` — capture a live bar slot, or all of them, into the selected muscle
-- `/mm profile` · `/mm muscle` · `/mm memory` — manage profiles, muscles, and memories
+- `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
+- `/mm profile` · `/mm layer` · `/mm action` — manage profiles, action bar layers, and dynamic actions
 
 ## Screenshots
 
-![Muscle Memory memories tab](docs/images/memories.png)
+![Muscle Memory dynamic actions tab](docs/images/memories.png)
 
 ![Muscle Memory profiles tab](docs/images/profiles.png)
 

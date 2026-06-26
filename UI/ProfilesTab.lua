@@ -1,7 +1,7 @@
 local ADDON_NAME, MM = ...
 
 -- The Profiles tab. A profile is a complete, self-contained data set (its own
--- muscles, memories and fallback). This tab picks which profile applies — the
+-- layers, dynamicActions and fallback). This tab picks which profile applies — the
 -- account-wide default and an optional per-character override — and manages the
 -- list of profiles (new / clone / rename / delete).
 local ProfilesTab = {}
@@ -70,7 +70,7 @@ local function deleteProfile(id)
   local name = profile and profile.name or id
   MM.ui.Modals.Confirm(
     "Delete Profile",
-    string.format('Delete profile "%s"? Its muscles and memories are gone for good.', name),
+    string.format('Delete profile "%s"? Its layers and dynamicActions are gone for good.', name),
     "Delete",
     function()
       local ok, reason = MM.DB:DeleteProfile(id)
@@ -147,7 +147,7 @@ function ProfilesTab:Build(parent)
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "Each profile is its own set of Muscles and Memories. Pick the account-wide default and, if you want, a different profile just for this character."
+    "Each profile is its own set of Layers and Dynamic Actions. Pick the account-wide default and, if you want, a different profile just for this character."
   )
   blurb:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -10)
   blurb:SetWidth(620)

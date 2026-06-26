@@ -205,9 +205,9 @@ function Actions.GetAssignmentLabel(assignment)
     return "Empty"
   end
 
-  if assignment.type == "memory" then
-    local memory = MM.DB:ResolveMemory({ source = assignment.source, id = assignment.id })
-    return memory and memory.name or ("Memory: " .. tostring(assignment.id))
+  if assignment.type == "dynamicaction" then
+    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
+    return dynamicAction and dynamicAction.name or ("Dynamic Action: " .. tostring(assignment.id))
   end
 
   if assignment.type == "spell" then
@@ -285,7 +285,7 @@ function Actions.GetAssignmentIcon(assignment, slot)
     return nil
   end
 
-  if assignment.type == "memory" then
+  if assignment.type == "dynamicaction" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     return resolved and resolved.icon or nil
   end
@@ -338,7 +338,7 @@ function Actions.GetAssignmentIconState(assignment, slot)
     return { kind = "ignore" }
   end
 
-  if assignment.type == "memory" then
+  if assignment.type == "dynamicaction" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     if resolved then
       if resolved.kind == "empty" then
@@ -508,8 +508,8 @@ function Actions.IsResolvedInSlot(resolved, slot)
     return false
   end
 
-  -- A memory in macro mode places a generated macro, not the raw action. Match the
-  -- slot against the macro's current name AND rendered body: a memory rename changes
+  -- A dynamicAction in macro mode places a generated macro, not the raw action. Match the
+  -- slot against the macro's current name AND rendered body: a dynamicAction rename changes
   -- the name (not the body), so a stale-named macro must read as a pending change.
   -- A body that won't render falls through to plain matching, like the applier.
   local body = MM.Macros.ResolvedAsMacro(resolved)
@@ -518,7 +518,7 @@ function Actions.IsResolvedInSlot(resolved, slot)
     if not info or info.actionType ~= "macro" then
       return false
     end
-    local expectedName = MM.Macros.MacroName(resolved.memory)
+    local expectedName = MM.Macros.MacroName(resolved.dynamicAction)
     local expectedHash = MM.Macros.HashBody(body)
 
     if GetMacroInfo then

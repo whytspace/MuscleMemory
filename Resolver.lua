@@ -131,8 +131,8 @@ local resolvers = {
     }
   end,
 
-  memory = function(assignment)
-    return Resolver:ResolveMemoryAssignment(assignment)
+  dynamicaction = function(assignment)
+    return Resolver:ResolveDynamicActionAssignment(assignment)
   end,
 }
 
@@ -149,25 +149,25 @@ function Resolver:ResolveAction(assignment, options)
   return resolve(assignment, options or {})
 end
 
-function Resolver:ResolveMemoryAssignment(assignment)
-  local memory = MM.DB:ResolveMemory({
+function Resolver:ResolveDynamicActionAssignment(assignment)
+  local dynamicAction = MM.DB:ResolveDynamicAction({
     source = assignment.source,
     id = assignment.id,
   })
 
-  if not memory then
-    return nil, "memory not found"
+  if not dynamicAction then
+    return nil, "dynamic action not found"
   end
 
-  for _, candidate in ipairs(memory.candidates or {}) do
+  for _, candidate in ipairs(dynamicAction.candidates or {}) do
     if matchesRequirements(candidate) then
       local resolved = self:ResolveAction(candidate, { requireAvailable = true })
       if resolved then
-        resolved.memory = memory
+        resolved.dynamicAction = dynamicAction
         return resolved
       end
     end
   end
 
-  return nil, "memory " .. tostring(memory.name or assignment.id) .. " had no matching candidate"
+  return nil, "dynamic action " .. tostring(dynamicAction.name or assignment.id) .. " had no matching candidate"
 end

@@ -40,7 +40,7 @@ function AboutTab:Build(parent)
   local para1 = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "Muscle Memory keeps your action bars consistent across characters. Capture how your bars are set up into reusable Muscles, and restore them on any character \226\128\148 putting the right spell, item, macro, mount, or equipment set back into each slot."
+    "Muscle Memory keeps your action bars consistent across characters. Capture how your bars are set up into reusable Layers, and restore them on any character \226\128\148 putting the right spell, item, macro, mount, or equipment set back into each slot."
   )
   para1:SetPoint("TOP", meta, "BOTTOM", 0, -22)
   para1:SetWidth(460)
@@ -51,7 +51,7 @@ function AboutTab:Build(parent)
   local para2 = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "Slots can also point to purpose-based Memories such as Interrupt, Taunt, or Lust. Each character gets whatever ability it actually has for that purpose, so one Muscle works across many classes."
+    "Slots can also point to purpose-based Dynamic Actions such as Interrupt, Taunt, or Lust. Each character gets whatever ability it actually has for that purpose, so one Layer works across many classes."
   )
   para2:SetPoint("TOP", para1, "BOTTOM", 0, -12)
   para2:SetWidth(460)

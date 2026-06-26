@@ -1,11 +1,11 @@
 local ADDON_NAME, MM = ...
 
--- The Muscles tab: left rail of muscles in the active profile, the centre grid
--- mirroring the player's live bars (each slot managed / pinned / memory-driven /
+-- The Layers tab: left rail of layers in the active profile, the centre grid
+-- mirroring the player's live bars (each slot managed / pinned / dynamicAction-driven /
 -- empty / pass-through), and the right-hand Slot Editor. Wired straight to DB,
 -- Capture, Resolver and Actions.
-local MusclesTab = {}
-MM.ui.MusclesTab = MusclesTab
+local LayersTab = {}
+MM.ui.LayersTab = LayersTab
 
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
@@ -22,19 +22,19 @@ end
 
 -- Slot mutations -------------------------------------------------------------
 
-local function assignSlot(muscleId, slot, assignment)
-  MM.DB:SetSlot(muscleId, slot, assignment)
+local function assignSlot(layerId, slot, assignment)
+  MM.DB:SetSlot(layerId, slot, assignment)
   MM.DB:SetSelectedSlot(slot)
   refresh()
 end
 
-local function assignFromCursor(muscleId, slot)
+local function assignFromCursor(layerId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(reason or "could not read cursor")
     return
   end
-  assignSlot(muscleId, slot, assignment)
+  assignSlot(layerId, slot, assignment)
   if ClearCursor then
     ClearCursor()
   end
@@ -42,10 +42,10 @@ end
 
 -- Left-clicking a not-managed slot starts managing it, capturing whatever is
 -- live there (or Empty if the bar slot is blank).
-local function manageSlot(muscleId, slot)
-  local ok, reason = MM.Capture:CaptureSlot(muscleId, slot)
+local function manageSlot(layerId, slot)
+  local ok, reason = MM.Capture:CaptureSlot(layerId, slot)
   if not ok then
-    MM.DB:SetSlot(muscleId, slot, { type = "empty" })
+    MM.DB:SetSlot(layerId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
       MM:Warn(reason or "could not capture slot")
     end
@@ -54,51 +54,51 @@ local function manageSlot(muscleId, slot)
   refresh()
 end
 
-local function unmanageSlot(muscleId, slot)
-  MM.DB:SetSlot(muscleId, slot, nil)
+local function unmanageSlot(layerId, slot)
+  MM.DB:SetSlot(layerId, slot, nil)
   if MM.DB:GetSelectedSlot() == slot then
     MM.DB:SetSelectedSlot(nil)
   end
   refresh()
 end
 
--- Memory helpers -------------------------------------------------------------
+-- DynamicAction helpers -------------------------------------------------------------
 
-local function memoryList()
-  local memories = {}
-  for id, memory in pairs(MM.PredefinedMemories or {}) do
-    memories[#memories + 1] = { source = "predefined", id = id, name = memory.name or id }
+local function dynamicActionList()
+  local dynamicActions = {}
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
+    dynamicActions[#dynamicActions + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
   end
-  for id, memory in pairs(MM.DB:Memories() or {}) do
-    memories[#memories + 1] = { source = "custom", id = id, name = memory.name or id }
+  for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
+    dynamicActions[#dynamicActions + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
   end
-  table.sort(memories, function(left, right)
+  table.sort(dynamicActions, function(left, right)
     return left.name < right.name
   end)
-  return memories
+  return dynamicActions
 end
 
-local function resolveMemory(source, id)
-  return MM.Resolver:ResolveAction({ type = "memory", source = source, id = id })
+local function resolveDynamicAction(source, id)
+  return MM.Resolver:ResolveAction({ type = "dynamicaction", source = source, id = id })
 end
 
--- Muscle CRUD ----------------------------------------------------------------
+-- Layer CRUD ----------------------------------------------------------------
 
-local function newMuscle()
-  MM.ui.Modals.Input("New Muscle", "Name the new Muscle", "New Muscle", "Create", function(name)
-    local id = MM.DB:CreateMuscle(name ~= "" and name or nil)
-    MM.DB:SetSelectedMuscleId(id)
+local function newLayer()
+  MM.ui.Modals.Input("New Layer", "Name the new Layer", "New Layer", "Create", function(name)
+    local id = MM.DB:CreateLayer(name ~= "" and name or nil)
+    MM.DB:SetSelectedLayerId(id)
     MM.DB:SetSelectedSlot(nil)
     refresh()
   end)
 end
 
-local function renameMuscle(muscleId, currentName)
-  MM.ui.Modals.Input("Rename Muscle", "New name for this Muscle", currentName, "Rename", function(name)
+local function renameLayer(layerId, currentName)
+  MM.ui.Modals.Input("Rename Layer", "New name for this Layer", currentName, "Rename", function(name)
     if name == "" then
       return
     end
-    local ok, reason = MM.DB:RenameMuscle(muscleId, name)
+    local ok, reason = MM.DB:RenameLayer(layerId, name)
     if not ok then
       MM:Warn(reason)
     end
@@ -106,16 +106,16 @@ local function renameMuscle(muscleId, currentName)
   end)
 end
 
-local function deleteMuscle(muscleId, currentName)
+local function deleteLayer(layerId, currentName)
   MM.ui.Modals.Confirm(
-    "Delete Muscle",
+    "Delete Layer",
     string.format(
-      'Delete Muscle "%s"? Slots it managed will fall through to lower Muscles on the next apply.',
+      'Delete Layer "%s"? Slots it managed will fall through to lower Layers on the next apply.',
       currentName
     ),
     "Delete",
     function()
-      local ok, reason = MM.DB:DeleteMuscle(muscleId)
+      local ok, reason = MM.DB:DeleteLayer(layerId)
       if not ok then
         MM:Warn(reason)
       end
@@ -126,8 +126,8 @@ end
 
 -- Left rail ------------------------------------------------------------------
 
--- Initializer for a muscle rail row (recycled by Widgets.DataList).
-local function muscleRowInit(row, data)
+-- Initializer for a layer rail row (recycled by Widgets.DataList).
+local function layerRowInit(row, data)
   local entry = data.entry
   if not row.mmInit then
     row.mmInit = true
@@ -147,7 +147,7 @@ local function muscleRowInit(row, data)
     row.check:SetScript("OnClick", function()
       local e = row.data and row.data.entry
       if e then
-        MM.DB:SetMuscleEnabled(e.id, not e.enabled)
+        MM.DB:SetLayerEnabled(e.id, not e.enabled)
         refresh()
       end
     end)
@@ -164,7 +164,7 @@ local function muscleRowInit(row, data)
       end
       local e = self.data and self.data.entry
       if e then
-        MM.DB:SetSelectedMuscleId(e.id)
+        MM.DB:SetSelectedLayerId(e.id)
         MM.DB:SetSelectedSlot(nil)
         refresh()
       end
@@ -174,39 +174,39 @@ local function muscleRowInit(row, data)
     -- is over on release.
     row:SetScript("OnDragStart", function(self)
       self:SetAlpha(0.5)
-      MusclesTab._dragFrom = self.data and self.data.entry.id
+      LayersTab._dragFrom = self.data and self.data.entry.id
     end)
     row:SetScript("OnDragStop", function(self)
       self:SetAlpha(1)
-      local fromId = MusclesTab._dragFrom
-      MusclesTab._dragFrom = nil
-      if not fromId or not MusclesTab.railList then
+      local fromId = LayersTab._dragFrom
+      LayersTab._dragFrom = nil
+      if not fromId or not LayersTab.railList then
         return
       end
       local target
-      MusclesTab.railList:ForEachFrame(function(frame)
+      LayersTab.railList:ForEachFrame(function(frame)
         if frame.data and frame:IsMouseOver() then
           target = frame.data.index
         end
       end)
       if target then
-        MM.DB:MoveMuscle(fromId, target)
+        MM.DB:MoveLayer(fromId, target)
         refresh()
       end
     end)
   end
 
   row.data = data
-  local active = entry.id == MM.DB:GetSelectedMuscleId()
+  local active = entry.id == MM.DB:GetSelectedLayerId()
 
   row.order:SetText(tostring(data.index))
   row.order:SetTextColor(Widgets.unpackColor(active and colors.gold or colors.faint))
 
   row.check:SetChecked(entry.enabled)
 
-  -- A conditioned muscle whose conditions don't match this character won't apply,
+  -- A conditioned layer whose conditions don't match this character won't apply,
   -- so it reads as inactive (like a disabled one).
-  local conditions = entry.muscle.conditions
+  local conditions = entry.layer.conditions
   local inactive = not entry.enabled or (MM.Conditions.Any(conditions) and not MM.Conditions.Match(conditions))
 
   row.nameLabel:SetText(entry.name)
@@ -221,13 +221,13 @@ local function muscleRowInit(row, data)
   row:SetSelected(active)
 end
 
-function MusclesTab:BuildRail(parent)
+function LayersTab:BuildRail(parent)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "+ New Muscle", RAIL_WIDTH - 24, newMuscle)
+  local newButton = Widgets.Button(inset, "+ New Layer", RAIL_WIDTH - 24, newLayer)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
 
   local footer = Widgets.Label(inset, "GameFontDisableSmall", "")
@@ -237,24 +237,24 @@ function MusclesTab:BuildRail(parent)
   local profile = MM.DB:GetProfile()
   footer:SetText("checked = applied in profile " .. (profile and profile.name or ""))
 
-  local list = Widgets.DataList(inset, "muscles.rail", {
+  local list = Widgets.DataList(inset, "layers.rail", {
     extent = 32,
     spacing = 4,
-    initializer = muscleRowInit,
+    initializer = layerRowInit,
   })
-  MusclesTab.railList = list
+  LayersTab.railList = list
   list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -6, 6)
 
-  local muscles = MM.DB:GetProfileMuscles()
+  local layers = MM.DB:GetProfileLayers()
   local items = {}
-  for index, entry in ipairs(muscles) do
+  for index, entry in ipairs(layers) do
     items[#items + 1] = { index = index, entry = entry }
   end
   list:SetItems(items)
 
-  if #muscles == 0 then
-    local note = Widgets.Label(inset, "GameFontDisableSmall", "No Muscles in this profile yet.")
+  if #layers == 0 then
+    local note = Widgets.Label(inset, "GameFontDisableSmall", "No Layers in this profile yet.")
     note:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -16)
     note:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -12, -16)
     note:SetJustifyH("LEFT")
@@ -264,8 +264,8 @@ end
 -- Centre grid ----------------------------------------------------------------
 
 -- Paint one slot icon to reflect its managed state.
-local function paintSlot(icon, muscle, slot)
-  local assignment = muscle and muscle.slots and muscle.slots[slot]
+local function paintSlot(icon, layer, slot)
+  local assignment = layer and layer.slots and layer.slots[slot]
   local managed = assignment ~= nil
   local selected = MM.DB:GetSelectedSlot() == slot
 
@@ -290,7 +290,7 @@ local function paintSlot(icon, muscle, slot)
     icon:SetTextureImage(MM.Actions.GetLiveSlotIcon(slot))
     icon:SetAlphaAll(0.42)
     icon:SetBorder(1, colors.faint, 0.5)
-  elseif assignment.type == "memory" then
+  elseif assignment.type == "dynamicaction" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     icon:SetBadge(true)
     if resolved and resolved.icon then
@@ -317,9 +317,9 @@ local function paintSlot(icon, muscle, slot)
 end
 
 -- Build one reusable grid cell for a fixed slot. The cell is pooled (kept across
--- rebuilds and repainted), so its handlers read the live selected muscle rather
+-- rebuilds and repainted), so its handlers read the live selected layer rather
 -- than closing over a per-build one. `slot` never changes for a given cell.
-function MusclesTab:BuildSlotCell(parent, slot)
+function LayersTab:BuildSlotCell(parent, slot)
   local icon = Widgets.Icon(parent, CELL)
   icon:EnableMouse(true)
   icon:RegisterForDrag("LeftButton")
@@ -331,21 +331,21 @@ function MusclesTab:BuildSlotCell(parent, slot)
   hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
   hit:SetScript("OnClick", function(_, mouseButton)
-    local muscleId = MM.DB:GetSelectedMuscleId()
-    local muscle = MM.DB:GetMuscle(muscleId)
+    local layerId = MM.DB:GetSelectedLayerId()
+    local layer = MM.DB:GetLayer(layerId)
     if GetCursorInfo and GetCursorInfo() then
-      assignFromCursor(muscleId, slot)
+      assignFromCursor(layerId, slot)
       return
     end
-    local managed = muscle and muscle.slots and muscle.slots[slot] ~= nil
+    local managed = layer and layer.slots and layer.slots[slot] ~= nil
     if mouseButton == "RightButton" then
       if managed then
-        unmanageSlot(muscleId, slot)
+        unmanageSlot(layerId, slot)
       end
       return
     end
     if managed then
-      -- Re-clicking the selected slot deselects it (revealing the muscle's
+      -- Re-clicking the selected slot deselects it (revealing the layer's
       -- condition editor in the sidebar).
       if MM.DB:GetSelectedSlot() == slot then
         MM.DB:SetSelectedSlot(nil)
@@ -354,21 +354,21 @@ function MusclesTab:BuildSlotCell(parent, slot)
       end
       refresh()
     else
-      manageSlot(muscleId, slot)
+      manageSlot(layerId, slot)
     end
   end)
   hit:SetScript("OnReceiveDrag", function()
-    assignFromCursor(MM.DB:GetSelectedMuscleId(), slot)
+    assignFromCursor(MM.DB:GetSelectedLayerId(), slot)
   end)
   hit:SetScript("OnEnter", function(frame)
-    local muscle = MM.DB:GetMuscle(MM.DB:GetSelectedMuscleId())
+    local layer = MM.DB:GetLayer(MM.DB:GetSelectedLayerId())
     GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
     GameTooltip:SetText(MM.Actions.GetSlotLabel(slot))
-    local assignment = muscle and muscle.slots and muscle.slots[slot]
+    local assignment = layer and layer.slots and layer.slots[slot]
     if assignment then
       GameTooltip:AddLine(MM.Actions.GetAssignmentLabel(assignment), 1, 1, 1)
-      -- For a memory-driven slot, show what it resolves to for this character.
-      if assignment.type == "memory" then
+      -- For a dynamicAction-driven slot, show what it resolves to for this character.
+      if assignment.type == "dynamicaction" then
         local resolved = MM.Resolver:ResolveAction(assignment)
         if resolved then
           GameTooltip:AddLine("Resolves to: " .. resolved.label, Widgets.unpackColor(colors.goldDim))
@@ -388,13 +388,13 @@ function MusclesTab:BuildSlotCell(parent, slot)
   return { icon = icon, hit = hit }
 end
 
-function MusclesTab:BuildLegend(parent)
+function LayersTab:BuildLegend(parent)
   local strip = CreateFrame("Frame", nil, parent)
   strip:SetHeight(24)
 
   local entries = {
     { glyph = nil, badge = false, label = "Managed (pinned)" },
-    { glyph = nil, badge = true, label = "Memory-driven" },
+    { glyph = nil, badge = true, label = "Dynamic Action-driven" },
     { symbol = Widgets.TEX.empty, badge = false, label = "Empty (clears)" },
     { glyph = nil, badge = false, label = "Selected", selected = true },
   }
@@ -421,13 +421,13 @@ end
 
 -- The grid is built once into a persistent, pooled structure and re-attached to
 -- the current centre on each rebuild; cells (keyed by slot) and bar-row labels
--- are reused and repainted rather than recreated, so a Muscles refresh no longer
+-- are reused and repainted rather than recreated, so a Layers refresh no longer
 -- orphans ~150 icon frames.
-function MusclesTab:BuildGrid(parent, muscleId, muscle)
-  local grid = MusclesTab.grid
+function LayersTab:BuildGrid(parent, layerId, layer)
+  local grid = LayersTab.grid
   if not grid then
     grid = { cells = {}, rowLabels = {} }
-    MusclesTab.grid = grid
+    LayersTab.grid = grid
 
     grid.frame = CreateFrame("Frame", nil, parent)
 
@@ -435,16 +435,16 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
     grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 12, -2)
 
     grid.delete = Widgets.Button(grid.frame, "Delete", 60, function()
-      local id = MM.DB:GetSelectedMuscleId()
-      local m = MM.DB:GetMuscle(id)
-      deleteMuscle(id, m and m.name or id)
+      local id = MM.DB:GetSelectedLayerId()
+      local m = MM.DB:GetLayer(id)
+      deleteLayer(id, m and m.name or id)
     end)
     grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -12, -2)
 
     grid.rename = Widgets.Button(grid.frame, "Rename", 66, function()
-      local id = MM.DB:GetSelectedMuscleId()
-      local m = MM.DB:GetMuscle(id)
-      renameMuscle(id, m and m.name or id)
+      local id = MM.DB:GetSelectedLayerId()
+      local m = MM.DB:GetLayer(id)
+      renameLayer(id, m and m.name or id)
     end)
     grid.rename:SetPoint("RIGHT", grid.delete, "LEFT", -6, 0)
 
@@ -477,8 +477,8 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
   grid.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   grid.frame:Show()
 
-  grid.title:SetText(muscle and muscle.name or muscleId)
-  if MM.Tables.Count(MM.DB:Muscles() or {}) <= 1 then
+  grid.title:SetText(layer and layer.name or layerId)
+  if MM.Tables.Count(MM.DB:Layers() or {}) <= 1 then
     grid.delete:Disable()
   else
     grid.delete:Enable()
@@ -511,7 +511,7 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
       cell.icon:ClearAllPoints()
       cell.icon:SetPoint("TOPLEFT", grid.area, "TOPLEFT", LABEL_WIDTH + (button - 1) * (CELL + CELL_GAP), y)
       cell.icon:Show()
-      paintSlot(cell.icon, muscle, slot)
+      paintSlot(cell.icon, layer, slot)
     end
   end
 
@@ -531,47 +531,47 @@ function MusclesTab:BuildGrid(parent, muscleId, muscle)
 end
 
 -- Repaint the changed grid cell(s) in place (slot; 0/nil = bulk); no-ops when the grid is hidden.
-function MusclesTab:OnBarsChanged(slot)
-  local grid = MusclesTab.grid
+function LayersTab:OnBarsChanged(slot)
+  local grid = LayersTab.grid
   if not grid or not grid.frame:IsVisible() then
     return
   end
 
-  local muscle = MM.DB:GetMuscle(MM.DB:GetSelectedMuscleId())
+  local layer = MM.DB:GetLayer(MM.DB:GetSelectedLayerId())
   if slot and slot ~= 0 then
     local cell = grid.cells[slot]
     if cell and cell.icon:IsShown() then
-      paintSlot(cell.icon, muscle, slot)
+      paintSlot(cell.icon, layer, slot)
     end
     return
   end
 
   for cellSlot, cell in pairs(grid.cells) do
     if cell.icon:IsShown() then
-      paintSlot(cell.icon, muscle, cellSlot)
+      paintSlot(cell.icon, layer, cellSlot)
     end
   end
 end
 
-function MusclesTab:BuildEmptyGrid(parent)
+function LayersTab:BuildEmptyGrid(parent)
   local box = CreateFrame("Frame", nil, parent)
   box:SetPoint("CENTER")
   box:SetSize(360, 160)
 
-  local heading = Widgets.Label(box, "GameFontNormalLarge", "No Muscles yet", colors.parchment)
+  local heading = Widgets.Label(box, "GameFontNormalLarge", "No Layers yet", colors.parchment)
   heading:SetPoint("TOP", box, "TOP", 0, 0)
 
   local body = Widgets.Label(
     box,
     "GameFontHighlightSmall",
-    "Muscles stack to decide what each action-bar slot becomes. Create your first one to start managing slots."
+    "Layers stack to decide what each action-bar slot becomes. Create your first one to start managing slots."
   )
   body:SetPoint("TOP", heading, "BOTTOM", 0, -10)
   body:SetWidth(340)
   body:SetJustifyH("CENTER")
   body:SetTextColor(Widgets.unpackColor(colors.faint))
 
-  local button = Widgets.Button(box, "+ New Muscle", 140, newMuscle)
+  local button = Widgets.Button(box, "+ New Layer", 140, newLayer)
   button:SetPoint("TOP", body, "BOTTOM", 0, -16)
 end
 
@@ -582,16 +582,16 @@ local function statusFor(assignment)
     return "Not managed.", colors.faint
   end
   if assignment.type == "empty" then
-    return "Clears whatever is in this slot when the Muscle applies.", colors.parchment
+    return "Clears whatever is in this slot when the Layer applies.", colors.parchment
   end
-  if assignment.type == "memory" then
-    local memory = MM.DB:ResolveMemory({ source = assignment.source, id = assignment.id })
-    local resolved = resolveMemory(assignment.source, assignment.id)
+  if assignment.type == "dynamicaction" then
+    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
+    local resolved = resolveDynamicAction(assignment.source, assignment.id)
     if resolved then
       return 'Resolves to "' .. resolved.label .. '" for this character.', colors.goldDim
     end
     return 'No candidate in "'
-      .. (memory and memory.name or assignment.id)
+      .. (dynamicAction and dynamicAction.name or assignment.id)
       .. '" is usable by this character \226\128\148 the slot falls through to your live action.',
       colors.warn
   end
@@ -601,16 +601,16 @@ end
 -- The Slot Editor's drop overlay: drop a pinnable action anywhere on the sidebar
 -- to pin it to the selected slot.
 local function dropZone()
-  if not MusclesTab.dropZone then
-    MusclesTab.dropZone = Widgets.DropZone("Drop to pin this action")
+  if not LayersTab.dropZone then
+    LayersTab.dropZone = Widgets.DropZone("Drop to pin this action")
   end
-  return MusclesTab.dropZone
+  return LayersTab.dropZone
 end
 
--- Initializer for a "Bind to a Memory" row (recycled by Widgets.DataList). The
--- click reads the live selected muscle/slot, since the list outlives any rebuild.
-local function memoryBindRowInit(row, data)
-  local memory = data.memory
+-- Initializer for a "Bind to a Dynamic Action" row (recycled by Widgets.DataList). The
+-- click reads the live selected layer/slot, since the list outlives any rebuild.
+local function dynamicActionBindRowInit(row, data)
+  local dynamicAction = data.dynamicAction
   if not row.mmInit then
     row.mmInit = true
     Widgets.decorateRow(row)
@@ -626,18 +626,18 @@ local function memoryBindRowInit(row, data)
     row.resolution:SetPoint("RIGHT", row, "RIGHT", -8, 0)
 
     row:SetScript("OnClick", function(self)
-      local m = self.data and self.data.memory
-      local muscleId = MM.DB:GetSelectedMuscleId()
+      local m = self.data and self.data.dynamicAction
+      local layerId = MM.DB:GetSelectedLayerId()
       local slot = MM.DB:GetSelectedSlot()
-      if m and muscleId and slot then
-        assignSlot(muscleId, slot, { type = "memory", source = m.source, id = m.id })
+      if m and layerId and slot then
+        assignSlot(layerId, slot, { type = "dynamicaction", source = m.source, id = m.id })
       end
     end)
 
     -- Tooltip on the icon only; shows the resolved spell/item.
     Widgets.AttachIconTooltip(row.tile, function(r)
-      local m = r.data and r.data.memory
-      local resolved = m and resolveMemory(m.source, m.id)
+      local m = r.data and r.data.dynamicAction
+      local resolved = m and resolveDynamicAction(m.source, m.id)
       if resolved then
         Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
       end
@@ -645,7 +645,7 @@ local function memoryBindRowInit(row, data)
   end
 
   row.data = data
-  local resolved = resolveMemory(memory.source, memory.id)
+  local resolved = resolveDynamicAction(dynamicAction.source, dynamicAction.id)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
     row.tile:SetBorder(1, colors.managed)
@@ -654,12 +654,12 @@ local function memoryBindRowInit(row, data)
     row.tile:SetBorder(1, colors.warn, 0.7)
   end
 
-  row.nameLabel:SetText(memory.name)
+  row.nameLabel:SetText(dynamicAction.name)
   row.resolution:SetText(resolved and resolved.label or "no match")
   row.resolution:SetTextColor(Widgets.unpackColor(resolved and colors.goldDim or colors.danger))
 end
 
-function MusclesTab:BuildEditor(parent, muscleId, muscle)
+function LayersTab:BuildEditor(parent, layerId, layer)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
@@ -667,27 +667,27 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
-    -- No slot selected: the sidebar edits the whole muscle's conditions.
-    if MusclesTab.dropZone then
-      MusclesTab.dropZone:Detach()
+    -- No slot selected: the sidebar edits the whole layer's conditions.
+    if LayersTab.dropZone then
+      LayersTab.dropZone:Detach()
     end
 
-    local header = Widgets.SectionHeader(inset, "Muscle Conditions")
+    local header = Widgets.SectionHeader(inset, "Layer Conditions")
     header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -14)
 
-    local hint = Widgets.Hint(inset, "When should this Muscle apply? Leave everything off to always apply it.")
+    local hint = Widgets.Hint(inset, "When should this Layer apply? Leave everything off to always apply it.")
     hint:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -8)
     hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
     hint:SetJustifyH("LEFT")
 
-    if muscle then
-      muscle.conditions = muscle.conditions or {}
+    if layer then
+      layer.conditions = layer.conditions or {}
       -- The editor outgrows the panel once several sections are expanded, so it
       -- lives in a scroll region; the scrollbar appears only when it overflows.
-      local scrollBox, content = Widgets.ScrollList(inset, "muscles.conditions")
+      local scrollBox, content = Widgets.ScrollList(inset, "layers.conditions")
       scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
       scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
-      local editor = MM.ui.ConditionsEditor:Build(content, muscle.conditions, true, function()
+      local editor = MM.ui.ConditionsEditor:Build(content, layer.conditions, true, function()
         refresh()
       end)
       editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
@@ -697,20 +697,20 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
     return
   end
 
-  local assignment = muscle and muscle.slots and muscle.slots[slot]
+  local assignment = layer and layer.slots and layer.slots[slot]
 
   local header = Widgets.SectionHeader(inset, "Slot Editor")
   header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -14)
 
   local icon = Widgets.Icon(inset, 36)
   icon:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
-  paintSlot(icon, muscle, slot)
+  paintSlot(icon, layer, slot)
   Widgets.AttachIconTooltip(icon, function()
     if not assignment then
       return
     end
-    if assignment.type == "memory" then
-      local resolved = resolveMemory(assignment.source, assignment.id)
+    if assignment.type == "dynamicaction" then
+      local resolved = resolveDynamicAction(assignment.source, assignment.id)
       if resolved then
         Widgets.SetActionTooltip(icon, resolved.kind, resolved.id, resolved.label)
       end
@@ -740,18 +740,18 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   setToHeader:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -14)
 
   local emptyButton = Widgets.Button(inset, "Empty (clear it)", 150, function()
-    assignSlot(muscleId, slot, { type = "empty" })
+    assignSlot(layerId, slot, { type = "empty" })
   end)
   emptyButton:SetPoint("TOPLEFT", setToHeader, "BOTTOMLEFT", 0, -8)
 
   local stopButton = Widgets.Button(inset, "Stop managing", 130, function()
-    unmanageSlot(muscleId, slot)
+    unmanageSlot(layerId, slot)
   end)
   stopButton:SetPoint("LEFT", emptyButton, "RIGHT", 8, 0)
 
-  -- "Bind to a Memory"
-  local memoryHeader = Widgets.SectionHeader(inset, "Bind to a Memory")
-  memoryHeader:SetPoint("TOPLEFT", emptyButton, "BOTTOMLEFT", 0, -16)
+  -- "Bind to a Dynamic Action"
+  local dynamicActionHeader = Widgets.SectionHeader(inset, "Bind to a Dynamic Action")
+  dynamicActionHeader:SetPoint("TOPLEFT", emptyButton, "BOTTOMLEFT", 0, -16)
 
   -- The whole panel is a drop target (see the overlay); a hint sits at the foot.
   local dropHint =
@@ -760,33 +760,33 @@ function MusclesTab:BuildEditor(parent, muscleId, muscle)
   dropHint:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
   dropHint:SetJustifyH("LEFT")
 
-  local list = Widgets.DataList(inset, "muscles.memorybind", {
+  local list = Widgets.DataList(inset, "layers.dynamicActionbind", {
     extent = 34,
     spacing = 3,
-    initializer = memoryBindRowInit,
+    initializer = dynamicActionBindRowInit,
   })
-  list.scrollBox:SetPoint("TOPLEFT", memoryHeader, "BOTTOMLEFT", 0, -8)
+  list.scrollBox:SetPoint("TOPLEFT", dynamicActionHeader, "BOTTOMLEFT", 0, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", dropHint, "TOPRIGHT", -14, -10)
 
   local items = {}
-  for _, memory in ipairs(memoryList()) do
-    items[#items + 1] = { memory = memory }
+  for _, dynamicAction in ipairs(dynamicActionList()) do
+    items[#items + 1] = { dynamicAction = dynamicAction }
   end
   list:SetItems(items)
 
   dropZone():Attach(inset, function()
-    assignFromCursor(muscleId, slot)
+    assignFromCursor(layerId, slot)
   end)
 end
 
 -- Assembly -------------------------------------------------------------------
 
-function MusclesTab:BuildContent(parent)
-  local muscleId = MM.DB:GetSelectedMuscleId()
-  local muscle = MM.DB:GetMuscle(muscleId)
+function LayersTab:BuildContent(parent)
+  local layerId = MM.DB:GetSelectedLayerId()
+  local layer = MM.DB:GetLayer(layerId)
 
   self:BuildRail(parent)
-  self:BuildEditor(parent, muscleId, muscle)
+  self:BuildEditor(parent, layerId, layer)
 
   local leftGroove = Widgets.VGroove(parent)
   leftGroove:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 6, -6)
@@ -809,19 +809,19 @@ function MusclesTab:BuildContent(parent)
     end
   end)
 
-  if #MM.DB:GetProfileMuscles() == 0 then
+  if #MM.DB:GetProfileLayers() == 0 then
     self:BuildEmptyGrid(center)
   else
-    self:BuildGrid(center, muscleId, muscle)
+    self:BuildGrid(center, layerId, layer)
   end
 end
 
-function MusclesTab:Build(parent)
+function LayersTab:Build(parent)
   self.parent = parent
   self:Refresh()
 end
 
-function MusclesTab:Refresh()
+function LayersTab:Refresh()
   if not self.parent then
     return
   end

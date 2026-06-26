@@ -3,9 +3,9 @@ local addon = require("spec.helpers.addon")
 describe("Applier", function()
   local MM, stubs
 
-  -- A muscle stacked below Core in the active profile.
-  local function addLowerMuscle()
-    return (MM.DB:CreateMuscle("Lower"))
+  -- A layer stacked below Core in the active profile.
+  local function addLowerLayer()
+    return (MM.DB:CreateLayer("Lower"))
   end
 
   before_each(function()
@@ -19,13 +19,13 @@ describe("Applier", function()
     stubs:setCharacter({ class = "HUNTER" })
     stubs:setSpell(S.COMMAND_PET, { name = "Command Pet", known = true })
     stubs:setSpell(S.PRIMAL_RAGE, { name = "Primal Rage", known = true })
-    MM.DB:SetSlot("Core", slot, { type = "memory", id = "lust" })
+    MM.DB:SetSlot("Core", slot, { type = "dynamicaction", id = "lust" })
     stubs:setSlot(slot, { actionType = "spell", id = S.PRIMAL_RAGE, baseSpellId = S.COMMAND_PET })
   end
 
   describe("BuildPlan precedence", function()
-    it("lets the higher muscle win a contested slot", function()
-      local lower = addLowerMuscle()
+    it("lets the higher layer win a contested slot", function()
+      local lower = addLowerLayer()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 1766 })
       MM.DB:SetSlot(lower, 1, { type = "spell", id = 2050 })
 
@@ -33,20 +33,20 @@ describe("Applier", function()
       assert.equals(1766, plan.slots[1].resolved.id)
     end)
 
-    it("skips a muscle whose conditions don't match the character", function()
+    it("skips a layer whose conditions don't match the character", function()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 1766 })
-      MM.DB:GetMuscle("Core").conditions = { classes = { "WARRIOR" } }
+      MM.DB:GetLayer("Core").conditions = { classes = { "WARRIOR" } }
 
       local plan = MM.Applier:BuildPlan()
       assert.is_nil(plan.slots[1])
 
-      MM.DB:GetMuscle("Core").conditions = { classes = { "MAGE" } }
+      MM.DB:GetLayer("Core").conditions = { classes = { "MAGE" } }
       plan = MM.Applier:BuildPlan()
       assert.equals(1766, plan.slots[1].resolved.id)
     end)
 
-    it("lets an ignore in the higher muscle yield to the lower one", function()
-      local lower = addLowerMuscle()
+    it("lets an ignore in the higher layer yield to the lower one", function()
+      local lower = addLowerLayer()
       MM.DB:SetSlot("Core", 1, { type = "ignore" })
       MM.DB:SetSlot(lower, 1, { type = "spell", id = 2050 })
 
@@ -55,7 +55,7 @@ describe("Applier", function()
     end)
 
     it("treats an empty assignment as a stopper", function()
-      local lower = addLowerMuscle()
+      local lower = addLowerLayer()
       MM.DB:SetSlot("Core", 1, { type = "empty" })
       MM.DB:SetSlot(lower, 1, { type = "spell", id = 2050 })
 
@@ -77,7 +77,7 @@ describe("Applier", function()
     end)
 
     it("flags invalid slot keys as conflicts", function()
-      MM.DB:GetMuscle("Core").slots[200] = { type = "empty" }
+      MM.DB:GetLayer("Core").slots[200] = { type = "empty" }
       local plan = MM.Applier:BuildPlan()
       assert.equals(1, #plan.conflicts)
       assert.equals("200", plan.conflicts[1].slot)
@@ -183,11 +183,11 @@ describe("Applier", function()
       assert.is_true(printedMatches(stubs.world, "applied 0 slots, skipped 1 unchanged"))
     end)
 
-    it("renders a macro for a macro-mode memory and stays idempotent", function()
-      local key = MM.DB:CreateMemory("Kick")
+    it("renders a macro for a macro-mode dynamic action and stays idempotent", function()
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
 
       assert.is_true(MM.Applier:ApplyProfile())
 
@@ -205,16 +205,16 @@ describe("Applier", function()
       assert.equals(1, #stubs.world.charMacros)
     end)
 
-    it("treats a memory rename as a pending change and updates the macro title", function()
-      local key = MM.DB:CreateMemory("Kick")
+    it("treats a dynamic action rename as a pending change and updates the macro title", function()
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
       assert.is_true(MM.Applier:ApplyProfile())
       local originalName = stubs.world.charMacros[1].name
       assert.is_false(MM.Applier:HasUnappliedChanges())
 
-      MM.DB:RenameMemory(key, "Kicker")
+      MM.DB:RenameDynamicAction(key, "Kicker")
       -- The macro title is now stale, so a change is pending.
       assert.is_true(MM.Applier:HasUnappliedChanges())
 
@@ -226,10 +226,10 @@ describe("Applier", function()
     end)
 
     it("sweeps a marked macro the registry no longer tracks", function()
-      local key = MM.DB:CreateMemory("Kick")
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
       assert.is_true(MM.Applier:ApplyProfile())
       assert.equals(1, #stubs.world.charMacros)
 
@@ -242,10 +242,10 @@ describe("Applier", function()
 
     it("falls back to placing the action when the macro body is over the limit", function()
       stubs:setSpell(9001, { name = string.rep("Q", 260), icon = 7, known = true })
-      local key = MM.DB:CreateMemory("Long")
+      local key = MM.DB:CreateDynamicAction("Long")
       MM.DB:AddCandidate(key, { type = "spell", id = 9001 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
 
       assert.is_true(MM.Applier:ApplyProfile())
       -- Too long to be a macro, so the spell is placed directly and no macro made.
@@ -254,15 +254,15 @@ describe("Applier", function()
       assert.equals(0, #stubs.world.charMacros)
     end)
 
-    it("cleans up the generated macro when a memory leaves macro mode", function()
-      local key = MM.DB:CreateMemory("Kick")
+    it("cleans up the generated macro when a dynamic action leaves macro mode", function()
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
       assert.is_true(MM.Applier:ApplyProfile())
       assert.equals(1, #stubs.world.charMacros)
 
-      MM.DB:SetMemoryMode(key, "normal")
+      MM.DB:SetDynamicActionMode(key, "normal")
       assert.is_true(MM.Applier:ApplyProfile())
       -- The slot now holds the spell directly and the orphaned macro is gone.
       assert.equals("spell", stubs.world.slots[10].actionType)
@@ -311,8 +311,8 @@ describe("Applier", function()
       assert.is_nil(stubs.world.slots[10])
     end)
 
-    it("refuses to apply when the active muscles contain invalid slots", function()
-      MM.DB:GetMuscle("Core").slots[200] = { type = "empty" }
+    it("refuses to apply when the active layers contain invalid slots", function()
+      MM.DB:GetLayer("Core").slots[200] = { type = "empty" }
       assert.is_false(MM.Applier:ApplyProfile())
     end)
   end)
@@ -349,23 +349,23 @@ describe("Applier", function()
     end)
 
     it("notes that a macro-mode slot will create a macro", function()
-      local key = MM.DB:CreateMemory("Kick")
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
 
       MM.Applier:PreviewProfile()
       assert.is_true(printedMatches(stubs.world, "Kick %(creates a macro%)"))
     end)
 
     it("notes that an existing macro will be updated after a rename", function()
-      local key = MM.DB:CreateMemory("Kick")
+      local key = MM.DB:CreateDynamicAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })
-      MM.DB:SetMemoryMode(key, "macro")
-      MM.DB:SetSlot("Core", 10, { type = "memory", source = "custom", id = key })
+      MM.DB:SetDynamicActionMode(key, "macro")
+      MM.DB:SetSlot("Core", 10, { type = "dynamicaction", source = "custom", id = key })
       MM.Applier:ApplyProfile()
 
-      MM.DB:RenameMemory(key, "Kicker")
+      MM.DB:RenameDynamicAction(key, "Kicker")
       MM.Applier:PreviewProfile()
       assert.is_true(printedMatches(stubs.world, "Kick %(updates the macro%)"))
     end)

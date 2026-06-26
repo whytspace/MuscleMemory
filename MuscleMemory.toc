@@ -25,7 +25,7 @@ Util/Actions.lua
 
 Data/SpellIds.lua
 Data/ItemIds.lua
-Data/PredefinedMemories.lua
+Data/PredefinedDynamicActions.lua
 
 Database.lua
 Resolver.lua
@@ -38,8 +38,8 @@ UI/Widgets.lua
 UI/Modals.lua
 UI/ConditionsEditor.lua
 UI/MainFrame.lua
-UI/MusclesTab.lua
-UI/MemoriesTab.lua
+UI/LayersTab.lua
+UI/DynamicActionsTab.lua
 UI/ProfilesTab.lua
 UI/SettingsTab.lua
 UI/AboutTab.lua

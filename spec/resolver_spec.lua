@@ -113,7 +113,7 @@ describe("Resolver", function()
     end)
   end)
 
-  describe("memory", function()
+  describe("dynamicAction", function()
     local S, I
     before_each(function()
       S = MM.SpellIds
@@ -123,26 +123,26 @@ describe("Resolver", function()
     it("resolves to the first usable candidate", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(S.PUMMEL, { name = "Pummel", known = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "interrupt" })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "interrupt" })
       assert.equals("spell", resolved.kind)
       assert.equals(S.PUMMEL, resolved.id)
-      assert.equals("Interrupt", resolved.memory.name)
+      assert.equals("Interrupt", resolved.dynamicAction.name)
     end)
 
     it("falls through to an owned, usable engineering item for a non-rez class", function()
       stubs.world.class = "MAGE"
       stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
       assert.equals("item", resolved.kind)
       assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
-      assert.equals("Battle Rez", resolved.memory.name)
+      assert.equals("Battle Rez", resolved.dynamicAction.name)
     end)
 
     it("skips a rez item the player owns but cannot use (out of level range / no engineering)", function()
       stubs.world.class = "MAGE"
       stubs:setItem(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q3, { name = "Jumper Cables", count = 1, usable = false })
       stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
       assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
     end)
 
@@ -150,7 +150,7 @@ describe("Resolver", function()
       stubs.world.class = "MAGE"
       stubs.world.level = 80 -- above the Reanimator's level-60 cap
       stubs:setItem(I.DISPOSABLE_SPECTROPHASIC_REANIMATOR, { name = "Reanimator", count = 1, usable = true })
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "memory", id = "battle_rez" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
       assert.is_nil(resolved)
       assert.matches("no matching candidate", reason)
     end)
@@ -158,7 +158,7 @@ describe("Resolver", function()
     it("skips candidates whose class requirement does not match", function()
       stubs.world.class = "MAGE"
       stubs:setSpell(S.COMMAND_PET, { name = "Command Pet", known = true })
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "memory", id = "lust" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "lust" })
       assert.is_nil(resolved)
       assert.matches("no matching candidate", reason)
     end)
@@ -166,23 +166,23 @@ describe("Resolver", function()
     it("resolves a class-gated candidate for the right class", function()
       stubs.world.class = "HUNTER"
       stubs:setSpell(S.COMMAND_PET, { name = "Command Pet", known = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "memory", id = "lust" })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "lust" })
       assert.equals(S.COMMAND_PET, resolved.id)
     end)
 
-    it("resolves a custom memory through the database", function()
-      MM.DB:Memories().mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
+    it("resolves a custom dynamic action through the database", function()
+      MM.DB:DynamicActions().mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
       stubs:setSpell(1766, { name = "Kick", known = true })
 
-      local resolved = MM.Resolver:ResolveAction({ type = "memory", source = "custom", id = "mine" })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", source = "custom", id = "mine" })
       assert.equals(1766, resolved.id)
-      assert.equals("Mine", resolved.memory.name)
+      assert.equals("Mine", resolved.dynamicAction.name)
     end)
 
-    it("reports a missing memory", function()
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "memory", id = "does_not_exist" })
+    it("reports a missing dynamic action", function()
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "does_not_exist" })
       assert.is_nil(resolved)
-      assert.equals("memory not found", reason)
+      assert.equals("dynamic action not found", reason)
     end)
   end)
 end)

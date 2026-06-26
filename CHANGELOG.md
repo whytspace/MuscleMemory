@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Renamed the two core concepts for clarity: "muscles" are now **action bar layers** and "memories" are now **dynamic actions**. The window tabs, slash commands (`/mm layer`, `/mm action`), and help text use the new names. Existing setups are migrated automatically.
+
 ## 0.3.0 - 2026-06-25
 
 - Memories can now be rendered as a macro instead of placing the spell or item directly, so you get macro flexibility (mouseover, focus, modifier and conditional casts) while the memory still resolves the right action for your class, spec, and what you actually have. Turn it on per memory in the Memories tab and write a body with `%name%` where the resolved spell or item goes, e.g. `/use [@mouseover,help][@focus] %name%`. The add-on creates and maintains a per-character macro for you and removes it once it is no longer used. Available for memories whose candidates are all spells, items, toys, or mounts.

@@ -56,15 +56,20 @@ function DB:MigrateSchema(root, savedSchemaVersion)
   if savedSchemaVersion < 2 then
     self:MigrateToV2(root)
   end
+  if savedSchemaVersion < 3 then
+    self:MigrateToV3(root)
+  end
   if savedSchemaVersion < MM.SCHEMA_VERSION then
     root.schemaVersion = MM.SCHEMA_VERSION
   end
 end
 
--- v1 → v2: muscles, memories and the fallback setting move from the account
--- root into each profile, so every profile is a self-contained data set. The
--- formerly shared pools are copied wholesale into every profile; the per-muscle
--- enable flag moves from the activeMuscles entry onto the muscle itself.
+-- v1 → v2: the muscle pool, memory pool and fallback setting move from the
+-- account root into each profile, so every profile is a self-contained data set.
+-- The formerly shared pools are copied wholesale into every profile; the
+-- per-muscle enable flag moves from the activeMuscles entry onto the muscle.
+-- Keys here are the historical v1/v2 names ("muscles", "memories", ...) on
+-- purpose; the v2 → v3 rename to "layers"/"dynamicActions" happens in MigrateToV3.
 function DB:MigrateToV2(root)
   local legacyMuscles = root.muscles
   local legacyMemories = root.customMemories
@@ -115,6 +120,34 @@ function DB:MigrateToV2(root)
   root.fallback = nil
 end
 
+-- v2 → v3: terminology rename only. "muscles" become "action bar layers" and
+-- "memories" become "dynamic actions". The persisted per-profile keys and the
+-- slot-assignment discriminator are renamed in place so existing setups survive.
+function DB:MigrateToV3(root)
+  for _, profile in pairs(root.profiles or {}) do
+    if profile.muscles ~= nil then
+      profile.layers = profile.muscles
+      profile.muscles = nil
+    end
+    if profile.memories ~= nil then
+      profile.dynamicActions = profile.memories
+      profile.memories = nil
+    end
+    if profile.muscleOrder ~= nil then
+      profile.layerOrder = profile.muscleOrder
+      profile.muscleOrder = nil
+    end
+
+    for _, layer in pairs(profile.layers or {}) do
+      for _, assignment in pairs(layer.slots or {}) do
+        if type(assignment) == "table" and assignment.type == "memory" then
+          assignment.type = "dynamicaction"
+        end
+      end
+    end
+  end
+end
+
 function DB:GetRoot()
   return self.root or MuscleMemoryDB or {}
 end
@@ -141,25 +174,25 @@ function DB:GetProfile(profileId)
   return self:GetRoot().profiles[profileId]
 end
 
--- The given (or active) profile's muscle pool / memory pool, ensure-initialized.
--- All muscle and memory CRUD scopes through these, so it operates on the active
+-- The given (or active) profile's layer pool / dynamicAction pool, ensure-initialized.
+-- All layer and dynamicAction CRUD scopes through these, so it operates on the active
 -- profile rather than a shared account-wide table.
-function DB:Muscles(profileId)
+function DB:Layers(profileId)
   local profile = self:GetProfile(profileId)
   if not profile then
     return {}
   end
-  profile.muscles = profile.muscles or {}
-  return profile.muscles
+  profile.layers = profile.layers or {}
+  return profile.layers
 end
 
-function DB:Memories(profileId)
+function DB:DynamicActions(profileId)
   local profile = self:GetProfile(profileId)
   if not profile then
     return {}
   end
-  profile.memories = profile.memories or {}
-  return profile.memories
+  profile.dynamicActions = profile.dynamicActions or {}
+  return profile.dynamicActions
 end
 
 -- The account-wide default profile (what players use unless they pick their own),
@@ -195,11 +228,11 @@ function DB:FindProfileId(target)
   return matchByName(self:GetRoot().profiles, target)
 end
 
-function DB:FindMuscleId(target)
-  return matchByName(self:Muscles(), target)
+function DB:FindLayerId(target)
+  return matchByName(self:Layers(), target)
 end
 
--- A new profile starts empty: its own muscles, memories and fallback.
+-- A new profile starts empty: its own layers, dynamicActions and fallback.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
@@ -207,14 +240,14 @@ function DB:CreateProfile(name)
   root.profiles[id] = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
     fallback = "keep",
-    muscleOrder = {},
-    muscles = {},
-    memories = {},
+    layerOrder = {},
+    layers = {},
+    dynamicActions = {},
   }
   return id, root.profiles[id]
 end
 
--- Clone an existing profile 1:1 (muscles, memories, order and fallback) under a
+-- Clone an existing profile 1:1 (layers, dynamicActions, order and fallback) under a
 -- new name, fully independent of the source.
 function DB:CloneProfile(sourceId, name)
   local root = self:GetRoot()
@@ -227,9 +260,9 @@ function DB:CloneProfile(sourceId, name)
   root.profiles[id] = {
     name = name and name ~= "" and name or ((source.name or "Profile") .. " Copy"),
     fallback = source.fallback or "keep",
-    muscleOrder = MM.Tables.DeepCopy(source.muscleOrder or {}),
-    muscles = MM.Tables.DeepCopy(source.muscles or {}),
-    memories = MM.Tables.DeepCopy(source.memories or {}),
+    layerOrder = MM.Tables.DeepCopy(source.layerOrder or {}),
+    layers = MM.Tables.DeepCopy(source.layers or {}),
+    dynamicActions = MM.Tables.DeepCopy(source.dynamicActions or {}),
   }
   return id, root.profiles[id]
 end
@@ -285,25 +318,25 @@ function DB:SetActiveProfile(profileId)
   return true
 end
 
--- Muscles -------------------------------------------------------------------
+-- Layers -------------------------------------------------------------------
 
--- Every muscle in the profile, in stored order, each tagged with its enabled
+-- Every layer in the profile, in stored order, each tagged with its enabled
 -- state. Position in the list is the order.
-function DB:GetProfileMuscles(profileId)
+function DB:GetProfileLayers(profileId)
   local profile = self:GetProfile(profileId)
   local list = {}
   if not profile then
     return list
   end
 
-  for _, id in ipairs(profile.muscleOrder or {}) do
-    local muscle = self:GetMuscle(id, profileId)
-    if muscle then
+  for _, id in ipairs(profile.layerOrder or {}) do
+    local layer = self:GetLayer(id, profileId)
+    if layer then
       list[#list + 1] = {
         id = id,
-        muscle = muscle,
-        name = muscle.name or id,
-        enabled = muscle.enabled ~= false,
+        layer = layer,
+        name = layer.name or id,
+        enabled = layer.enabled ~= false,
       }
     end
   end
@@ -312,9 +345,9 @@ function DB:GetProfileMuscles(profileId)
 end
 
 -- The enabled subset, in order. This is what gets applied.
-function DB:GetActiveMuscles(profileId)
+function DB:GetActiveLayers(profileId)
   local active = {}
-  for _, entry in ipairs(self:GetProfileMuscles(profileId)) do
+  for _, entry in ipairs(self:GetProfileLayers(profileId)) do
     if entry.enabled then
       active[#active + 1] = entry
     end
@@ -322,69 +355,69 @@ function DB:GetActiveMuscles(profileId)
   return active
 end
 
-function DB:SetMuscleEnabled(muscleId, enabled, profileId)
-  local muscle = self:GetMuscle(muscleId, profileId)
-  if not muscle then
-    return false, "muscle is not part of this profile"
+function DB:SetLayerEnabled(layerId, enabled, profileId)
+  local layer = self:GetLayer(layerId, profileId)
+  if not layer then
+    return false, "layer is not part of this profile"
   end
-  muscle.enabled = enabled and true or false
+  layer.enabled = enabled and true or false
   return true
 end
 
-function DB:GetMuscle(muscleId, profileId)
-  return self:Muscles(profileId)[muscleId]
+function DB:GetLayer(layerId, profileId)
+  return self:Layers(profileId)[layerId]
 end
 
-function DB:CreateMuscle(name)
-  local muscles = self:Muscles()
-  local muscleId = uniqueId(name, "muscle", muscles)
+function DB:CreateLayer(name)
+  local layers = self:Layers()
+  local layerId = uniqueId(name, "layer", layers)
 
-  muscles[muscleId] = {
-    name = name or ("Muscle " .. tostring(MM.Tables.Count(muscles) + 1)),
+  layers[layerId] = {
+    name = name or ("Layer " .. tostring(MM.Tables.Count(layers) + 1)),
     slots = {},
     enabled = true,
   }
 
   local profile = self:GetProfile()
   if profile then
-    profile.muscleOrder = profile.muscleOrder or {}
-    profile.muscleOrder[#profile.muscleOrder + 1] = muscleId
+    profile.layerOrder = profile.layerOrder or {}
+    profile.layerOrder[#profile.layerOrder + 1] = layerId
   end
 
-  return muscleId, muscles[muscleId]
+  return layerId, layers[layerId]
 end
 
-function DB:RenameMuscle(muscleId, name)
-  local muscle = self:GetMuscle(muscleId)
-  if not muscle then
-    return false, "unknown muscle"
+function DB:RenameLayer(layerId, name)
+  local layer = self:GetLayer(layerId)
+  if not layer then
+    return false, "unknown layer"
   end
 
   name = string.gsub(name or "", "^%s+", "")
   name = string.gsub(name, "%s+$", "")
   if name == "" then
-    return false, "muscle name cannot be empty"
+    return false, "layer name cannot be empty"
   end
 
-  muscle.name = name
+  layer.name = name
   return true
 end
 
-function DB:DeleteMuscle(muscleId)
-  local muscles = self:Muscles()
-  if not muscles[muscleId] then
-    return false, "unknown muscle"
+function DB:DeleteLayer(layerId)
+  local layers = self:Layers()
+  if not layers[layerId] then
+    return false, "unknown layer"
   end
-  if MM.Tables.Count(muscles) <= 1 then
-    return false, "cannot delete the last muscle"
+  if MM.Tables.Count(layers) <= 1 then
+    return false, "cannot delete the last layer"
   end
 
-  muscles[muscleId] = nil
+  layers[layerId] = nil
 
   local profile = self:GetProfile()
-  local order = profile and profile.muscleOrder
+  local order = profile and profile.layerOrder
   for index = #(order or {}), 1, -1 do
-    if order[index] == muscleId then
+    if order[index] == layerId then
       table.remove(order, index)
     end
   end
@@ -392,11 +425,11 @@ function DB:DeleteMuscle(muscleId)
   return true
 end
 
--- Move `muscleId` to position `toIndex` within `profileId` (defaults to the
+-- Move `layerId` to position `toIndex` within `profileId` (defaults to the
 -- active profile). Explicit inputs, single array splice, no selection read.
-function DB:MoveMuscle(muscleId, toIndex, profileId)
+function DB:MoveLayer(layerId, toIndex, profileId)
   local profile = self:GetProfile(profileId)
-  local order = profile and profile.muscleOrder
+  local order = profile and profile.layerOrder
   if not order then
     return false, "unknown profile"
   end
@@ -409,48 +442,48 @@ function DB:MoveMuscle(muscleId, toIndex, profileId)
 
   local fromIndex
   for index, id in ipairs(order) do
-    if id == muscleId then
+    if id == layerId then
       fromIndex = index
       break
     end
   end
 
   if not fromIndex then
-    return false, "muscle is not part of this profile"
+    return false, "layer is not part of this profile"
   end
   if fromIndex == toIndex then
-    return false, "muscle is already at that position"
+    return false, "layer is already at that position"
   end
 
   table.insert(order, toIndex, table.remove(order, fromIndex))
   return true
 end
 
-function DB:SetSlot(muscleId, slot, assignment)
-  local muscle = self:GetMuscle(muscleId)
+function DB:SetSlot(layerId, slot, assignment)
+  local layer = self:GetLayer(layerId)
   slot = tonumber(slot)
-  if not muscle or not MM.Actions.IsValidSlot(slot) then
+  if not layer or not MM.Actions.IsValidSlot(slot) then
     return false
   end
 
-  muscle.slots[slot] = assignment
+  layer.slots[slot] = assignment
   return true
 end
 
-function DB:SetAllMuscleSlots(muscleId, enabled)
-  local muscle = self:GetMuscle(muscleId)
-  if not muscle then
+function DB:SetAllLayerSlots(layerId, enabled)
+  local layer = self:GetLayer(layerId)
+  if not layer then
     return false
   end
 
   if enabled then
     for slot = 1, MM.MAX_ACTION_SLOT do
-      if muscle.slots[slot] == nil then
-        muscle.slots[slot] = { type = "empty" }
+      if layer.slots[slot] == nil then
+        layer.slots[slot] = { type = "empty" }
       end
     end
   else
-    muscle.slots = {}
+    layer.slots = {}
   end
 
   return true
@@ -458,18 +491,18 @@ end
 
 -- Selection (runtime only) -------------------------------------------------
 
-function DB:GetSelectedMuscleId()
-  local muscles = self:Muscles()
-  if session.muscle and muscles[session.muscle] then
-    return session.muscle
+function DB:GetSelectedLayerId()
+  local layers = self:Layers()
+  if session.layer and layers[session.layer] then
+    return session.layer
   end
-  session.muscle = next(muscles)
-  return session.muscle
+  session.layer = next(layers)
+  return session.layer
 end
 
-function DB:SetSelectedMuscleId(muscleId)
-  if self:Muscles()[muscleId] then
-    session.muscle = muscleId
+function DB:SetSelectedLayerId(layerId)
+  if self:Layers()[layerId] then
+    session.layer = layerId
   end
 end
 
@@ -522,182 +555,182 @@ function DB:SetResponse(value)
   return true
 end
 
--- Memories -------------------------------------------------------------------
--- Profile memories live in `profile.memories`; index `self:Memories()` directly.
--- Predefined memories are immutable add-on data.
+-- DynamicActions -------------------------------------------------------------------
+-- Profile dynamicActions live in `profile.dynamicActions`; index `self:DynamicActions()` directly.
+-- Predefined dynamicActions are immutable add-on data.
 
-function DB:GetPredefinedMemory(memoryId)
-  return MM.PredefinedMemories[memoryId]
+function DB:GetPredefinedDynamicAction(dynamicActionId)
+  return MM.PredefinedDynamicActions[dynamicActionId]
 end
 
 -- Resolve a stored `{ source, id }` reference: "custom" -> the profile's own
--- memory, anything else (predefined) -> the built-in memory.
-function DB:ResolveMemory(reference)
+-- dynamicAction, anything else (predefined) -> the built-in dynamicAction.
+function DB:ResolveDynamicAction(reference)
   if not reference then
     return nil
   end
 
   if reference.source == "custom" then
-    return self:Memories()[reference.id]
+    return self:DynamicActions()[reference.id]
   end
 
-  return self:GetPredefinedMemory(reference.id)
+  return self:GetPredefinedDynamicAction(reference.id)
 end
 
--- Copy a predefined memory into an editable profile memory. Returns the new key
--- (memories are identified by key, so duplicate names are fine).
-function DB:CopyPredefinedMemory(memoryId, newId, newName)
-  local source = MM.PredefinedMemories[memoryId]
+-- Copy a predefined dynamicAction into an editable profile dynamicAction. Returns the new key
+-- (dynamicActions are identified by key, so duplicate names are fine).
+function DB:CopyPredefinedDynamicAction(dynamicActionId, newId, newName)
+  local source = MM.PredefinedDynamicActions[dynamicActionId]
   if not source then
-    return nil, "unknown predefined memory"
+    return nil, "unknown predefined dynamic action"
   end
 
-  local memories = self:Memories()
+  local dynamicActions = self:DynamicActions()
   local name = newName or (source.name .. " Copy")
-  local key = newId or uniqueId(name, memoryId .. "_copy", memories)
-  if memories[key] then
-    return nil, "memory already exists"
+  local key = newId or uniqueId(name, dynamicActionId .. "_copy", dynamicActions)
+  if dynamicActions[key] then
+    return nil, "dynamic action already exists"
   end
 
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  memories[key] = copy
+  dynamicActions[key] = copy
   return key
 end
 
--- Clone any memory (predefined or profile) into a new editable profile memory.
-function DB:CloneMemory(reference)
-  local source = self:ResolveMemory(reference)
+-- Clone any dynamicAction (predefined or profile) into a new editable profile dynamicAction.
+function DB:CloneDynamicAction(reference)
+  local source = self:ResolveDynamicAction(reference)
   if not source then
-    return nil, "unknown memory"
+    return nil, "unknown dynamic action"
   end
 
-  local memories = self:Memories()
-  local name = (source.name or "Memory") .. " Copy"
-  local key = uniqueId(name, "memory_copy", memories)
+  local dynamicActions = self:DynamicActions()
+  local name = (source.name or "Dynamic Action") .. " Copy"
+  local key = uniqueId(name, "dynamicaction_copy", dynamicActions)
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  memories[key] = copy
+  dynamicActions[key] = copy
   return key
 end
 
--- Predefined memories are immutable add-on data, so create / rename / delete and
--- all candidate edits operate only on the profile's own memories.
+-- Predefined dynamicActions are immutable add-on data, so create / rename / delete and
+-- all candidate edits operate only on the profile's own dynamicActions.
 
-function DB:CreateMemory(name)
-  local memories = self:Memories()
-  local key = uniqueId(name, "memory", memories)
-  memories[key] = {
-    name = name and name ~= "" and name or ("Memory " .. tostring(MM.Tables.Count(memories) + 1)),
+function DB:CreateDynamicAction(name)
+  local dynamicActions = self:DynamicActions()
+  local key = uniqueId(name, "dynamicaction", dynamicActions)
+  dynamicActions[key] = {
+    name = name and name ~= "" and name or ("Dynamic Action " .. tostring(MM.Tables.Count(dynamicActions) + 1)),
     candidates = {},
   }
-  return key, memories[key]
+  return key, dynamicActions[key]
 end
 
-function DB:RenameMemory(memoryId, name)
-  local memory = self:Memories()[memoryId]
-  if not memory then
-    return false, "only profile memories can be renamed"
+function DB:RenameDynamicAction(dynamicActionId, name)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be renamed"
   end
 
   name = string.gsub(name or "", "^%s+", "")
   name = string.gsub(name, "%s+$", "")
   if name == "" then
-    return false, "memory name cannot be empty"
+    return false, "dynamic action name cannot be empty"
   end
 
-  memory.name = name
+  dynamicAction.name = name
   return true
 end
 
--- Switch a memory between "normal" (place the resolved action) and "macro"
+-- Switch a dynamicAction between "normal" (place the resolved action) and "macro"
 -- (place a generated macro). Enabling macro mode seeds the default template once;
 -- the template is kept when switching back so toggling never loses the user's body.
-function DB:SetMemoryMode(memoryId, mode)
-  local memory = self:Memories()[memoryId]
-  if not memory then
-    return false, "only profile memories can be edited"
+function DB:SetDynamicActionMode(dynamicActionId, mode)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be edited"
   end
   if mode ~= "normal" and mode ~= "macro" then
     return false, "mode must be normal or macro"
   end
 
   if mode == "macro" then
-    memory.mode = "macro"
-    if not memory.macroTemplate or memory.macroTemplate == "" then
-      memory.macroTemplate = MM.MACRO_TEMPLATE_DEFAULT
+    dynamicAction.mode = "macro"
+    if not dynamicAction.macroTemplate or dynamicAction.macroTemplate == "" then
+      dynamicAction.macroTemplate = MM.MACRO_TEMPLATE_DEFAULT
     end
   else
-    memory.mode = nil
+    dynamicAction.mode = nil
   end
   return true
 end
 
-function DB:SetMemoryTemplate(memoryId, template)
-  local memory = self:Memories()[memoryId]
-  if not memory then
-    return false, "only profile memories can be edited"
+function DB:SetDynamicActionTemplate(dynamicActionId, template)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be edited"
   end
 
   template = tostring(template or "")
   if #template > MM.MACRO_TEMPLATE_LIMIT then
     template = template:sub(1, MM.MACRO_TEMPLATE_LIMIT)
   end
-  memory.macroTemplate = template
+  dynamicAction.macroTemplate = template
   return true
 end
 
--- Slots bound to the deleted memory simply stop resolving and fall through on the
+-- Slots bound to the deleted dynamicAction simply stop resolving and fall through on the
 -- next apply, so there's no reference cleanup to do.
-function DB:DeleteMemory(memoryId)
-  local memories = self:Memories()
-  if not memories[memoryId] then
-    return false, "unknown memory"
+function DB:DeleteDynamicAction(dynamicActionId)
+  local dynamicActions = self:DynamicActions()
+  if not dynamicActions[dynamicActionId] then
+    return false, "unknown dynamic action"
   end
 
-  memories[memoryId] = nil
+  dynamicActions[dynamicActionId] = nil
   return true
 end
 
 -- Candidates -----------------------------------------------------------------
 
--- Append a candidate (a captured assignment) to a profile memory.
-function DB:AddCandidate(memoryId, assignment)
-  local memory = self:Memories()[memoryId]
-  if not memory then
-    return false, "only profile memories can be edited"
+-- Append a candidate (a captured assignment) to a profile dynamicAction.
+function DB:AddCandidate(dynamicActionId, assignment)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be edited"
   end
   if not assignment or not assignment.type then
     return false, "no action to add"
   end
 
-  memory.candidates = memory.candidates or {}
-  memory.candidates[#memory.candidates + 1] = assignment
+  dynamicAction.candidates = dynamicAction.candidates or {}
+  dynamicAction.candidates[#dynamicAction.candidates + 1] = assignment
   return true
 end
 
-function DB:RemoveCandidate(memoryId, index)
-  local memory = self:Memories()[memoryId]
-  if not memory then
-    return false, "only profile memories can be edited"
+function DB:RemoveCandidate(dynamicActionId, index)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be edited"
   end
 
   index = tonumber(index)
-  if not index or not memory.candidates or not memory.candidates[index] then
+  if not index or not dynamicAction.candidates or not dynamicAction.candidates[index] then
     return false, "no candidate at that position"
   end
 
-  table.remove(memory.candidates, index)
+  table.remove(dynamicAction.candidates, index)
   return true
 end
 
 -- Move the candidate at `fromIndex` to `toIndex` (clamped). Single splice, like
--- MoveMuscle.
-function DB:MoveCandidate(memoryId, fromIndex, toIndex)
-  local memory = self:Memories()[memoryId]
-  local candidates = memory and memory.candidates
+-- MoveLayer.
+function DB:MoveCandidate(dynamicActionId, fromIndex, toIndex)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  local candidates = dynamicAction and dynamicAction.candidates
   if not candidates then
-    return false, "only profile memories can be edited"
+    return false, "only profile dynamic actions can be edited"
   end
 
   fromIndex = tonumber(fromIndex)
@@ -730,7 +763,7 @@ function DB:GetCharacterState()
 end
 
 -- Generated macros are physical, per-character resources, so the registry that
--- tracks them (keyed by muscle + slot) lives in character state. Each record is
+-- tracks them (keyed by layer + slot) lives in character state. Each record is
 -- { name, scope, bodyHash, indexHint } — enough to find, reuse or delete the macro.
 function DB:GetMacroRegistry()
   local state = self:GetCharacterState()
@@ -738,13 +771,13 @@ function DB:GetMacroRegistry()
   return state.macroRegistry
 end
 
-function DB:GetMacroRecord(muscleId, slot)
-  local muscle = self:GetMacroRegistry()[muscleId]
-  return muscle and muscle[tonumber(slot)]
+function DB:GetMacroRecord(layerId, slot)
+  local layer = self:GetMacroRegistry()[layerId]
+  return layer and layer[tonumber(slot)]
 end
 
-function DB:SetMacroRecord(muscleId, slot, record)
+function DB:SetMacroRecord(layerId, slot, record)
   local registry = self:GetMacroRegistry()
-  registry[muscleId] = registry[muscleId] or {}
-  registry[muscleId][tonumber(slot)] = record
+  registry[layerId] = registry[layerId] or {}
+  registry[layerId][tonumber(slot)] = record
 end

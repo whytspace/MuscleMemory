@@ -26,24 +26,24 @@ local function words(text)
   return list
 end
 
-local function selectedMuscle()
-  return MM.DB:GetSelectedMuscleId()
+local function selectedLayer()
+  return MM.DB:GetSelectedLayerId()
 end
 
-local function muscleName(muscleId)
-  local muscle = MM.DB:GetMuscle(muscleId)
-  return muscle and muscle.name or muscleId
+local function layerName(layerId)
+  local layer = MM.DB:GetLayer(layerId)
+  return layer and layer.name or layerId
 end
 
 local function refresh()
   MM.UI:Refresh()
 end
 
-local function memoryRef(id)
-  if id and MM.PredefinedMemories[id] then
+local function dynamicActionRef(id)
+  if id and MM.PredefinedDynamicActions[id] then
     return { source = "predefined", id = id }
   end
-  if id and MM.DB:Memories()[id] then
+  if id and MM.DB:DynamicActions()[id] then
     return { source = "custom", id = id }
   end
   return nil
@@ -147,140 +147,140 @@ local function profileInherit()
   MM:Print("this character now inherits the account default profile (" .. MM.DB:GetProfile().name .. ").")
 end
 
--- Muscles ------------------------------------------------------------------
+-- Layers ------------------------------------------------------------------
 
-local function muscleList()
-  local selected = selectedMuscle()
-  for index, entry in ipairs(MM.DB:GetProfileMuscles()) do
+local function layerList()
+  local selected = selectedLayer()
+  for index, entry in ipairs(MM.DB:GetProfileLayers()) do
     local tags = (entry.enabled and "" or "  (disabled)") .. (entry.id == selected and "  (selected)" or "")
     MM:Print(string.format("%d. %s%s", index, entry.name, tags))
   end
 end
 
-local function muscleNew(args)
+local function layerNew(args)
   local name = table.concat(args, " ")
-  local id = MM.DB:CreateMuscle(name ~= "" and name or nil)
-  MM.DB:SetSelectedMuscleId(id)
+  local id = MM.DB:CreateLayer(name ~= "" and name or nil)
+  MM.DB:SetSelectedLayerId(id)
   MM.DB:SetSelectedSlot(nil)
   refresh()
-  MM:Print("created muscle " .. muscleName(id) .. ".")
+  MM:Print("created layer " .. layerName(id) .. ".")
 end
 
--- Resolve a muscle by profile-list index or by id/name.
-local function resolveMuscleId(target)
+-- Resolve a layer by profile-list index or by id/name.
+local function resolveLayerId(target)
   local index = tonumber(target)
-  return index and (MM.DB:GetProfileMuscles()[index] or {}).id or MM.DB:FindMuscleId(target)
+  return index and (MM.DB:GetProfileLayers()[index] or {}).id or MM.DB:FindLayerId(target)
 end
 
-local function muscleSelect(args)
-  local id = resolveMuscleId(table.concat(args, " "))
+local function layerSelect(args)
+  local id = resolveLayerId(table.concat(args, " "))
   if not id then
-    MM:Warn("usage: /mm muscle select <index|name>")
+    MM:Warn("usage: /mm layer select <index|name>")
     return
   end
-  MM.DB:SetSelectedMuscleId(id)
+  MM.DB:SetSelectedLayerId(id)
   MM.DB:SetSelectedSlot(nil)
   refresh()
-  MM:Print("selected muscle " .. muscleName(id) .. ".")
+  MM:Print("selected layer " .. layerName(id) .. ".")
 end
 
-local function muscleRename(args)
+local function layerRename(args)
   local target, new = args[1], args[2]
   if not target or not new then
-    MM:Warn("usage: /mm muscle rename <index|name> <new>")
+    MM:Warn("usage: /mm layer rename <index|name> <new>")
     return
   end
 
-  local id = resolveMuscleId(target)
+  local id = resolveLayerId(target)
   if not id then
-    MM:Warn("no muscle matching '" .. target .. "'.")
+    MM:Warn("no layer matching '" .. target .. "'.")
     return
   end
-  report("renamed muscle to " .. new .. ".", MM.DB:RenameMuscle(id, new))
+  report("renamed layer to " .. new .. ".", MM.DB:RenameLayer(id, new))
 end
 
-local function muscleDelete(args)
+local function layerDelete(args)
   local target = table.concat(args, " ")
   if target == "" then
-    MM:Warn("usage: /mm muscle delete <index|name>")
+    MM:Warn("usage: /mm layer delete <index|name>")
     return
   end
 
-  local id = resolveMuscleId(target)
+  local id = resolveLayerId(target)
   if not id then
-    MM:Warn("no muscle matching '" .. target .. "'.")
+    MM:Warn("no layer matching '" .. target .. "'.")
     return
   end
-  report(nil, MM.DB:DeleteMuscle(id))
+  report(nil, MM.DB:DeleteLayer(id))
 end
 
-local function setMuscleEnabled(enabled)
+local function setLayerEnabled(enabled)
   return function(args)
-    local id = resolveMuscleId(table.concat(args, " "))
+    local id = resolveLayerId(table.concat(args, " "))
     if not id then
-      MM:Warn("usage: /mm muscle " .. (enabled and "enable" or "disable") .. " <index|name>")
+      MM:Warn("usage: /mm layer " .. (enabled and "enable" or "disable") .. " <index|name>")
       return
     end
     report(
-      (enabled and "enabled" or "disabled") .. " muscle " .. muscleName(id) .. ".",
-      MM.DB:SetMuscleEnabled(id, enabled)
+      (enabled and "enabled" or "disabled") .. " layer " .. layerName(id) .. ".",
+      MM.DB:SetLayerEnabled(id, enabled)
     )
   end
 end
 
-local function muscleMove(args)
-  local id = resolveMuscleId(args[1] or "")
+local function layerMove(args)
+  local id = resolveLayerId(args[1] or "")
   local toIndex = tonumber(args[2])
   if not id or not toIndex then
-    MM:Warn("usage: /mm muscle move <index|name> <position>")
+    MM:Warn("usage: /mm layer move <index|name> <position>")
     return
   end
-  report(string.format("moved %s to position %d.", muscleName(id), toIndex), MM.DB:MoveMuscle(id, toIndex))
+  report(string.format("moved %s to position %d.", layerName(id), toIndex), MM.DB:MoveLayer(id, toIndex))
 end
 
 local function setAllSlots(enabled)
   return function()
-    local id = selectedMuscle()
-    MM.DB:SetAllMuscleSlots(id, enabled)
+    local id = selectedLayer()
+    MM.DB:SetAllLayerSlots(id, enabled)
     if not enabled then
       MM.DB:SetSelectedSlot(nil)
     end
     refresh()
-    MM:Print(string.format("%s all slots in muscle %s.", enabled and "enabled" or "disabled", muscleName(id)))
+    MM:Print(string.format("%s all slots in layer %s.", enabled and "enabled" or "disabled", layerName(id)))
   end
 end
 
-local function muscleCapture(args)
-  local id = selectedMuscle()
+local function layerCapture(args)
+  local id = selectedLayer()
   if args[1] and args[1] ~= "all" then
     local slot = tonumber(args[1])
     local ok, reason = MM.Capture:CaptureSlot(id, slot)
     if ok then
-      MM:Print("captured " .. MM.Actions.GetSlotLabel(slot) .. " into " .. muscleName(id) .. ".")
+      MM:Print("captured " .. MM.Actions.GetSlotLabel(slot) .. " into " .. layerName(id) .. ".")
     else
       MM:Warn(reason or "could not capture slot")
     end
   else
     local captured, failures = MM.Capture:CaptureFilledSlots(id)
-    MM:Print(string.format("captured %d filled slots into %s, failed %d.", captured, muscleName(id), #failures))
+    MM:Print(string.format("captured %d filled slots into %s, failed %d.", captured, layerName(id), #failures))
     MM.Capture:PrintFailures(failures)
   end
   refresh()
 end
 
 local function slotEdit(args)
-  local id = selectedMuscle()
+  local id = selectedLayer()
   local slot = tonumber(args[1])
   if not MM.Actions.IsValidSlot(slot) then
-    MM:Warn("usage: /mm muscle slot <1-" .. MM.MAX_ACTION_SLOT .. "> <verb>")
+    MM:Warn("usage: /mm layer slot <1-" .. MM.MAX_ACTION_SLOT .. "> <verb>")
     return
   end
 
   local verb, arg = args[2], args[3]
 
   if not verb or verb == "show" then
-    local muscle = MM.DB:GetMuscle(id)
-    MM:Print(MM.Actions.GetSlotLabel(slot) .. ": " .. MM.Actions.GetAssignmentLabel(muscle and muscle.slots[slot]))
+    local layer = MM.DB:GetLayer(id)
+    MM:Print(MM.Actions.GetSlotLabel(slot) .. ": " .. MM.Actions.GetAssignmentLabel(layer and layer.slots[slot]))
     return
   end
 
@@ -297,17 +297,17 @@ local function slotEdit(args)
   elseif verb == "spell" or verb == "item" or verb == "mount" then
     local actionId = tonumber(arg)
     if not actionId then
-      MM:Warn(string.format("usage: /mm muscle slot %d %s <id>", slot, verb))
+      MM:Warn(string.format("usage: /mm layer slot %d %s <id>", slot, verb))
       return
     end
     assignment = { type = verb, id = actionId }
-  elseif verb == "memory" then
-    local ref = memoryRef(arg)
+  elseif verb == "action" then
+    local ref = dynamicActionRef(arg)
     if not ref then
-      MM:Warn("unknown memory '" .. tostring(arg) .. "' (see /mm memory list)")
+      MM:Warn("unknown dynamic action '" .. tostring(arg) .. "' (see /mm action list)")
       return
     end
-    assignment = { type = "memory", source = ref.source, id = ref.id }
+    assignment = { type = "dynamicaction", source = ref.source, id = ref.id }
   else
     MM:Warn("unknown slot verb '" .. verb .. "'.")
     return
@@ -318,37 +318,37 @@ local function slotEdit(args)
   refresh()
 end
 
--- Memories -------------------------------------------------------------------
+-- DynamicActions -------------------------------------------------------------------
 
-local function memoryList()
+local function dynamicActionList()
   local predefined = {}
-  for id, memory in pairs(MM.PredefinedMemories) do
-    predefined[#predefined + 1] = { id = id, name = memory.name or id }
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions) do
+    predefined[#predefined + 1] = { id = id, name = dynamicAction.name or id }
   end
   table.sort(predefined, function(left, right)
     return left.id < right.id
   end)
 
-  MM:Print("predefined memories (id — name):")
-  for _, memory in ipairs(predefined) do
-    MM:Print(string.format("  %s — %s", memory.id, memory.name))
+  MM:Print("predefined dynamic actions (id — name):")
+  for _, dynamicAction in ipairs(predefined) do
+    MM:Print(string.format("  %s — %s", dynamicAction.id, dynamicAction.name))
   end
 
-  local custom = MM.DB:Memories()
+  local custom = MM.DB:DynamicActions()
   if next(custom) then
-    MM:Print("profile memories:")
-    for id, memory in pairs(custom) do
-      MM:Print(string.format("  %s — %s", id, memory.name or id))
+    MM:Print("profile dynamic actions:")
+    for id, dynamicAction in pairs(custom) do
+      MM:Print(string.format("  %s — %s", id, dynamicAction.name or id))
     end
   end
 end
 
-local function memoryCopy(args)
-  local key, reason = MM.DB:CopyPredefinedMemory(args[1], args[2])
+local function dynamicActionCopy(args)
+  local key, reason = MM.DB:CopyPredefinedDynamicAction(args[1], args[2])
   if key then
-    MM:Print("copied predefined memory " .. tostring(args[1]) .. " to profile memory " .. key .. ".")
+    MM:Print("copied predefined dynamic action " .. tostring(args[1]) .. " to profile dynamic action " .. key .. ".")
   else
-    MM:Warn(reason or "could not copy memory")
+    MM:Warn(reason or "could not copy dynamic action")
   end
 end
 
@@ -403,36 +403,40 @@ local tree = {
         delete = { desc = "delete a profile", args = "<name>", run = profileDelete },
       },
     },
-    muscle = {
-      desc = "manage the selected muscle",
+    layer = {
+      desc = "manage the selected layer",
       commands = {
-        list = { desc = "list active muscles", run = muscleList },
-        new = { desc = "create a muscle", args = "<name>", run = muscleNew },
-        select = { desc = "select a muscle", args = "<index|name>", run = muscleSelect },
-        rename = { desc = "rename a muscle", args = "<index|name> <new>", run = muscleRename },
-        delete = { desc = "delete a muscle", args = "<index|name>", run = muscleDelete },
-        move = { desc = "move a muscle to a position", args = "<index|name> <position>", run = muscleMove },
-        enable = { desc = "enable a muscle in the active profile", args = "<index|name>", run = setMuscleEnabled(true) },
+        list = { desc = "list active layers", run = layerList },
+        new = { desc = "create a layer", args = "<name>", run = layerNew },
+        select = { desc = "select a layer", args = "<index|name>", run = layerSelect },
+        rename = { desc = "rename a layer", args = "<index|name> <new>", run = layerRename },
+        delete = { desc = "delete a layer", args = "<index|name>", run = layerDelete },
+        move = { desc = "move a layer to a position", args = "<index|name> <position>", run = layerMove },
+        enable = { desc = "enable a layer in the active profile", args = "<index|name>", run = setLayerEnabled(true) },
         disable = {
-          desc = "disable a muscle in the active profile",
+          desc = "disable a layer in the active profile",
           args = "<index|name>",
-          run = setMuscleEnabled(false),
+          run = setLayerEnabled(false),
         },
         enableall = { desc = "enable every slot", run = setAllSlots(true) },
         disableall = { desc = "clear every slot", run = setAllSlots(false) },
-        capture = { desc = "capture a live slot, or all filled slots", args = "[slot|all]", run = muscleCapture },
+        capture = { desc = "capture a live slot, or all filled slots", args = "[slot|all]", run = layerCapture },
         slot = {
           desc = "edit a slot",
-          args = "<n> [spell|item|mount <id> | memory <id> | empty | ignore | disable | capture]",
+          args = "<n> [spell|item|mount <id> | action <id> | empty | ignore | disable | capture]",
           run = slotEdit,
         },
       },
     },
-    memory = {
-      desc = "manage memories",
+    action = {
+      desc = "manage dynamic actions",
       commands = {
-        list = { desc = "list standard and custom memories", run = memoryList },
-        copy = { desc = "copy a standard memory to custom", args = "<standard> [custom]", run = memoryCopy },
+        list = { desc = "list standard and custom dynamic actions", run = dynamicActionList },
+        copy = {
+          desc = "copy a standard dynamic action to custom",
+          args = "<standard> [custom]",
+          run = dynamicActionCopy,
+        },
       },
     },
     config = {

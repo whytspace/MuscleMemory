@@ -9,8 +9,8 @@ local handlers = {}
 
 -- Repaint just the changed grid cell (slot; 0/nil = bulk), never a full refresh.
 function handlers.ACTIONBAR_SLOT_CHANGED(slot)
-  if MM.ui and MM.ui.MusclesTab then
-    MM.ui.MusclesTab:OnBarsChanged(slot)
+  if MM.ui and MM.ui.LayersTab then
+    MM.ui.LayersTab:OnBarsChanged(slot)
   end
 end
 
