@@ -30,8 +30,11 @@ jobs:
             printf '%s\n' "$section" > CHANGELOG-latest.md
             echo "Wrote the $ver section to CHANGELOG-latest.md."
           else
-            cp CHANGELOG.md CHANGELOG-latest.md
-            echo "No CHANGELOG section for $ver; using the full changelog."
+            # A note-free version (e.g. a maintenance bump) must NOT fall back to
+            # the whole CHANGELOG.md — that floods the CurseForge release notes.
+            # The full changelog still ships inside the packaged zip.
+            printf 'Maintenance release — no user-facing changes.\n' > CHANGELOG-latest.md
+            echo "No CHANGELOG section for $ver; wrote a maintenance placeholder."
           fi
 
       # Drives both the CurseForge upload and the GitHub release body from CHANGELOG-latest.md.

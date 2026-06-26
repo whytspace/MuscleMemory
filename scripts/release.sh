@@ -74,6 +74,24 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   die "tag $tag already exists"
 fi
 
+# Warn (don't block) when the Unreleased section has no notes: such a release
+# ships only a maintenance placeholder to CurseForge. Done before any file is
+# mutated so aborting leaves the worktree untouched.
+unreleased="$(awk '
+  /^## Unreleased[[:space:]]*$/ { grab = 1; next }
+  grab && /^## / { exit }
+  grab { print }
+' "$changelog")"
+if [ -z "$(printf '%s' "$unreleased" | tr -d '[:space:]')" ]; then
+  echo "release: warning — '## Unreleased' has no notes; $tag will ship as a maintenance release." >&2
+  printf 'release: continue anyway? [y/N] ' >&2
+  read -r reply
+  case "$reply" in
+    y | Y | yes | YES) ;;
+    *) die "aborted; add notes under '## Unreleased' first" ;;
+  esac
+fi
+
 devc luacheck .
 devc busted
 devc stylua --check .
