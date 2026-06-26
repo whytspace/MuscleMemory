@@ -83,46 +83,31 @@ function Widgets.Button(parent, text, width, onClick)
   return button
 end
 
--- A dropdown selector: a left-aligned button with a dropdown arrow that opens a
--- radio context menu. `getData` returns { current = <button label>, items =
--- { { label, selected, onClick }, … } } and is called fresh on every open and on
--- :Sync(), so the control always reflects the live model.
+-- A native WoW dropdown selector. `getData` returns { current = <closed-state
+-- label>, items = { { label, selected, onClick }, … } } and is read fresh every
+-- time the menu opens and on :Sync(), so the control always reflects the live
+-- model. The closed-state text follows the selected radio automatically.
 function Widgets.Dropdown(parent, width, getData)
-  local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  button:SetSize(width or 200, 24)
+  local dropdown = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+  dropdown:SetWidth(width or 200)
 
-  local arrow = button:CreateTexture(nil, "OVERLAY")
-  arrow:SetSize(12, 12)
-  arrow:SetPoint("RIGHT", button, "RIGHT", -6, 0)
-  arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
-
-  local text = button:GetFontString()
-  if text then
-    text:ClearAllPoints()
-    text:SetPoint("LEFT", button, "LEFT", 10, 0)
-    text:SetPoint("RIGHT", arrow, "LEFT", -4, 0)
-    text:SetJustifyH("LEFT")
-  end
-
-  function button:Sync()
-    self:SetText(getData().current or "")
-  end
-
-  button:SetScript("OnClick", function(self)
-    local data = getData()
-    MenuUtil.CreateContextMenu(self, function(_, root)
-      for _, item in ipairs(data.items or {}) do
-        root:CreateRadio(item.label, function()
-          return item.selected
-        end, function()
-          item.onClick()
-        end)
-      end
-    end)
+  dropdown:SetupMenu(function(_, rootDescription)
+    for _, item in ipairs(getData().items or {}) do
+      rootDescription:CreateRadio(item.label, function()
+        return item.selected
+      end, function()
+        item.onClick()
+      end)
+    end
   end)
 
-  button:Sync()
-  return button
+  -- Re-evaluate selection and refresh the closed-state text after the model
+  -- changes elsewhere (a profile added, renamed, or removed).
+  function dropdown:Sync()
+    self:GenerateMenu()
+  end
+
+  return dropdown
 end
 
 -- A compact square icon-glyph button (rename pencil, delete trash, …) built
