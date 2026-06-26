@@ -43,3 +43,5 @@ UI/DynamicActionsTab.lua
 UI/ProfilesTab.lua
 UI/SettingsTab.lua
 UI/AboutTab.lua
+UI/Screenshot.lua
+UI/ScreenshotTour.lua

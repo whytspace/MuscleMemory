@@ -16,6 +16,7 @@ files["spec"] = {
 }
 
 globals = {
+  "MacroFrame",
   "MuscleMemoryDB",
   "SLASH_MUSCLEMEMORY1",
   "SLASH_MUSCLEMEMORY2",
@@ -57,6 +58,12 @@ read_globals = {
   "GetActionTexture",
   "GetBindingKey",
   "GetBindingText",
+  "GetCVar",
+  "SetCVar",
+  "Screenshot",
+  "MacroFrameTab2",
+  "ShowUIPanel",
+  "HideUIPanel",
   "CreateMacro",
   "DeleteMacro",
   "EditMacro",
@@ -66,6 +73,7 @@ read_globals = {
   "GetItemInfo",
   "GetItemCount",
   "GetMacroInfo",
+  "GetMacroIndexByName",
   "GetNumMacros",
   "GetNumSpecializations",
   "GetNumShapeshiftForms",
@@ -90,6 +98,7 @@ read_globals = {
   "PlayerHasToy",
   "StaticPopup_Hide",
   "StaticPopup_Show",
+  "STATICPOPUP_NUMDIALOGS",
   "TooltipUtil",
   "UIParent",
   "UnitClass",

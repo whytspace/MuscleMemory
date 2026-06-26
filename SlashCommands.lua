@@ -452,6 +452,24 @@ local tree = {
     },
     preview = { desc = "preview the active profile", run = preview },
     apply = { desc = "apply the active profile", run = apply },
+    shot = {
+      desc = "capture transparent marketing screenshots (maintainer tool)",
+      commands = {
+        tour = {
+          desc = "build a showcase profile and capture every view",
+          run = function()
+            MM.ScreenshotTour:Run()
+          end,
+        },
+        view = {
+          desc = "capture a single view",
+          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles>",
+          run = function(args)
+            MM.ScreenshotTour:RunOne(args[1])
+          end,
+        },
+      },
+    },
     debug = { desc = "toggle debug output", run = toggleDebug },
   },
 }
