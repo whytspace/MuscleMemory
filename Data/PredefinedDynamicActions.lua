@@ -29,13 +29,21 @@ end
 
 MM.PredefinedDynamicActions = {
   lust = {
-    name = "Lust",
+    name = "Bloodlust",
     candidates = {
       Spell(S.BLOODLUST),
       Spell(S.HEROISM),
       Spell(S.TIME_WARP),
       Spell(S.FURY_OF_THE_ASPECTS),
       ClassSpell(S.COMMAND_PET, { "HUNTER" }),
+      -- Drums let any class trigger Bloodlust when it has no spell of its own.
+      -- Listed last so a class lust always wins; ordered low level -> high level.
+      Item(I.DRUMS_OF_FURY),
+      Item(I.DRUMS_OF_THE_MOUNTAIN),
+      Item(I.DRUMS_OF_THE_MAELSTROM),
+      Item(I.DRUMS_OF_DEATHLY_FEROCITY),
+      Item(I.FERAL_HIDE_DRUMS),
+      Item(I.VOID_TOUCHED_DRUMS),
     },
   },
   interrupt = {

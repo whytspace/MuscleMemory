@@ -24,7 +24,7 @@ local TABS = {
 
 local TAB_DESCRIPTIONS = {
   layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; slots they don't touch show the Layer beneath.",
-  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Lust). Each resolves to whichever ability the current character actually has.",
+  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to whichever ability the current character actually has.",
   settings = "Settings tune how the active profile behaves \226\128\148 each profile keeps its own.",
   profiles = "Profiles are self-contained setups, each with its own Layers and Dynamic Actions. Choose the account-wide default and an optional per-character override.",
 }

@@ -89,7 +89,7 @@ describe("Actions", function()
     end)
 
     it("labels a dynamic action by its display name", function()
-      assert.equals("Lust", MM.Actions.GetAssignmentLabel({ type = "dynamicaction", id = "lust" }))
+      assert.equals("Bloodlust", MM.Actions.GetAssignmentLabel({ type = "dynamicaction", id = "lust" }))
     end)
   end)
 
