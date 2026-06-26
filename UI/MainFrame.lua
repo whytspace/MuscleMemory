@@ -104,7 +104,7 @@ function UI:CreateFrame()
   end
 
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "PortraitFrameTemplate")
-  frame:SetSize(1010, 720)
+  frame:SetSize(1000, 714)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("MEDIUM")
   frame:SetToplevel(true)
@@ -198,8 +198,8 @@ function UI:CreateFrame()
   -- single recessed surface; tabs separate their panels with groove dividers. It
   -- starts right under the tab row.
   self.contentInset = MM.ui.Widgets.Inset(frame)
-  self.contentInset:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -60)
-  self.contentInset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 12)
+  self.contentInset:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, -60)
+  self.contentInset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -5, 6)
 
   -- The tab description sits at the top of the inset, above the tab body, with a
   -- hairline separating the two. Both hide for tabs that have no description.
