@@ -4,7 +4,7 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
-- Added icons across the UI: the Layers and Dynamic Actions tabs now carry glyphs; a fork badge marks slots (and dynamic-action lists) where a dynamic action is bound; and a `{ }` badge marks dynamic actions that render as macros, on the slot, in the bind list, and in the dynamic-actions list.
+- Added icons across the UI: the Layers and Dynamic Actions tabs now carry glyphs; a fork badge marks slots (and dynamic-action lists) where a dynamic action is bound; and a `{ }` badge marks dynamic actions that render as macros, on the slot, in the bind list, and in the dynamic-actions list. Hovering an action icon now also shows the badge glyph with a short "This is a dynamic action" / "This is a macro" note.
 - Renamed the two core concepts for clarity: "muscles" are now **action bar layers** and "memories" are now **dynamic actions**. The window tabs, slash commands (`/mm layer`, `/mm action`), and help text use the new names. Existing setups are migrated automatically.
 
 ## 0.3.0 - 2026-06-25

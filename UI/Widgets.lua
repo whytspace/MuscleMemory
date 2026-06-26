@@ -64,7 +64,7 @@ function Widgets.Hint(parent, text)
 end
 
 -- The small gold all-caps section heading used throughout the editor panels
--- ("SLOT EDITOR", "BIND TO A MEMORY", …).
+-- ("SLOT EDITOR", "BIND TO A DYNAMIC ACTION", …).
 function Widgets.SectionHeader(parent, text)
   local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   label:SetText(string.upper(text or ""))
@@ -648,6 +648,40 @@ function Widgets.SetActionTooltip(owner, kind, id, fallbackText, anchor)
     return
   end
   GameTooltip:Show()
+end
+
+-- Explainer lines for the slot/list badges, appended to an already-populated
+-- GameTooltip so hovering the action icon (a far easier target than the ~12px
+-- badge) tells you what the badges mean. Each shows the badge's own glyph inline
+-- via the |T texture escape, then a short label, and re-Shows to resize. Callers
+-- add a blank Separator line first to set the legend block off from the rest.
+local function badgeLine(texture, text)
+  return string.format("|T%s:16:16|t %s", texture, text)
+end
+
+-- A blank line separating the badge legend block from the tooltip above it.
+function Widgets.AddBadgeTooltipSeparator()
+  GameTooltip:AddLine(" ")
+end
+
+function Widgets.AddDynamicActionTooltipLine()
+  GameTooltip:AddLine(
+    badgeLine(Widgets.ICON.dynamicAction, "This is a dynamic action"),
+    unpackColor(Widgets.colors.goldDim)
+  )
+  GameTooltip:Show()
+end
+
+-- `leadingBlank` separates a standalone macro line from the tooltip above (used
+-- where no dynamic-action line precedes it, e.g. the dynamic-actions rail).
+function Widgets.AddMacroTooltipLine(dynamicAction, leadingBlank)
+  if dynamicAction and MM.Macros.EffectiveMode(dynamicAction) == "macro" then
+    if leadingBlank then
+      Widgets.AddBadgeTooltipSeparator()
+    end
+    GameTooltip:AddLine(badgeLine(Widgets.ICON.macro, "Rendered as a macro"), unpackColor(Widgets.colors.goldDim))
+    GameTooltip:Show()
+  end
 end
 
 -- Show a tooltip while hovering just an icon (from Widgets.Icon), not the whole

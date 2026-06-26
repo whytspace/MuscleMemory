@@ -370,7 +370,8 @@ function LayersTab:BuildSlotCell(parent, slot)
     local assignment = layer and layer.slots and layer.slots[slot]
     if assignment then
       GameTooltip:AddLine(MM.Actions.GetAssignmentLabel(assignment), 1, 1, 1)
-      -- For a dynamicAction-driven slot, show what it resolves to for this character.
+      -- For a dynamicAction-driven slot, explain the badges and show what it
+      -- resolves to for this character.
       if assignment.type == "dynamicaction" then
         local resolved = MM.Resolver:ResolveAction(assignment)
         if resolved then
@@ -378,6 +379,9 @@ function LayersTab:BuildSlotCell(parent, slot)
         else
           GameTooltip:AddLine("No usable candidate", 0.9, 0.4, 0.4)
         end
+        Widgets.AddBadgeTooltipSeparator()
+        Widgets.AddDynamicActionTooltipLine()
+        Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id }))
       end
     else
       GameTooltip:AddLine("Not managed \226\128\148 click to manage", 0.7, 0.7, 0.7)
@@ -637,13 +641,22 @@ local function dynamicActionBindRowInit(row, data)
       end
     end)
 
-    -- Tooltip on the icon only; shows the resolved spell/item.
+    -- Tooltip on the icon only; the resolved spell/item plus a note on what the
+    -- fork and { } badges mean.
     Widgets.AttachIconTooltip(row.tile, function(r)
       local m = r.data and r.data.dynamicAction
-      local resolved = m and resolveDynamicAction(m.source, m.id)
+      if not m then
+        return
+      end
+      local resolved = resolveDynamicAction(m.source, m.id)
       if resolved then
         Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
+      else
+        Widgets.SetActionTooltip(r.tile, nil, nil, m.name)
       end
+      Widgets.AddBadgeTooltipSeparator()
+      Widgets.AddDynamicActionTooltipLine()
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = m.source, id = m.id }))
     end)
   end
 

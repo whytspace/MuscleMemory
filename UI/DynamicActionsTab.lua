@@ -213,12 +213,20 @@ local function dynamicActionRowInit(row, data)
       end
     end)
 
-    -- Tooltip on the icon only; shows what the dynamicAction resolves to (its spell/item/…).
+    -- Tooltip on the icon only; what the dynamicAction resolves to (its spell/item/…),
+    -- plus a note on the { } macro badge when it applies.
     Widgets.AttachIconTooltip(row.tile, function(r)
-      local resolved = r.data and resolveDynamicAction(r.data.dynamicAction)
+      local ref = r.data and r.data.dynamicAction
+      if not ref then
+        return
+      end
+      local resolved = resolveDynamicAction(ref)
       if resolved then
         Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
+      else
+        Widgets.SetActionTooltip(r.tile, nil, nil, ref.name)
       end
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = ref.source, id = ref.id }), true)
     end)
   end
 
