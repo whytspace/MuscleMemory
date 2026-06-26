@@ -61,16 +61,13 @@ function SettingsTab:Build(parent)
   column:SetWidth(540)
   column:SetPoint("BOTTOM", parent, "BOTTOM", 0, 0)
 
-  local heading = Widgets.Label(column, "GameFontNormalLarge", "Profile Settings", colors.gold)
-  heading:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
-
   local subHeading = Widgets.Label(column, "GameFontNormal", "When a slot can't resolve", colors.parchment)
-  subHeading:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -22)
+  subHeading:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
 
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "These settings belong to the active profile. If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."
+    "If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."
   )
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)

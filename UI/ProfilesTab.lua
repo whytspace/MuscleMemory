@@ -141,22 +141,9 @@ function ProfilesTab:Build(parent)
   column:SetPoint("TOPLEFT", parent, "TOPLEFT", 40, -28)
   column:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -40, 20)
 
-  local heading = Widgets.Label(column, "GameFontNormalLarge", "Profiles", colors.gold)
-  heading:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
-
-  local blurb = Widgets.Label(
-    column,
-    "GameFontHighlightSmall",
-    "Each profile is its own set of Layers and Dynamic Actions. Pick the account-wide default and, if you want, a different profile just for this character."
-  )
-  blurb:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -10)
-  blurb:SetWidth(620)
-  blurb:SetJustifyH("LEFT")
-  blurb:SetTextColor(Widgets.unpackColor(colors.muted))
-
   -- Global default selector.
   local globalHeader = Widgets.SectionHeader(column, "Global profile")
-  globalHeader:SetPoint("TOPLEFT", blurb, "BOTTOMLEFT", 0, -24)
+  globalHeader:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
   local globalHint = Widgets.Label(column, "GameFontDisableSmall", "The default every character uses.")
   globalHint:SetPoint("TOPLEFT", globalHeader, "BOTTOMLEFT", 0, -4)
   self.globalDropdown = Widgets.Dropdown(column, 260, globalData)
