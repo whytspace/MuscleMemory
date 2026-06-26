@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+  <!-- Two candidate circles (dim, outlined) joined by straight lines to one resolved
+       circle (filled gold) — "many resolve into one". Glyph for the Dynamic Actions tab. -->
+  <line x1="8.68" y1="7.34" x2="14.78" y2="10.39" stroke="#8a702b"/>
+  <line x1="8.68" y1="16.66" x2="14.78" y2="13.61" stroke="#8a702b"/>
+  <circle cx="6" cy="6" r="3" stroke="#8a702b"/>
+  <circle cx="6" cy="18" r="3" stroke="#8a702b"/>
+  <circle cx="18" cy="12" r="3.4" fill="#d4af37" stroke="#d4af37"/>
+</svg>

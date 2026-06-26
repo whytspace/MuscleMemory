@@ -228,6 +228,7 @@ local function dynamicActionRowInit(row, data)
   row:SetSelected(active)
 
   local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = dynamicAction.source, id = dynamicAction.id })
+  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
   local resolved = resolveDynamicAction(dynamicAction)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)

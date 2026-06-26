@@ -33,6 +33,16 @@ Widgets.TEX = {
   lock = "Interface\\LFGFrame\\UI-LFG-ICON-LOCK",
 }
 
+-- Our own packaged glyph textures (Assets/*.tga; regenerate with
+-- scripts/build-textures.sh). Bare two-tone gold on transparent — used directly
+-- as tab glyphs, and composed onto a code-drawn tile by Widgets.IconBadge for
+-- the slot/sidebar badges.
+Widgets.ICON = {
+  layers = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-layers",
+  dynamicAction = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-dynamicaction",
+  macro = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-macro",
+}
+
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
 -- object name (e.g. "GameFontNormal").
 function Widgets.Label(parent, font, text, color)
@@ -391,32 +401,6 @@ function Widgets.MultiLineInput(parent, text, maxLetters, onChange)
   return frame
 end
 
--- The little three-bar "priority list" badge that marks a dynamicAction-driven slot.
--- Pinned to the bottom-right corner of `parent`.
-function Widgets.DynamicActionBadge(parent, size)
-  size = size or 13
-  local badge = CreateFrame("Frame", nil, parent)
-  badge:SetSize(size, size)
-  badge:SetPoint("BOTTOMRIGHT", 2, -2)
-
-  local bg = badge:CreateTexture(nil, "OVERLAY")
-  bg:SetAllPoints()
-  bg:SetColorTexture(0.08, 0.075, 0.05, 1)
-
-  local lineWidth = size - 5
-  for index = 1, 3 do
-    local bar = badge:CreateTexture(nil, "OVERLAY", nil, 1)
-    bar:SetSize(lineWidth, 1.5)
-    bar:SetPoint("TOP", 0, -(index - 1) * 3 - 2)
-    if index == 1 then
-      bar:SetColorTexture(unpackColor(Widgets.colors.gold))
-    else
-      bar:SetColorTexture(0.60, 0.50, 0.19, 1)
-    end
-  end
-  return badge
-end
-
 -- A small 2x3 dot grid used as a drag handle (the WoW font has no braille).
 function Widgets.DragDots(parent)
   local dots = CreateFrame("Frame", nil, parent)
@@ -456,6 +440,30 @@ local function setBorder(border, thickness, color, alpha)
   for _, edge in ipairs({ "top", "bottom", "left", "right" }) do
     border[edge]:SetColorTexture(r, g, b, alpha or 1)
   end
+end
+
+-- A small corner badge: a code-drawn dark tile (bg + 1px border) with one of our
+-- glyph textures inset on top. Pinned bottom-right of `parent`; callers can
+-- re-anchor it (e.g. macro left of fork). The border stays a crisp 1px at any
+-- badge size, where a baked-in border would wash out.
+function Widgets.IconBadge(parent, size, glyphTexture)
+  local badge = CreateFrame("Frame", nil, parent)
+  badge:SetSize(size, size)
+  badge:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 1, -1)
+
+  badge.bg = badge:CreateTexture(nil, "OVERLAY", nil, 1)
+  badge.bg:SetAllPoints()
+  badge.bg:SetColorTexture(0.06, 0.055, 0.04, 0.96)
+
+  badge.border = createBorder(badge)
+  setBorder(badge.border, 1, { 0.23, 0.21, 0.15 }, 1)
+
+  badge.glyph = badge:CreateTexture(nil, "OVERLAY", nil, 3)
+  badge.glyph:SetPoint("TOPLEFT", 2, -2)
+  badge.glyph:SetPoint("BOTTOMRIGHT", -2, 2)
+  badge.glyph:SetTexture(glyphTexture)
+
+  return badge
 end
 
 -- A reusable icon cell: background, the action icon, an optional centred glyph
@@ -539,13 +547,42 @@ function Widgets.Icon(parent, size)
     end
   end
 
+  local badgeSize = math.max(12, math.floor(size * 0.45))
+
+  -- Macro badge sits just left of the fork when both show; otherwise it takes the
+  -- bottom-right corner itself.
+  local function layoutBadges(self)
+    if not self.macroBadge then
+      return
+    end
+    self.macroBadge:ClearAllPoints()
+    if self.badge and self.badge:IsShown() then
+      self.macroBadge:SetPoint("RIGHT", self.badge, "LEFT", 1, 0)
+    else
+      self.macroBadge:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 1, -1)
+    end
+  end
+
+  -- The dynamic-action (fork) badge, bottom-right.
   function icon:SetBadge(show)
     if show and not self.badge then
-      self.badge = Widgets.DynamicActionBadge(self, math.max(11, math.floor(size * 0.36)))
+      self.badge = Widgets.IconBadge(self, badgeSize, Widgets.ICON.dynamicAction)
     end
     if self.badge then
       self.badge:SetShown(show)
     end
+    layoutBadges(self)
+  end
+
+  -- The macro ({ }) badge, shown when a dynamic action renders as a macro.
+  function icon:SetMacroBadge(show)
+    if show and not self.macroBadge then
+      self.macroBadge = Widgets.IconBadge(self, badgeSize, Widgets.ICON.macro)
+    end
+    if self.macroBadge then
+      self.macroBadge:SetShown(show)
+    end
+    layoutBadges(self)
   end
 
   function icon:SetAlphaAll(alpha)

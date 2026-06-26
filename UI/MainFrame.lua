@@ -15,8 +15,8 @@ MM.ui.state = MM.ui.state or { tab = "layers" }
 MM.ui.LOGO_TEXTURE = "Interface\\AddOns\\MuscleMemory\\Assets\\logo"
 
 local TABS = {
-  { id = "layers", label = "Layers" },
-  { id = "dynamicActions", label = "Dynamic Actions" },
+  { id = "layers", label = "Layers", icon = MM.ui.Widgets.ICON.layers },
+  { id = "dynamicActions", label = "Dynamic Actions", icon = MM.ui.Widgets.ICON.dynamicAction },
   { id = "settings", label = "Settings" },
   { id = "profiles", label = "Profiles" },
   { id = "about", label = "About" },
@@ -40,14 +40,26 @@ end
 
 -- Chrome ----------------------------------------------------------------------
 
-local function makeTabButton(parent, label, onClick)
+local function makeTabButton(parent, label, onClick, iconTexture)
   local button = CreateFrame("Button", nil, parent)
   button:SetHeight(24)
 
+  if iconTexture then
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetSize(15, 15)
+    button.icon:SetPoint("LEFT", button, "LEFT", 8, 0)
+    button.icon:SetTexture(iconTexture)
+  end
+
   button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  button.label:SetPoint("CENTER")
   button.label:SetText(label)
-  button:SetWidth(button.label:GetStringWidth() + 26)
+  if button.icon then
+    button.label:SetPoint("LEFT", button.icon, "RIGHT", 5, 0)
+    button:SetWidth(button.label:GetStringWidth() + 36)
+  else
+    button.label:SetPoint("CENTER")
+    button:SetWidth(button.label:GetStringWidth() + 26)
+  end
 
   button.underline = button:CreateTexture(nil, "ARTWORK")
   button.underline:SetPoint("BOTTOMLEFT", 4, -2)
@@ -59,6 +71,9 @@ local function makeTabButton(parent, label, onClick)
   button:SetScript("OnEnter", function(self)
     if not self.active then
       self.label:SetTextColor(MM.ui.Widgets.unpackColor(MM.ui.Widgets.colors.parchment))
+      if self.icon then
+        self.icon:SetVertexColor(0.85, 0.85, 0.85)
+      end
     end
   end)
   button:SetScript("OnLeave", function(self)
@@ -71,6 +86,10 @@ local function makeTabButton(parent, label, onClick)
       self.label:SetTextColor(MM.ui.Widgets.unpackColor(MM.ui.Widgets.colors.gold))
     else
       self.label:SetTextColor(0.54, 0.49, 0.32)
+    end
+    if self.icon then
+      -- Dim the two-tone glyph for inactive tabs without flattening its gold ramp.
+      self.icon:SetVertexColor(active and 1 or 0.6, active and 1 or 0.6, active and 1 or 0.6)
     end
     self.underline:SetShown(active)
   end
@@ -132,7 +151,7 @@ function UI:CreateFrame()
   for _, tab in ipairs(TABS) do
     local button = makeTabButton(frame, tab.label, function()
       self:SelectTab(tab.id)
-    end)
+    end, tab.icon)
     if previousTab then
       button:SetPoint("LEFT", previousTab, "RIGHT", 6, 0)
     else

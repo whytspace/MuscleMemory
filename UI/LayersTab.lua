@@ -270,6 +270,7 @@ local function paintSlot(icon, layer, slot)
   local selected = MM.DB:GetSelectedSlot() == slot
 
   icon:SetBadge(false)
+  icon:SetMacroBadge(false)
   icon:SetAlphaAll(1)
   icon:SetHotkey(MM.Actions.GetSlotHotkey(slot))
 
@@ -293,6 +294,8 @@ local function paintSlot(icon, layer, slot)
   elseif assignment.type == "dynamicaction" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     icon:SetBadge(true)
+    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
+    icon:SetMacroBadge(dynamicAction ~= nil and MM.Macros.EffectiveMode(dynamicAction) == "macro")
     if resolved and resolved.icon then
       icon:SetTextureImage(resolved.icon)
       icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
@@ -645,6 +648,8 @@ local function dynamicActionBindRowInit(row, data)
   end
 
   row.data = data
+  local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = dynamicAction.source, id = dynamicAction.id })
+  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
   local resolved = resolveDynamicAction(dynamicAction.source, dynamicAction.id)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
