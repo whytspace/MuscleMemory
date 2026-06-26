@@ -62,7 +62,6 @@ local function reevaluateProfile()
     end
   end)
 end
-handlers.PLAYER_REGEN_ENABLED = reevaluateProfile
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
 handlers.SPELLS_CHANGED = reevaluateProfile
 

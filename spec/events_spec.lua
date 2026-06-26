@@ -85,7 +85,6 @@ describe("Events", function()
 
   it("registers the re-evaluation events on initialize", function()
     MM.Events:OnInitialize()
-    assert.is_true(MM.eventFrame._events["PLAYER_REGEN_ENABLED"])
     assert.is_true(MM.eventFrame._events["ACTIVE_PLAYER_SPECIALIZATION_CHANGED"])
     assert.is_true(MM.eventFrame._events["SPELLS_CHANGED"])
     assert.is_true(MM.eventFrame._events["ACTIONBAR_SLOT_CHANGED"])
