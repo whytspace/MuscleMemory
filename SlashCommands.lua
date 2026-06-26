@@ -40,7 +40,7 @@ local function refresh()
 end
 
 local function dynamicActionRef(id)
-  if id and MM.PredefinedDynamicActions[id] then
+  if id and (MM.PredefinedDynamicActions or {})[id] then
     return { source = "predefined", id = id }
   end
   if id and MM.DB:DynamicActions()[id] then
@@ -322,7 +322,7 @@ end
 
 local function dynamicActionList()
   local predefined = {}
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions) do
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
     predefined[#predefined + 1] = { id = id, name = dynamicAction.name or id }
   end
   table.sort(predefined, function(left, right)

@@ -560,7 +560,7 @@ end
 -- Predefined dynamicActions are immutable add-on data.
 
 function DB:GetPredefinedDynamicAction(dynamicActionId)
-  return MM.PredefinedDynamicActions[dynamicActionId]
+  return (MM.PredefinedDynamicActions or {})[dynamicActionId]
 end
 
 -- Resolve a stored `{ source, id }` reference: "custom" -> the profile's own
@@ -580,7 +580,7 @@ end
 -- Copy a predefined dynamicAction into an editable profile dynamicAction. Returns the new key
 -- (dynamicActions are identified by key, so duplicate names are fine).
 function DB:CopyPredefinedDynamicAction(dynamicActionId, newId, newName)
-  local source = MM.PredefinedDynamicActions[dynamicActionId]
+  local source = (MM.PredefinedDynamicActions or {})[dynamicActionId]
   if not source then
     return nil, "unknown predefined dynamic action"
   end
