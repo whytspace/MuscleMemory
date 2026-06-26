@@ -264,10 +264,12 @@ end
 -- Centre grid ----------------------------------------------------------------
 
 -- Paint one slot icon to reflect its managed state.
-local function paintSlot(icon, layer, slot)
+-- `suppressSelected` skips the thick selection outline; the sidebar icon always
+-- represents the selected slot, so the highlight is redundant there.
+local function paintSlot(icon, layer, slot, suppressSelected)
   local assignment = layer and layer.slots and layer.slots[slot]
   local managed = assignment ~= nil
-  local selected = MM.DB:GetSelectedSlot() == slot
+  local selected = not suppressSelected and MM.DB:GetSelectedSlot() == slot
 
   icon:SetBadge(false)
   icon:SetMacroBadge(false)
@@ -584,27 +586,6 @@ end
 
 -- Right slot editor ----------------------------------------------------------
 
-local function statusFor(assignment)
-  if not assignment then
-    return "Not managed.", colors.faint
-  end
-  if assignment.type == "empty" then
-    return "Clears whatever is in this slot when the Layer applies.", colors.parchment
-  end
-  if assignment.type == "dynamicaction" then
-    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
-    local resolved = resolveDynamicAction(assignment.source, assignment.id)
-    if resolved then
-      return 'Resolves to "' .. resolved.label .. '" for this character.', colors.goldDim
-    end
-    return 'No candidate in "'
-      .. (dynamicAction and dynamicAction.name or assignment.id)
-      .. '" is usable by this character \226\128\148 the slot falls through to your live action.',
-      colors.warn
-  end
-  return "Managed \226\128\148 pins this exact action into the slot.", colors.goldDim
-end
-
 -- The Slot Editor's drop overlay: drop a pinnable action anywhere on the sidebar
 -- to pin it to the selected slot.
 local function dropZone()
@@ -623,7 +604,7 @@ local function dynamicActionBindRowInit(row, data)
     Widgets.decorateRow(row)
 
     row.tile = Widgets.Icon(row, 24)
-    row.tile:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.tile:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.tile:SetBadge(true)
 
     row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
@@ -722,7 +703,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
 
   local icon = Widgets.Icon(inset, 36)
   icon:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
-  paintSlot(icon, layer, slot)
+  paintSlot(icon, layer, slot, true)
   Widgets.AttachIconTooltip(icon, function()
     if not assignment then
       return
@@ -731,7 +712,12 @@ function LayersTab:BuildEditor(parent, layerId, layer)
       local resolved = resolveDynamicAction(assignment.source, assignment.id)
       if resolved then
         Widgets.SetActionTooltip(icon, resolved.kind, resolved.id, resolved.label)
+      else
+        Widgets.SetActionTooltip(icon, nil, nil, MM.Actions.GetAssignmentLabel(assignment))
       end
+      Widgets.AddBadgeTooltipSeparator()
+      Widgets.AddDynamicActionTooltipLine()
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id }))
     else
       Widgets.SetActionTooltip(icon, assignment.type, assignment.id, MM.Actions.GetAssignmentLabel(assignment))
     end
@@ -746,37 +732,31 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   local loc = Widgets.Label(inset, "GameFontDisableSmall", MM.Actions.GetSlotLabel(slot))
   loc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
-  local statusText, statusColor = statusFor(assignment)
-  local status = Widgets.Label(inset, "GameFontHighlightSmall", statusText, statusColor)
-  status:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -12)
-  status:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
-  status:SetJustifyH("LEFT")
-  status:SetSpacing(2)
-
-  -- "This slot is set to"
-  local setToHeader = Widgets.SectionHeader(inset, "This slot is set to")
-  setToHeader:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -14)
-
-  local emptyButton = Widgets.Button(inset, "Empty (clear it)", 150, function()
+  -- Empty / Stop managing live at the foot of the sidebar and split the inset
+  -- width evenly: each anchors to one outer edge and they meet in the middle.
+  local emptyButton = Widgets.Button(inset, "Empty", 90, function()
     assignSlot(layerId, slot, { type = "empty" })
   end)
-  emptyButton:SetPoint("TOPLEFT", setToHeader, "BOTTOMLEFT", 0, -8)
+  emptyButton:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 16, 12)
+  emptyButton:SetPoint("RIGHT", inset, "CENTER", -4, 0)
 
-  local stopButton = Widgets.Button(inset, "Stop managing", 130, function()
+  local stopButton = Widgets.Button(inset, "Stop managing", 120, function()
     unmanageSlot(layerId, slot)
   end)
-  stopButton:SetPoint("LEFT", emptyButton, "RIGHT", 8, 0)
+  stopButton:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
+  stopButton:SetPoint("LEFT", inset, "CENTER", 4, 0)
+
+  -- The whole panel is a drop target (see the overlay); the hint sits just under
+  -- the assigned-action icon.
+  local dropHint =
+    Widgets.Hint(inset, "Drag a spell, item, macro, mount or equipment set onto this panel to pin it to the slot.")
+  dropHint:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -12)
+  dropHint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
+  dropHint:SetJustifyH("LEFT")
 
   -- "Bind to a Dynamic Action"
   local dynamicActionHeader = Widgets.SectionHeader(inset, "Bind to a Dynamic Action")
-  dynamicActionHeader:SetPoint("TOPLEFT", emptyButton, "BOTTOMLEFT", 0, -16)
-
-  -- The whole panel is a drop target (see the overlay); a hint sits at the foot.
-  local dropHint =
-    Widgets.Hint(inset, "Drag a spell, item, macro, mount or equipment set onto this panel to pin it to the slot.")
-  dropHint:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 14, 12)
-  dropHint:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
-  dropHint:SetJustifyH("LEFT")
+  dynamicActionHeader:SetPoint("TOPLEFT", dropHint, "BOTTOMLEFT", 0, -16)
 
   local list = Widgets.DataList(inset, "layers.dynamicActionbind", {
     extent = 34,
@@ -784,7 +764,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
     initializer = dynamicActionBindRowInit,
   })
   list.scrollBox:SetPoint("TOPLEFT", dynamicActionHeader, "BOTTOMLEFT", 0, -8)
-  list.scrollBox:SetPoint("BOTTOMRIGHT", dropHint, "TOPRIGHT", -14, -10)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", stopButton, "TOPRIGHT", 0, 10)
 
   local items = {}
   for _, dynamicAction in ipairs(dynamicActionList()) do
