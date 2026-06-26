@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.4.1 - 2026-06-26
+
 ## 0.4.0 - 2026-06-26
 
 - Leaving combat no longer triggers a change re-scan or the "changes are available" prompt; changes are still detected on spec and spell changes.
