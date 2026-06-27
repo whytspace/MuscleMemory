@@ -16,6 +16,14 @@ WoW embeds a Lua 5.1-family runtime with Blizzard-specific globals, so Luacheck 
 through `.luacheckrc` rather than as a plain Lua application. Run `devc luacheck .` and
 `devc stylua .` before committing — both should be clean.
 
+## Loading in-game
+
+Symlink the repo into your WoW AddOns folder so `/reload` picks up edits directly:
+
+```sh
+ln -s "$PWD" "/Applications/Games/World of Warcraft/_retail_/Interface/AddOns/MuscleMemory"
+```
+
 ## Changelog
 
 Update `CHANGELOG.md` in the same commit when a change is relevant to players, release notes, or
