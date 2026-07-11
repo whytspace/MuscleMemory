@@ -442,17 +442,23 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "mount" then
-    -- A captured mount keeps the id the bar reported, which isn't a journal
-    -- mountID: a companion/MOUNT slot reports the mount's summon spellID. Capture
-    -- and the bar agree on that id, so match the mount-action forms by it directly.
+    -- Mount actions report either the journal mountID or the summon spellID
+    -- depending on the action form (a companion/MOUNT slot reports the spellID),
+    -- and the captured id may be in the other form than what the bar shows after
+    -- applying. Compare the raw ids first, then normalize both through the
+    -- journal (Mounts.GetInfo maps a spellID back to its mount) before declaring
+    -- a mismatch.
     if
-      (
-        info.actionType == "mount"
-        or info.actionType == "summonmount"
-        or (info.actionType == "companion" and info.subType == "MOUNT")
-      ) and info.id == target.id
+      info.actionType == "mount"
+      or info.actionType == "summonmount"
+      or (info.actionType == "companion" and info.subType == "MOUNT")
     then
-      return true
+      if info.id == target.id then
+        return true
+      end
+      local slotMount = MM.Mounts.GetInfo(info.id)
+      local targetMount = MM.Mounts.GetInfo(target.id)
+      return slotMount ~= nil and targetMount ~= nil and slotMount.id == targetMount.id
     end
     -- Applying picks a mount up via its summon spell, so it can also land as a
     -- plain "spell" action. Match that by the mount's journal spellId, then by the

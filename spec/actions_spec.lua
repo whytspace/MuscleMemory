@@ -128,6 +128,15 @@ describe("Actions", function()
       stubs:setSlot(5, { actionType = "summonmount", id = 219 })
       assert.is_true(MM.Actions.IsAssignmentInSlot({ type = "mount", id = 219 }, 5))
 
+      -- A companion/MOUNT slot reports the summon spellID while the capture may
+      -- hold the journal mountID (or vice versa); both must still match.
+      stubs:setMount(1792, { name = "Algarian Stormrider", spellId = 417888 })
+      stubs:setSlot(8, { actionType = "companion", id = 417888, subType = "MOUNT" })
+      assert.is_true(MM.Actions.IsAssignmentInSlot({ type = "mount", id = 1792 }, 8))
+      stubs:setSlot(9, { actionType = "summonmount", id = 1792 })
+      assert.is_true(MM.Actions.IsAssignmentInSlot({ type = "mount", id = 417888 }, 9))
+      assert.is_false(MM.Actions.IsAssignmentInSlot({ type = "mount", id = 1111 }, 8))
+
       stubs:setEquipmentSet("Tank", 7)
       stubs:setSlot(6, { actionType = "equipmentset", id = 7 })
       assert.is_true(MM.Actions.IsAssignmentInSlot({ type = "equipmentset", name = "Tank" }, 6))

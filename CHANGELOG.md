@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Fixed a mount slot being reported as an unapplied change on every login (and re-applied without effect): mount actions now match whether the action bar reports the journal mount or its summon spell.
+
 ## 0.5.1 - 2026-06-26
 
 ## 0.5.0 - 2026-06-26
