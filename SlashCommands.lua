@@ -378,6 +378,14 @@ local function configResponse(args)
   report("response set to " .. args[1] .. ".", MM.DB:SetResponse(args[1]))
 end
 
+local function configSuggest(args)
+  if not args[1] then
+    MM:Print("suggest: " .. MM.DB:GetSuggestMode() .. " (whether binding a covered action offers the dynamic action).")
+    return
+  end
+  report("suggest set to " .. args[1] .. ".", MM.DB:SetSuggestMode(args[1]))
+end
+
 local function toggleDebug()
   local root = MM.DB:GetRoot()
   root.debug = not root.debug
@@ -448,6 +456,11 @@ local tree = {
           args = "<ignore|print|popup|apply>",
           run = configResponse,
         },
+        suggest = {
+          desc = "whether binding a covered action offers the dynamic action",
+          args = "<never|suggest|auto>",
+          run = configSuggest,
+        },
       },
     },
     preview = { desc = "preview the active profile", run = preview },
@@ -463,7 +476,7 @@ local tree = {
         },
         view = {
           desc = "capture a single view",
-          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles>",
+          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles|suggestion>",
           run = function(args)
             MM.ScreenshotTour:RunOne(args[1])
           end,
