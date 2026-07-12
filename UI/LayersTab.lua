@@ -541,7 +541,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
 
     -- Column headers.
     grid.headerRow = CreateFrame("Frame", nil, grid.frame)
-    grid.headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -12)
+    grid.headerRow:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -22)
     grid.headerRow:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), 16)
     for column = 1, MM.ACTIONS_PER_BAR do
       local label = Widgets.Label(grid.headerRow, "GameFontHighlightSmall", tostring(column), colors.parchment)

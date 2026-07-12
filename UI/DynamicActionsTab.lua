@@ -10,27 +10,32 @@ MM.ui.DynamicActionsTab = DynamicActionsTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
-local RAIL_WIDTH = 220
+-- Rail matches the rule panel: the centre candidate list has width to spare,
+-- and the extra room keeps rail names and their resolution lines readable.
+local RAIL_WIDTH = 260
 local RULE_WIDTH = 260
 
 local function refresh()
   MM.UI:Refresh()
 end
 
+-- Custom ("your") dynamic actions first, then the predefined ones, each block
+-- sorted by name — mirroring the rail's two sections.
 local function dynamicActionList()
-  local dynamicActions = {}
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
-    dynamicActions[#dynamicActions + 1] =
-      { source = "predefined", id = id, name = dynamicAction.name or id, locked = true }
-  end
+  local custom = {}
   for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
-    dynamicActions[#dynamicActions + 1] =
-      { source = "custom", id = id, name = dynamicAction.name or id, locked = false }
+    custom[#custom + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
   end
-  table.sort(dynamicActions, function(left, right)
+  local predefined = {}
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
+    predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
+  end
+  local byName = function(left, right)
     return left.name < right.name
-  end)
-  return dynamicActions
+  end
+  table.sort(custom, byName)
+  table.sort(predefined, byName)
+  return custom, predefined
 end
 
 local function resolveDynamicAction(ref)
@@ -43,9 +48,10 @@ local function selectedRef()
   if state.dynamicAction and MM.DB:ResolveDynamicAction(state.dynamicAction) then
     return state.dynamicAction
   end
-  local list = dynamicActionList()
-  if list[1] then
-    state.dynamicAction = { source = list[1].source, id = list[1].id }
+  local custom, predefined = dynamicActionList()
+  local first = custom[1] or predefined[1]
+  if first then
+    state.dynamicAction = { source = first.source, id = first.id }
     return state.dynamicAction
   end
   return nil
@@ -181,35 +187,37 @@ end
 
 -- Left rail ------------------------------------------------------------------
 
--- Initializer for a dynamicAction rail row (recycled by Widgets.DataList).
+-- Initializer for a dynamicAction rail row (recycled by Widgets.DataList). A
+-- `header` item renders as a plain section title instead — rows are pooled
+-- across both kinds, so each pass shows/hides the other kind's children.
 local function dynamicActionRowInit(row, data)
   local dynamicAction = data.dynamicAction
   if not row.mmInit then
     row.mmInit = true
     Widgets.decorateRow(row)
 
+    row.headerLabel = Widgets.SectionHeader(row, "")
+    row.headerLabel:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 8, 4)
+
     row.tile = Widgets.Icon(row, 30)
     row.tile:SetPoint("LEFT", row, "LEFT", 8, 0)
 
-    row.lock = row:CreateTexture(nil, "ARTWORK")
-    row.lock:SetSize(12, 14)
-    row.lock:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-
     row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
     row.nameLabel:SetPoint("TOPLEFT", row.tile, "TOPRIGHT", 9, -1)
-    row.nameLabel:SetPoint("RIGHT", row.lock, "LEFT", -4, 0)
+    row.nameLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
     row.nameLabel:SetJustifyH("LEFT")
     row.nameLabel:SetWordWrap(false)
 
     row.sub = Widgets.Label(row, "GameFontDisableSmall", "")
     row.sub:SetPoint("BOTTOMLEFT", row.nameLabel, "BOTTOMLEFT", 0, -16)
-    row.sub:SetPoint("RIGHT", row.lock, "LEFT", -4, 0)
+    row.sub:SetPoint("RIGHT", row, "RIGHT", -8, 0)
     row.sub:SetJustifyH("LEFT")
     row.sub:SetWordWrap(false)
 
     row:SetScript("OnClick", function(self)
-      if self.data then
-        selectDynamicAction({ source = self.data.dynamicAction.source, id = self.data.dynamicAction.id })
+      local ref = self.data and self.data.dynamicAction
+      if ref then
+        selectDynamicAction({ source = ref.source, id = ref.id })
       end
     end)
 
@@ -231,6 +239,20 @@ local function dynamicActionRowInit(row, data)
   end
 
   row.data = data
+  if data.header then
+    row:EnableMouse(false)
+    row:SetSelected(false)
+    row.headerLabel:SetText(data.header)
+    row.headerLabel:Show()
+    row.tile:Hide()
+    row.nameLabel:SetText("")
+    row.sub:SetText("")
+    return
+  end
+  row:EnableMouse(true)
+  row.headerLabel:Hide()
+  row.tile:Show()
+
   local ref = selectedRef()
   local active = ref and dynamicAction.source == ref.source and dynamicAction.id == ref.id
   row:SetSelected(active)
@@ -244,13 +266,6 @@ local function dynamicActionRowInit(row, data)
   else
     row.tile:SetSymbol(Widgets.TEX.warning)
     row.tile:SetBorder(1, colors.warn, 0.7)
-  end
-
-  if dynamicAction.locked then
-    row.lock:SetTexture(Widgets.TEX.lock)
-    row.lock:Show()
-  else
-    row.lock:Hide()
   end
 
   row.nameLabel:SetText(dynamicAction.name)
@@ -281,8 +296,15 @@ function DynamicActionsTab:BuildRail(parent)
   list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -8, 8)
 
-  local items = {}
-  for _, dynamicAction in ipairs(dynamicActionList()) do
+  -- Two sections: the profile's own dynamic actions first, then the predefined
+  -- ones. The headers make the split obvious, so no per-row lock icon is needed.
+  local custom, predefined = dynamicActionList()
+  local items = { { header = "Your Dynamic Actions", extent = 26 } }
+  for _, dynamicAction in ipairs(custom) do
+    items[#items + 1] = { dynamicAction = dynamicAction }
+  end
+  items[#items + 1] = { header = "Predefined (read-only)", extent = 34 }
+  for _, dynamicAction in ipairs(predefined) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end
   list:SetItems(items)
@@ -309,6 +331,8 @@ local function candidateRowInit(row, data)
     row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
     row.nameLabel:SetJustifyH("LEFT")
     row.nameLabel:SetWordWrap(false)
+    row.idLabel = Widgets.Label(row, "GameFontDisableSmall", "")
+    row.idLabel:SetJustifyH("LEFT")
     row.condLabel = Widgets.Label(row, "GameFontDisableSmall", "")
     row.condLabel:SetTextColor(Widgets.unpackColor(colors.goldDim))
 
@@ -396,6 +420,18 @@ local function candidateRowInit(row, data)
   end
 
   row.nameLabel:SetText(name)
+
+  -- Same-named candidates (per-class racials, quality tiers) can only be told
+  -- apart by their id, so show it next to the name — smaller, at the rendered
+  -- name's end (the label itself spans to the row edge for truncation).
+  if candidate.id then
+    row.idLabel:SetText(tostring(candidate.id))
+    row.idLabel:ClearAllPoints()
+    row.idLabel:SetPoint("LEFT", row.nameLabel, "LEFT", row.nameLabel:GetStringWidth() + 10, 0)
+    row.idLabel:Show()
+  else
+    row.idLabel:Hide()
+  end
   row.nameLabel:ClearAllPoints()
   row.nameLabel:SetPoint("LEFT", row.tile, "RIGHT", 9, 0)
 
@@ -426,9 +462,6 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
 
   local locked = ref.source == "predefined"
   if locked then
-    local tag = Widgets.Label(center, "GameFontDisableSmall", "PREDEFINED \194\183 read-only")
-    tag:SetPoint("LEFT", title, "RIGHT", 12, 0)
-
     local clone = Widgets.Button(center, "Clone to edit", 110, function()
       cloneDynamicAction(ref)
     end)
@@ -473,7 +506,7 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
     initializer = candidateRowInit,
   })
   DynamicActionsTab.candidateList = list
-  list.scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -8)
+  list.scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -18)
   list.scrollBox:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -30, 4)
 
   local items = {}

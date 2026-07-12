@@ -206,36 +206,40 @@ local CHEVRON = {
 -- A clickable section header that toggles its body. Label sits flush-left (lined
 -- up with the chips); the expand/collapse glyph sits on the right. `active` tints
 -- it gold and, with a count, shows "(n)" so usage reads even when collapsed.
+-- Without `onToggle` the header is a static title: no hover, no chevron.
 local function sectionHeader(parent, top, title, count, active, expanded, onToggle)
   local button = CreateFrame("Button", nil, parent)
   button:SetHeight(22)
   button:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, top)
   button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, top)
-  button:SetScript("OnClick", onToggle)
 
-  -- Subtle hover wash matching the left-side rail rows; the bright additive
-  -- highlight reads as harsh across a header this wide.
-  local hover = button:CreateTexture(nil, "BACKGROUND")
-  hover:SetAllPoints()
-  hover:SetColorTexture(1, 1, 1, 0.06)
-  hover:Hide()
-  button:SetScript("OnEnter", function()
-    hover:Show()
-  end)
-  button:SetScript("OnLeave", function()
+  if onToggle then
+    button:SetScript("OnClick", onToggle)
+
+    -- Subtle hover wash matching the left-side rail rows; the bright additive
+    -- highlight reads as harsh across a header this wide.
+    local hover = button:CreateTexture(nil, "BACKGROUND")
+    hover:SetAllPoints()
+    hover:SetColorTexture(1, 1, 1, 0.06)
     hover:Hide()
-  end)
+    button:SetScript("OnEnter", function()
+      hover:Show()
+    end)
+    button:SetScript("OnLeave", function()
+      hover:Hide()
+    end)
+
+    local glyph = button:CreateTexture(nil, "ARTWORK")
+    glyph:SetSize(16, 16)
+    glyph:SetPoint("RIGHT", button, "RIGHT", 0, 0)
+    glyph:SetTexture(CHEVRON[expanded])
+  end
 
   local label = Widgets.SectionHeader(button, count > 0 and (title .. " (" .. count .. ")") or title)
   label:SetPoint("LEFT", button, "LEFT", 0, 0)
   if active then
     label:SetTextColor(Widgets.unpackColor(colors.gold))
   end
-
-  local glyph = button:CreateTexture(nil, "ARTWORK")
-  glyph:SetSize(16, 16)
-  glyph:SetPoint("RIGHT", button, "RIGHT", 0, 0)
-  glyph:SetTexture(CHEVRON[expanded])
 
   return top - 26
 end
@@ -261,34 +265,45 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange, width)
   sections[#sections + 1] = { title = "Faction", field = "factions", options = FACTIONS }
   sections[#sections + 1] = { title = "Race", field = "races", options = raceOptions() }
 
-  for index, sec in ipairs(sections) do
-    if index > 1 then
-      y = y - SECTION_GAP
-    end
+  -- Read-only (predefined) conditions show only the dimensions actually set,
+  -- always expanded, with static headers — there's nothing to edit or explore.
+  local rendered = 0
+  for _, sec in ipairs(sections) do
     local count = conditions[sec.field] and #conditions[sec.field] or 0
-    local expanded = isExpanded(sec.title, count > 0)
-    y = sectionHeader(frame, y, sec.title, count, count > 0, expanded, function()
-      ConditionsEditor.open[sec.title] = not expanded
-      onChange()
-    end)
-    if expanded then
-      -- Toggling a chip pins the section open, so clearing its last selection
-      -- doesn't yank the section closed mid-edit.
-      y = chipGroup(frame, y, conditions, sec.field, sec.options, editable, function()
-        ConditionsEditor.open[sec.title] = true
+    if editable or count > 0 then
+      if rendered > 0 then
+        y = y - SECTION_GAP
+      end
+      rendered = rendered + 1
+      local expanded = not editable or isExpanded(sec.title, count > 0)
+      y = sectionHeader(frame, y, sec.title, count, count > 0, expanded, editable and function()
+        ConditionsEditor.open[sec.title] = not expanded
         onChange()
-      end, right)
+      end or nil)
+      if expanded then
+        -- Toggling a chip pins the section open, so clearing its last selection
+        -- doesn't yank the section closed mid-edit.
+        y = chipGroup(frame, y, conditions, sec.field, sec.options, editable, function()
+          ConditionsEditor.open[sec.title] = true
+          onChange()
+        end, right)
+      end
     end
   end
 
   -- Level range — collapsible like the rest, with two numeric inputs as its body.
-  y = y - SECTION_GAP
   local levelActive = conditions.levelMin ~= nil or conditions.levelMax ~= nil
-  local levelExpanded = isExpanded("Level range", levelActive)
-  y = sectionHeader(frame, y, "Level range", 0, levelActive, levelExpanded, function()
-    ConditionsEditor.open["Level range"] = not levelExpanded
-    onChange()
-  end)
+  local levelShown = editable or levelActive
+  local levelExpanded = levelShown and (not editable or isExpanded("Level range", levelActive))
+  if levelShown then
+    if rendered > 0 then
+      y = y - SECTION_GAP
+    end
+    y = sectionHeader(frame, y, "Level range", 0, levelActive, levelExpanded, editable and function()
+      ConditionsEditor.open["Level range"] = not levelExpanded
+      onChange()
+    end or nil)
+  end
   if levelExpanded then
     local function levelBox(field)
       local box = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")

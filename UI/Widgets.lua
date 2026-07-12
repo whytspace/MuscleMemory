@@ -297,27 +297,29 @@ function Widgets.DataList(parent, key, opts)
     }
 
     -- `retain` (default true) leaves the scroll offset alone; pass false to jump
-    -- back to the top (e.g. when the list's subject changed).
+    -- back to the top (e.g. when the list's subject changed). An item may carry
+    -- its own `extent` (e.g. section header rows), overriding the list default.
     function list:SetItems(items, retain)
       items = items or {}
-      local gap = self.extent + self.spacing
+      local y = 0
       for index, data in ipairs(items) do
         local row = self.rows[index]
         if not row then
           row = CreateFrame("Button", nil, self.content)
-          row:SetHeight(self.extent)
           self.rows[index] = row
         end
+        row:SetHeight(data.extent or self.extent)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, -(index - 1) * gap)
-        row:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, -(index - 1) * gap)
+        row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, -y)
+        row:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, -y)
         row:Show()
         self.initializer(row, data)
+        y = y + (data.extent or self.extent) + self.spacing
       end
       for index = #items + 1, #self.rows do
         self.rows[index]:Hide()
       end
-      self.content:SetHeight(math.max(1, #items * gap - self.spacing))
+      self.content:SetHeight(math.max(1, y - self.spacing))
       if retain == false and self.scrollBox.ScrollToBegin then
         self.scrollBox:ScrollToBegin()
       end
