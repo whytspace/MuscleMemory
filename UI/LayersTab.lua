@@ -339,10 +339,34 @@ end
 
 -- Centre grid ----------------------------------------------------------------
 
+-- Slots bound by other apply-relevant layers (enabled and conditions matching,
+-- the same set BuildPlan applies), keyed slot -> { layer names } in priority
+-- order. The selected layer is excluded: its own binding already paints the
+-- cell. Membership is by binding, not resolution, so an unresolvable Taunt on
+-- a Mage still counts.
+local function otherLayerSlots(selectedLayerId)
+  local map = {}
+  for _, activeLayer in ipairs(MM.DB:GetActiveLayers() or {}) do
+    if activeLayer.id ~= selectedLayerId and MM.Conditions.Match(activeLayer.layer.conditions) then
+      for slot in pairs(activeLayer.layer.slots or {}) do
+        local numericSlot = tonumber(slot)
+        if numericSlot then
+          map[numericSlot] = map[numericSlot] or {}
+          table.insert(map[numericSlot], activeLayer.layer.name or activeLayer.id)
+        end
+      end
+    end
+  end
+  return map
+end
+
 -- Paint one slot icon to reflect its managed state.
 -- `suppressSelected` skips the thick selection outline; the sidebar icon always
 -- represents the selected slot, so the highlight is redundant there.
-local function paintSlot(icon, layer, slot, suppressSelected)
+-- `otherLayers` (the otherLayerSlots map) marks unmanaged slots that another
+-- layer binds; a slot the selected layer manages keeps its normal border — the
+-- overlap lives in the tooltip.
+local function paintSlot(icon, layer, slot, suppressSelected, otherLayers)
   local assignment = layer and layer.slots and layer.slots[slot]
   local managed = assignment ~= nil
   local selected = not suppressSelected and MM.DB:GetSelectedSlot() == slot
@@ -353,14 +377,18 @@ local function paintSlot(icon, layer, slot, suppressSelected)
   icon:SetHotkey(MM.Actions.GetSlotHotkey(slot))
 
   if not managed then
+    local elsewhere = otherLayers and otherLayers[slot] ~= nil
     local texture = MM.Actions.GetLiveSlotIcon(slot)
     if texture then
       icon:SetTextureImage(texture)
       icon:SetAlphaAll(0.42)
-      icon:SetBorder(1, colors.faint, 0.5)
     else
       icon:SetTextureImage(nil)
-      icon:SetBorder(1, colors.faint, 0.28)
+    end
+    if elsewhere then
+      icon:SetBorder(2, colors.otherLayer, 0.55)
+    else
+      icon:SetBorder(1, colors.faint, texture and 0.5 or 0.28)
     end
   elseif assignment.type == "empty" then
     icon:SetSymbol(Widgets.TEX.empty)
@@ -464,6 +492,13 @@ function LayersTab:BuildSlotCell(parent, slot)
     else
       GameTooltip:AddLine("Not managed \226\128\148 click to manage", 0.7, 0.7, 0.7)
     end
+    local others = LayersTab.grid and LayersTab.grid.otherLayers and LayersTab.grid.otherLayers[slot]
+    if others then
+      GameTooltip:AddLine(
+        (assignment and "Also managed by: " or "Managed by: ") .. table.concat(others, ", "),
+        Widgets.unpackColor(colors.otherLayer)
+      )
+    end
     GameTooltip:Show()
   end)
   hit:SetScript("OnLeave", function()
@@ -475,31 +510,49 @@ end
 
 function LayersTab:BuildLegend(parent)
   local strip = CreateFrame("Frame", nil, parent)
-  strip:SetHeight(24)
 
+  -- Badge glyphs on the first line, slot states on the second. Badge entries
+  -- show the badge tile itself (as it appears on a cell) rather than a
+  -- bordered swatch.
   local entries = {
-    { glyph = nil, badge = false, label = "Managed (pinned)" },
-    { glyph = nil, badge = true, label = "Dynamic Action-driven" },
-    { symbol = Widgets.TEX.empty, badge = false, label = "Empty (clears)" },
-    { glyph = nil, badge = false, label = "Selected", selected = true },
+    { icon = Widgets.ICON.dynamicAction, label = "Dynamic Action-driven" },
+    { icon = Widgets.ICON.macro, label = "Rendered as a macro" },
+    { label = "Managed (pinned)", newRow = true },
+    { symbol = Widgets.TEX.empty, label = "Empty (clears)" },
+    { label = "Managed by another Layer", color = colors.otherLayer, alpha = 0.55 },
   }
 
-  local x = 4
+  -- Wrap-flow within the grid's width so the legend never runs into the
+  -- sidebar. The strip is anchored by a single point, so it needs an explicit
+  -- size for its rect to resolve (without one it doesn't render at all).
+  local wrapWidth = LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP)
+  local rowHeight = 26
+  local x, row = 4, 0
   for _, entry in ipairs(entries) do
-    local swatch = Widgets.Icon(strip, 18)
-    swatch:SetPoint("LEFT", strip, "LEFT", x, 0)
-    if entry.symbol then
-      swatch:SetSymbol(entry.symbol)
+    local swatch
+    if entry.icon then
+      swatch = Widgets.IconBadge(strip, 18, entry.icon)
+      swatch:ClearAllPoints()
     else
-      swatch:SetTextureImage(nil)
+      swatch = Widgets.Icon(strip, 18)
+      if entry.symbol then
+        swatch:SetSymbol(entry.symbol)
+      else
+        swatch:SetTextureImage(nil)
+      end
+      swatch:SetBorder(2, entry.color or colors.managed, entry.alpha)
     end
-    swatch:SetBorder(2, entry.selected and colors.selected or colors.managed)
-    swatch:SetBadge(entry.badge)
 
     local label = Widgets.Label(strip, "GameFontHighlightSmall", entry.label, colors.parchment)
+    local width = 24 + label:GetStringWidth() + 22
+    if x > 4 and (entry.newRow or x + width > wrapWidth) then
+      x, row = 4, row + 1
+    end
+    swatch:SetPoint("TOPLEFT", strip, "TOPLEFT", x, -(row * rowHeight) - 3)
     label:SetPoint("LEFT", swatch, "RIGHT", 6, 0)
-    x = x + 24 + label:GetStringWidth() + 22
+    x = x + width
   end
+  strip:SetSize(wrapWidth, (row + 1) * rowHeight)
 
   return strip
 end
@@ -570,6 +623,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
   end
 
   -- Bars (real Edit Mode bars and their scattered slot ranges, not 1..120 linear).
+  grid.otherLayers = otherLayerSlots(layerId)
   local bars = MM.Actions.GetGridBars()
   local active = {}
   for barIndex, bar in ipairs(bars) do
@@ -596,7 +650,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
       cell.icon:ClearAllPoints()
       cell.icon:SetPoint("TOPLEFT", grid.area, "TOPLEFT", LABEL_WIDTH + (button - 1) * (CELL + CELL_GAP), y)
       cell.icon:Show()
-      paintSlot(cell.icon, layer, slot)
+      paintSlot(cell.icon, layer, slot, nil, grid.otherLayers)
     end
   end
 
@@ -612,7 +666,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
 
   grid.area:SetSize(LABEL_WIDTH + MM.ACTIONS_PER_BAR * (CELL + CELL_GAP), #bars * (CELL + CELL_GAP))
   grid.legend:ClearAllPoints()
-  grid.legend:SetPoint("TOPLEFT", grid.area, "BOTTOMLEFT", 0, -14)
+  grid.legend:SetPoint("BOTTOMLEFT", grid.frame, "BOTTOMLEFT", 12, 10)
 end
 
 -- Repaint the changed grid cell(s) in place (slot; 0/nil = bulk); no-ops when the grid is hidden.
@@ -626,14 +680,14 @@ function LayersTab:OnBarsChanged(slot)
   if slot and slot ~= 0 then
     local cell = grid.cells[slot]
     if cell and cell.icon:IsShown() then
-      paintSlot(cell.icon, layer, slot)
+      paintSlot(cell.icon, layer, slot, nil, grid.otherLayers)
     end
     return
   end
 
   for cellSlot, cell in pairs(grid.cells) do
     if cell.icon:IsShown() then
-      paintSlot(cell.icon, layer, cellSlot)
+      paintSlot(cell.icon, layer, cellSlot, nil, grid.otherLayers)
     end
   end
 end

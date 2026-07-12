@@ -18,6 +18,9 @@ Widgets.colors = {
   faint = { 0.42, 0.40, 0.34 },
   muted = { 0.56, 0.52, 0.42 },
   danger = { 0.83, 0.40, 0.32 },
+  -- Cool steel-teal, deliberately outside the warm gold ramp: marks grid slots
+  -- bound by a layer other than the selected one.
+  otherLayer = { 0.36, 0.56, 0.62 },
 }
 
 local function unpackColor(color, alpha)
@@ -424,6 +427,12 @@ local function setBorder(border, thickness, color, alpha)
   border.bottom:SetHeight(thickness)
   border.left:SetWidth(thickness)
   border.right:SetWidth(thickness)
+  -- Tuck the side strips between the top and bottom ones: overlapping corners
+  -- double-blend when the border is translucent.
+  border.left:SetPoint("TOPLEFT", 0, -thickness)
+  border.left:SetPoint("BOTTOMLEFT", 0, thickness)
+  border.right:SetPoint("TOPRIGHT", 0, -thickness)
+  border.right:SetPoint("BOTTOMRIGHT", 0, thickness)
   for _, edge in ipairs({ "top", "bottom", "left", "right" }) do
     border[edge]:SetColorTexture(r, g, b, alpha or 1)
   end

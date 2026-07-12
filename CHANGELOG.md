@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- The Layers grid now marks slots that another enabled layer binds (teal border), with the layer names in the slot tooltip — so you can see what's already covered while editing a different layer. Also fixed the grid legend, which had stopped rendering, and reorganized it (badge glyphs and slot states on separate lines, pinned to the bottom).
+
 - The Specialization condition now offers the specs of the class(es) selected in the Class condition (with a class suffix when several are selected), instead of always the logged-in class's specs. Without a class condition it still shows your current class, and previously selected specs outside the list stay visible so they can be unselected.
 
 - Clearer debug hint: the preview summary now says to enable debug and preview again to list unresolved slots (`/mm debug` itself only toggles the flag).
