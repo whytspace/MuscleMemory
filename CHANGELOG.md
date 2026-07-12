@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- The Specialization condition now offers the specs of the class(es) selected in the Class condition (with a class suffix when several are selected), instead of always the logged-in class's specs. Without a class condition it still shows your current class, and previously selected specs outside the list stay visible so they can be unselected.
+
 - Clearer debug hint: the preview summary now says to enable debug and preview again to list unresolved slots (`/mm debug` itself only toggles the flag).
 
 - Dynamic Actions tab: the list is split into "Your Dynamic Actions" and "Predefined (read-only)" sections (replacing the lock icon), candidates show their spell/item id so same-named per-class variants can be told apart, plus minor design improvements.

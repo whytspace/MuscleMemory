@@ -11,20 +11,21 @@ MM.ui.ConditionsEditor = ConditionsEditor
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
+-- `id` is the numeric classID for the class-agnostic spec APIs.
 local CLASSES = {
-  { token = "WARRIOR", name = "Warrior" },
-  { token = "PALADIN", name = "Paladin" },
-  { token = "HUNTER", name = "Hunter" },
-  { token = "ROGUE", name = "Rogue" },
-  { token = "PRIEST", name = "Priest" },
-  { token = "DEATHKNIGHT", name = "Death Knight" },
-  { token = "SHAMAN", name = "Shaman" },
-  { token = "MAGE", name = "Mage" },
-  { token = "WARLOCK", name = "Warlock" },
-  { token = "MONK", name = "Monk" },
-  { token = "DRUID", name = "Druid" },
-  { token = "DEMONHUNTER", name = "Demon Hunter" },
-  { token = "EVOKER", name = "Evoker" },
+  { token = "WARRIOR", name = "Warrior", id = 1 },
+  { token = "PALADIN", name = "Paladin", id = 2 },
+  { token = "HUNTER", name = "Hunter", id = 3 },
+  { token = "ROGUE", name = "Rogue", id = 4 },
+  { token = "PRIEST", name = "Priest", id = 5 },
+  { token = "DEATHKNIGHT", name = "Death Knight", id = 6 },
+  { token = "SHAMAN", name = "Shaman", id = 7 },
+  { token = "MAGE", name = "Mage", id = 8 },
+  { token = "WARLOCK", name = "Warlock", id = 9 },
+  { token = "MONK", name = "Monk", id = 10 },
+  { token = "DRUID", name = "Druid", id = 11 },
+  { token = "DEMONHUNTER", name = "Demon Hunter", id = 12 },
+  { token = "EVOKER", name = "Evoker", id = 13 },
 }
 
 local ROLES = {
@@ -70,8 +71,7 @@ local RACES = {
   { token = "Dracthyr", name = "Dracthyr" },
 }
 
--- The player's current class specs (spec conditions can only be set for your own
--- class, which is the realistic case — you configure on the character you play).
+-- The player's current class specs, used when no class condition narrows the list.
 local function playerSpecs()
   local specs = {}
   if not GetNumSpecializations then
@@ -79,6 +79,21 @@ local function playerSpecs()
   end
   for index = 1, GetNumSpecializations() do
     local id, name = GetSpecializationInfo(index)
+    if id then
+      specs[#specs + 1] = { token = id, name = name or ("Spec " .. index) }
+    end
+  end
+  return specs
+end
+
+-- Any class's specs by classID, via the class-agnostic spec APIs.
+local function classSpecs(classId)
+  local specs = {}
+  if not (classId and GetNumSpecializationsForClassID and GetSpecializationInfoForClassID) then
+    return specs
+  end
+  for index = 1, GetNumSpecializationsForClassID(classId) or 0 do
+    local id, name = GetSpecializationInfoForClassID(classId, index)
     if id then
       specs[#specs + 1] = { token = id, name = name or ("Spec " .. index) }
     end
@@ -114,6 +129,49 @@ local function listHas(list, value)
     end
   end
   return false
+end
+
+-- The spec options follow the class condition: the specs of every selected
+-- class (suffixed with the class when several are selected, since spec names
+-- repeat across classes), else the current class's specs. Selected specs
+-- outside that list stay visible so a stale choice can still be unselected.
+local function specOptions(conditions)
+  local selected = {}
+  for _, class in ipairs(CLASSES) do
+    if listHas(conditions.classes, class.token) then
+      selected[#selected + 1] = class
+    end
+  end
+
+  local options = {}
+  if #selected == 0 then
+    options = playerSpecs()
+  else
+    for _, class in ipairs(selected) do
+      for _, spec in ipairs(classSpecs(class.id)) do
+        if #selected > 1 then
+          spec.name = spec.name .. " (" .. class.name .. ")"
+        end
+        options[#options + 1] = spec
+      end
+    end
+  end
+
+  local seen = {}
+  for _, option in ipairs(options) do
+    seen[option.token] = true
+  end
+  for _, token in ipairs(conditions.specs or {}) do
+    if not seen[token] then
+      seen[token] = true
+      local name
+      if GetSpecializationInfoByID then
+        name = select(2, GetSpecializationInfoByID(token))
+      end
+      options[#options + 1] = { token = token, name = name or ("Spec " .. tostring(token)) }
+    end
+  end
+  return options
 end
 
 -- Toggle `value` in conditions[field], dropping the field when it empties.
@@ -257,7 +315,7 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange, width)
   local sections = {
     { title = "Class", field = "classes", options = CLASSES },
   }
-  local specs = playerSpecs()
+  local specs = specOptions(conditions)
   if #specs > 0 then
     sections[#sections + 1] = { title = "Specialization", field = "specs", options = specs }
   end
