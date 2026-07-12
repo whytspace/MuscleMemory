@@ -198,4 +198,37 @@ describe("Resolver", function()
     end)
   end)
 
+  describe("FindDynamicActionsResolvingTo", function()
+    it("returns nothing for assignments without an id", function()
+      assert.same({}, MM.Resolver:FindDynamicActionsResolvingTo({ type = "empty" }))
+      assert.same({}, MM.Resolver:FindDynamicActionsResolvingTo(nil))
+    end)
+
+    it("finds the predefined dynamic action a spell resolves from", function()
+      stubs.world.class = "WARRIOR"
+      stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
+      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
+      assert.same({ { source = "predefined", id = "interrupt", name = "Interrupt" } }, matches)
+    end)
+
+    it("lists predefined and custom matches sorted by name", function()
+      stubs.world.class = "WARRIOR"
+      stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
+      MM.DB:DynamicActions().mine = { name = "Mine", candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } } }
+      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
+      assert.same({
+        { source = "predefined", id = "interrupt", name = "Interrupt" },
+        { source = "custom", id = "mine", name = "Mine" },
+      }, matches)
+    end)
+
+    it("does not match a dynamic action resolving to a different action", function()
+      stubs.world.class = "WARRIOR"
+      stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
+      -- Moonfire is a candidate of no dynamic action.
+      stubs:setSpell(8921, { name = "Moonfire", known = true })
+      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = 8921 })
+      assert.same({}, matches)
+    end)
+  end)
 end)

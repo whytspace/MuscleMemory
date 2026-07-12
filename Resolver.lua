@@ -149,6 +149,40 @@ function Resolver:ResolveAction(assignment, options)
   return resolve(assignment, options or {})
 end
 
+-- All dynamic actions (predefined and the active profile's own) that currently
+-- resolve to the given assignment on this character, as sorted `{ source, id,
+-- name }` references. Backs the bind-time suggestion: "this spell is covered by
+-- a dynamic action — bind that instead?". Only id-carrying kinds can match, so
+-- macro and equipment-set assignments never suggest.
+function Resolver:FindDynamicActionsResolvingTo(assignment)
+  if not assignment or not assignment.id then
+    return {}
+  end
+
+  local matches = {}
+  local function check(source, id, dynamicAction)
+    local resolved = self:ResolveAction({ type = "dynamicaction", source = source, id = id })
+    if resolved and resolved.kind == assignment.type and resolved.id == assignment.id then
+      matches[#matches + 1] = { source = source, id = id, name = dynamicAction.name or id }
+    end
+  end
+
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
+    check("predefined", id, dynamicAction)
+  end
+  for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
+    check("custom", id, dynamicAction)
+  end
+
+  table.sort(matches, function(left, right)
+    if left.name ~= right.name then
+      return left.name < right.name
+    end
+    return left.source < right.source
+  end)
+  return matches
+end
+
 function Resolver:ResolveDynamicActionAssignment(assignment)
   local dynamicAction = MM.DB:ResolveDynamicAction({
     source = assignment.source,

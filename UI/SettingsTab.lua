@@ -15,6 +15,13 @@ local FALLBACK_OPTIONS = {
   { value = "clear", label = "Clear", hint = "Remove the existing action, if any." },
 }
 
+-- How binding an action covered by a Dynamic Action behaves.
+local SUGGEST_OPTIONS = {
+  { value = "never", label = "Never", hint = "Always bind exactly what you chose." },
+  { value = "suggest", label = "Suggest", hint = "Ask via a popup." },
+  { value = "auto", label = "Automatic", hint = "Bind the Dynamic Action; asks only when several match." },
+}
+
 -- How the add-on reacts when an event re-scan finds changes to apply.
 local RESPONSE_OPTIONS = {
   { value = "ignore", label = "Do nothing", hint = "Detect changes silently." },
@@ -93,8 +100,26 @@ function SettingsTab:Build(parent)
   responseBlurb:SetJustifyH("LEFT")
   responseBlurb:SetTextColor(Widgets.unpackColor(colors.muted))
 
-  self.responseRadios = buildRadioGroup(column, responseBlurb, RESPONSE_OPTIONS, function(value)
+  self.responseRadios, anchor = buildRadioGroup(column, responseBlurb, RESPONSE_OPTIONS, function(value)
     MM.DB:SetResponse(value)
+    self:Refresh()
+  end)
+
+  local suggestHeading = Widgets.Label(column, "GameFontNormal", "When binding an action", colors.parchment)
+  suggestHeading:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -28)
+
+  local suggestBlurb = Widgets.Label(
+    column,
+    "GameFontHighlightSmall",
+    "Some abilities are covered by a Dynamic Action (an interrupt, a per-class racial, ...). Choose what happens when you bind one of those to a slot."
+  )
+  suggestBlurb:SetPoint("TOPLEFT", suggestHeading, "BOTTOMLEFT", 0, -6)
+  suggestBlurb:SetWidth(480)
+  suggestBlurb:SetJustifyH("LEFT")
+  suggestBlurb:SetTextColor(Widgets.unpackColor(colors.muted))
+
+  self.suggestRadios = buildRadioGroup(column, suggestBlurb, SUGGEST_OPTIONS, function(value)
+    MM.DB:SetSuggestMode(value)
     self:Refresh()
   end)
 
@@ -111,5 +136,10 @@ function SettingsTab:Refresh()
   local response = MM.DB:GetResponse()
   for value, radio in pairs(self.responseRadios or {}) do
     radio:SetChecked(value == response)
+  end
+
+  local suggestMode = MM.DB:GetSuggestMode()
+  for value, radio in pairs(self.suggestRadios or {}) do
+    radio:SetChecked(value == suggestMode)
   end
 end

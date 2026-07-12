@@ -28,30 +28,110 @@ local function assignSlot(layerId, slot, assignment)
   refresh()
 end
 
+local function resolveDynamicAction(source, id)
+  return MM.Resolver:ResolveAction({ type = "dynamicaction", source = source, id = id })
+end
+
+-- Style a suggestion row like the sidebar's "Bind to a Dynamic Action" rows —
+-- icon tile plus name — with the source (predefined/custom) on the right, since
+-- every match resolves to the same action anyway.
+local function suggestionRowInit(row, match)
+  if not row.mmInit then
+    row.mmInit = true
+    Widgets.decorateRow(row)
+
+    row.tile = Widgets.Icon(row, 24)
+    row.tile:SetPoint("LEFT", row, "LEFT", 0, 0)
+    row.tile:SetBadge(true)
+
+    row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
+    row.nameLabel:SetPoint("LEFT", row.tile, "RIGHT", 8, 0)
+
+    row.sourceLabel = Widgets.Label(row, "GameFontDisableSmall", "")
+    row.sourceLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+  end
+
+  local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = match.source, id = match.id })
+  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
+  local resolved = resolveDynamicAction(match.source, match.id)
+  if resolved and resolved.icon then
+    row.tile:SetTextureImage(resolved.icon)
+    row.tile:SetBorder(1, colors.managed)
+  else
+    row.tile:SetSymbol(Widgets.TEX.warning)
+    row.tile:SetBorder(1, colors.warn, 0.7)
+  end
+
+  row.nameLabel:SetText(match.name)
+  row.sourceLabel:SetText(match.source)
+end
+
+-- Bind a captured assignment, honoring the suggestion mode when dynamic actions
+-- resolve to it on this character ("Kick" -> the Interrupt dynamic action):
+-- "never" binds the capture as-is, "auto" binds a sole matching dynamic action
+-- directly, and "suggest" (or several "auto" matches) asks. In the popup a row
+-- binds the dynamic action, "Keep" binds the capture unchanged, Escape binds
+-- nothing. Only these single-slot binds prompt; bulk layer capture stays literal.
+local function assignSuggesting(layerId, slot, assignment)
+  local mode = MM.DB:GetSuggestMode()
+  local matches = mode ~= "never" and MM.Resolver:FindDynamicActionsResolvingTo(assignment) or {}
+  if #matches == 0 then
+    assignSlot(layerId, slot, assignment)
+    return
+  end
+
+  if mode == "auto" and #matches == 1 then
+    assignSlot(layerId, slot, { type = "dynamicaction", source = matches[1].source, id = matches[1].id })
+    return
+  end
+
+  local resolved = MM.Resolver:ResolveAction(assignment)
+  local name = (resolved and resolved.label) or MM.Actions.GetAssignmentLabel(assignment)
+  MM.ui.Modals.Choose({
+    title = "Bind a Dynamic Action instead?",
+    message = string.format(
+      "%s is covered by %s. Do you want to bind the Dynamic Action instead? You can disable this behavior in the settings.",
+      name,
+      #matches == 1 and "a Dynamic Action" or "multiple Dynamic Actions"
+    ),
+    options = matches,
+    rowInit = suggestionRowInit,
+    onSelect = function(match)
+      assignSlot(layerId, slot, { type = "dynamicaction", source = match.source, id = match.id })
+    end,
+    cancelLabel = string.format("Keep %s", name),
+    onCancel = function()
+      assignSlot(layerId, slot, assignment)
+    end,
+  })
+end
+
 local function assignFromCursor(layerId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(reason or "could not read cursor")
     return
   end
-  assignSlot(layerId, slot, assignment)
   if ClearCursor then
     ClearCursor()
   end
+  assignSuggesting(layerId, slot, assignment)
 end
 
 -- Left-clicking a not-managed slot starts managing it, capturing whatever is
 -- live there (or Empty if the bar slot is blank).
 local function manageSlot(layerId, slot)
-  local ok, reason = MM.Capture:CaptureSlot(layerId, slot)
-  if not ok then
+  local assignment, reason = MM.Capture:FromSlot(slot)
+  if not assignment then
     MM.DB:SetSlot(layerId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
       MM:Warn(reason or "could not capture slot")
     end
+    MM.DB:SetSelectedSlot(slot)
+    refresh()
+    return
   end
-  MM.DB:SetSelectedSlot(slot)
-  refresh()
+  assignSuggesting(layerId, slot, assignment)
 end
 
 local function unmanageSlot(layerId, slot)
@@ -76,10 +156,6 @@ local function dynamicActionList()
     return left.name < right.name
   end)
   return dynamicActions
-end
-
-local function resolveDynamicAction(source, id)
-  return MM.Resolver:ResolveAction({ type = "dynamicaction", source = source, id = id })
 end
 
 -- Layer CRUD ----------------------------------------------------------------

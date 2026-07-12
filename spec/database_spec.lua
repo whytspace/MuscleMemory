@@ -340,6 +340,21 @@ describe("DB", function()
       MM.DB:SetActiveProfile(other)
       assert.equals("keep", MM.DB:GetFallback())
     end)
+
+    it("defaults the suggestion mode to suggest and validates updates", function()
+      assert.equals("suggest", MM.DB:GetSuggestMode())
+      assert.is_true(MM.DB:SetSuggestMode("auto"))
+      assert.equals("auto", MM.DB:GetSuggestMode())
+
+      local ok, reason = MM.DB:SetSuggestMode("sometimes")
+      assert.is_false(ok)
+      assert.equals("suggestion mode must be never, suggest or auto", reason)
+
+      -- Account-scoped: a profile switch doesn't change it.
+      local other = MM.DB:CreateProfile("Other")
+      MM.DB:SetActiveProfile(other)
+      assert.equals("auto", MM.DB:GetSuggestMode())
+    end)
   end)
 
   describe("dynamicActions", function()

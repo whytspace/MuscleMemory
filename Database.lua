@@ -555,6 +555,29 @@ function DB:SetResponse(value)
   return true
 end
 
+-- How binding a spell or item that a dynamic action resolves to behaves:
+-- "never" binds the capture as-is, "suggest" offers the dynamic action in a
+-- popup, "auto" binds the dynamic action directly (asking only when several
+-- match). An editing-behavior preference, so it lives on the account root
+-- rather than per profile.
+local SUGGEST_MODES = { never = true, suggest = true, auto = true }
+
+function DB:GetSuggestMode()
+  local value = self:GetRoot().suggestDynamicActions
+  if SUGGEST_MODES[value] then
+    return value
+  end
+  return "suggest"
+end
+
+function DB:SetSuggestMode(value)
+  if not SUGGEST_MODES[value] then
+    return false, "suggestion mode must be never, suggest or auto"
+  end
+  self:GetRoot().suggestDynamicActions = value
+  return true
+end
+
 -- DynamicActions -------------------------------------------------------------------
 -- Profile dynamicActions live in `profile.dynamicActions`; index `self:DynamicActions()` directly.
 -- Predefined dynamicActions are immutable add-on data.

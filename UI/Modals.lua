@@ -82,11 +82,28 @@ function Modals.Hide()
   end
 end
 
+-- The Choose modal restyles the shared box (accept hidden, cancel centered and
+-- rewired, list rows); reset that here so every show starts from the stock layout.
+local function resetLayout(box)
+  box.accept:Show()
+  box.cancel:ClearAllPoints()
+  box.cancel:SetPoint("BOTTOMLEFT", box, "BOTTOM", 6, 18)
+  box.cancel:SetSize(120, 24)
+  box.cancel:SetText(CANCEL or "Cancel")
+  box.cancel:SetScript("OnClick", function()
+    Modals.Hide()
+  end)
+  for _, row in ipairs(box.choices or {}) do
+    row:Hide()
+  end
+end
+
 -- opts: title, message (confirm) | label+value (input), acceptLabel, kind
 -- ("input"|"confirm"), and onAccept (receives the entered text for inputs).
 local function show(opts)
   local overlay = ensure()
   local box = overlay.box
+  resetLayout(box)
   local isInput = opts.kind == "input"
 
   box.title:SetText(opts.title or "")
@@ -148,4 +165,58 @@ function Modals.Confirm(title, message, acceptLabel, onAccept)
       onAccept()
     end,
   })
+end
+
+-- A one-of-N picker. opts: title, message, options (array, opaque to Modals),
+-- rowInit(row, option) styling each pooled list row (a plain full-width Button —
+-- the caller owns its look, so the rows can match its own lists), onSelect(option),
+-- cancelLabel and onCancel for the explicit cancel row. Escape closes the dialog
+-- without either callback.
+function Modals.Choose(opts)
+  local overlay = ensure()
+  local box = overlay.box
+  resetLayout(box)
+
+  box.title:SetText(opts.title or "")
+  box.message:SetText(opts.message or "")
+  box.editBox:Hide()
+  box.accept:Hide()
+  box.cancel:ClearAllPoints()
+  box.cancel:SetPoint("BOTTOM", box, "BOTTOM", 0, 18)
+  box.cancel:SetText(opts.cancelLabel or (CANCEL or "Cancel"))
+  -- Size to the label: "Keep <spell name>" easily overflows the stock 120px.
+  local cancelText = box.cancel:GetFontString()
+  box.cancel:SetWidth(math.max(120, (cancelText and cancelText:GetStringWidth() or 0) + 40))
+  box.cancel:SetScript("OnClick", function()
+    Modals.Hide()
+    if opts.onCancel then
+      opts.onCancel()
+    end
+  end)
+
+  box.choices = box.choices or {}
+  local top = 52 + box.message:GetStringHeight() + 14
+  for index, option in ipairs(opts.options) do
+    local row = box.choices[index]
+    if not row then
+      row = CreateFrame("Button", nil, box)
+      row:SetHeight(28)
+      row:SetPoint("LEFT", box, "LEFT", 24, 0)
+      row:SetPoint("RIGHT", box, "RIGHT", -24, 0)
+      box.choices[index] = row
+    end
+    row:SetPoint("TOP", box, "TOP", 0, -(top + (index - 1) * 30))
+    opts.rowInit(row, option)
+    row:SetScript("OnClick", function()
+      Modals.Hide()
+      opts.onSelect(option)
+    end)
+    row:Show()
+  end
+
+  -- Message, the option rows, then a gap plus the cancel row and bottom inset.
+  box:SetHeight(top + #opts.options * 30 + 12 + 24 + 18)
+
+  overlay:Show()
+  overlay:Raise()
 end
