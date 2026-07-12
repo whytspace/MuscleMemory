@@ -29,6 +29,10 @@ has for the job. One binding, every class.
 - **Real macros when you need them.** Render a dynamic action as a macro for mouseover, focus,
   modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`); Muscle Memory writes and
   maintains the per-character macro for you.
+- **Your macros travel with you.** A bound character macro is recreated on any character that doesn't
+  have it yet, and keeps matching by name after you edit its body.
+- **Suggestions while you bind.** Drop Kick onto a slot and Muscle Memory offers to bind *Interrupt*
+  instead, so the slot keeps working on every character (configurable: never / suggest / automatic).
 - **Everything that lives on a bar.** Spells, items, macros, mounts, toys, battle pets, flyouts, and
   equipment sets.
 - **No surprises.** Preview shows what Apply would change first, and Apply is blocked in combat or
@@ -64,8 +68,9 @@ Counterspell on your Mage.
 
 ![Muscle Memory dynamic actions tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png)
 
-Built-ins cover Bloodlust, Interrupt, Stun, Hard CC, Soft CC, Battle Rez, Taunt, and Movement — and
-you can build your own:
+Built-ins cover Bloodlust, Interrupt, Stun, Hard CC, Soft CC, Battle Rez, Taunt, Movement, and the
+racials whose spell differs by class (Blood Elf: Arcane Torrent, Orc: Blood Fury, Draenei: Gift of
+the Naaru) — and you can build your own:
 
 - **Mix anything castable.** Candidates can blend spells, items, toys, and mounts — so *Bloodlust*
   resolves through each class's own version (Bloodlust, Heroism, Time Warp, Fury of the Aspects) and
@@ -103,8 +108,7 @@ or `/mm <topic> help`, to explore it. The essentials:
 |---|---|
 | ![Layers](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png) | ![Dynamic actions](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png) |
 | ![Profiles](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/profiles.png) | ![Macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png) |
-| ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) | |
- |
+| ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) | ![Bind suggestion](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/suggestion.png) |
 
 ## License
 

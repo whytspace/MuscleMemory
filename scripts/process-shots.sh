@@ -28,7 +28,7 @@ OUT_DIR="$REPO_ROOT/docs/images"
 if [ "$#" -gt 0 ]; then
   views=("$@")
 else
-  views=(layers dynamic-actions macro-editor macro-window profiles)
+  views=(layers dynamic-actions macro-editor macro-window profiles suggestion)
 fi
 
 command -v magick >/dev/null 2>&1 || {

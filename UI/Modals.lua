@@ -25,6 +25,8 @@ local function build()
   local shade = overlay:CreateTexture(nil, "BACKGROUND")
   shade:SetAllPoints()
   shade:SetColorTexture(0, 0, 0, 0.6)
+  -- Exposed so the screenshot tour can hide it during a matte capture.
+  overlay.shade = shade
 
   local box = CreateFrame("Frame", nil, overlay, "BackdropTemplate")
   box:SetSize(400, 200)

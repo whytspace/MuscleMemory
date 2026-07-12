@@ -106,6 +106,11 @@ local function assignSuggesting(layerId, slot, assignment)
   })
 end
 
+-- Exposed for the screenshot tour, which stages the suggestion dialog.
+function LayersTab:PromptSuggestion(layerId, slot, assignment)
+  assignSuggesting(layerId, slot, assignment)
+end
+
 local function assignFromCursor(layerId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then

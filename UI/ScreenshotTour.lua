@@ -30,6 +30,23 @@ local function buildShowcase()
   MM.Capture:CaptureFilledSlots(layerId)
   MM.DB:SetSlot(layerId, SHOWCASE_SLOT, { type = "dynamicaction", source = "predefined", id = "lust" })
 
+  -- A second layer owning a handful of Main's slots (bar 2, slots 61-72), so the
+  -- grid shows the "managed by another Layer" marking while Main is selected.
+  local utilityId = MM.DB:CreateLayer("Utility")
+  handle.utilityId = utilityId
+  local main = MM.DB:GetLayer(layerId)
+  for slot = 61, 72 do
+    local assignment = main and main.slots and main.slots[slot]
+    if assignment then
+      MM.DB:SetSlot(utilityId, slot, assignment)
+      MM.DB:SetSlot(layerId, slot, nil)
+    end
+  end
+
+  -- The suggestion shot needs the prompt enabled; remember the real mode.
+  handle.suggestMode = MM.DB:GetSuggestMode()
+  MM.DB:SetSuggestMode("suggest")
+
   -- A custom macro-mode dynamic action: copy the predefined Interrupt (already a
   -- focus macro with every class's kick) into an editable profile action.
   local macroId = MM.DB:CopyPredefinedDynamicAction("interrupt", "showcase-macro", "Focus Interrupt")
@@ -72,6 +89,10 @@ local function restore(saved, handle)
   MM.DB:SetActiveProfile(saved.profile)
   MM.DB:SetSelectedLayerId(saved.layer)
   MM.DB:SetSelectedSlot(saved.slot)
+
+  if handle.suggestMode then
+    MM.DB:SetSuggestMode(handle.suggestMode)
+  end
 
   -- Delete by name (the index can shift), so we always remove our own macro.
   if handle.macroName then
@@ -213,6 +234,45 @@ local function buildSteps(handle)
         end
         return MM.UI.frame
       end,
+      -- Close the dropdown before the suggestion shot so it doesn't bleed in.
+      after = function()
+        local dropdown = MM.ui.ProfilesTab and MM.ui.ProfilesTab.playerDropdown
+        if dropdown and dropdown.CloseMenu then
+          dropdown:CloseMenu()
+        end
+      end,
+    },
+    {
+      key = "suggestion",
+      label = "Bind suggestion dialog",
+      -- The modal's overlay is FULLSCREEN_DIALOG, already above the backdrop;
+      -- restrata'ing the box (a child) is neither needed nor possible.
+      raise = false,
+      arrange = function()
+        -- This character's own interrupt, so the prompt shows real matches —
+        -- the predefined Interrupt plus the showcase's custom copy of it.
+        local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", source = "predefined", id = "interrupt" })
+        if not resolved or resolved.kind ~= "spell" then
+          MM:Warn("no interrupt resolves for this character — skipping the suggestion shot.")
+          return nil
+        end
+        MM.UI:SelectTab("layers")
+        MM.ui.LayersTab:PromptSuggestion(handle.layerId, SHOWCASE_SLOT + 1, { type = "spell", id = resolved.id })
+        local overlay = MM.ui.Modals.frame
+        if not overlay then
+          return nil
+        end
+        -- The translucent fullscreen shade would tint both matte plates.
+        overlay.shade:SetAlpha(0)
+        return overlay.box
+      end,
+      after = function()
+        local overlay = MM.ui.Modals.frame
+        if overlay and overlay.shade then
+          overlay.shade:SetAlpha(1)
+        end
+        MM.ui.Modals.Hide()
+      end,
     },
   }
 end
@@ -294,7 +354,7 @@ end
 -- Capture a single view (faster iteration). Same build/restore, one matte.
 function Tour:RunOne(key)
   if not key then
-    MM:Warn("usage: /mm shot view <layers|dynamic-actions|macro-editor|macro-window|profiles>")
+    MM:Warn("usage: /mm shot view <layers|dynamic-actions|macro-editor|macro-window|profiles|suggestion>")
     return
   end
   start(self, function(handle)
