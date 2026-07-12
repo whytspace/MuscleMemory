@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+## 0.6.0 - 2026-07-12
+
 - Grid slots bound to a user macro now carry the macro badge (previously only macro-rendered Dynamic Actions did), and the legend labels are shorter and reordered.
 - Macros now restore across characters: a bound macro whose body changed (edited, or an addon's per-character copy) resolves by name, and a macro that doesn't exist on the current character is recreated from the captured body on apply — global macros stay global, character macros stay per-character. Slots bound while several macros share the captured name report which name is ambiguous. Re-capture existing macro slots once to store their body.
 
