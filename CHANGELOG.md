@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Added predefined Dynamic Actions for the racials whose spell differs by class: **Blood Elf: Arcane Torrent**, **Orc: Blood Fury** and **Draenei: Gift of the Naaru**. Bind these instead of the raw racial and every character gets the variant it actually knows.
+
 - Toys learned into the Toy Box can now be restored: availability and pickup go through the Toy Box APIs, so a bound toy no longer reports "not currently available" once the physical item has left the bags.
 
 - Fixed a mount slot being reported as an unapplied change on every login (and re-applied without effect): mount actions now match whether the action bar reports the journal mount or its summon spell.

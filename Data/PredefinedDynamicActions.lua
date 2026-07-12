@@ -158,6 +158,44 @@ MM.PredefinedDynamicActions = {
       Spell(S.TORMENT),
     },
   },
+  -- Racials whose spell id differs by class. A character of the wrong race (or a
+  -- class combination without a variant) knows none of them and the action
+  -- resolves to nothing, so no race conditions are needed.
+  arcane_torrent = {
+    name = "Blood Elf: Arcane Torrent",
+    candidates = {
+      Spell(S.ARCANE_TORRENT_WARRIOR),
+      Spell(S.ARCANE_TORRENT_PALADIN),
+      Spell(S.ARCANE_TORRENT_HUNTER),
+      Spell(S.ARCANE_TORRENT_ROGUE),
+      Spell(S.ARCANE_TORRENT_PRIEST),
+      Spell(S.ARCANE_TORRENT_DEATHKNIGHT),
+      Spell(S.ARCANE_TORRENT_MAGE_WARLOCK),
+      Spell(S.ARCANE_TORRENT_MONK),
+      Spell(S.ARCANE_TORRENT_DEMONHUNTER),
+    },
+  },
+  blood_fury = {
+    name = "Orc: Blood Fury",
+    candidates = {
+      Spell(S.BLOOD_FURY_ATTACK_POWER),
+      Spell(S.BLOOD_FURY_SPELL_POWER),
+      Spell(S.BLOOD_FURY_BOTH),
+    },
+  },
+  gift_of_the_naaru = {
+    name = "Draenei: Gift of the Naaru",
+    candidates = {
+      Spell(S.GIFT_OF_THE_NAARU_WARRIOR),
+      Spell(S.GIFT_OF_THE_NAARU_PALADIN),
+      Spell(S.GIFT_OF_THE_NAARU_HUNTER),
+      Spell(S.GIFT_OF_THE_NAARU_PRIEST),
+      Spell(S.GIFT_OF_THE_NAARU_DEATHKNIGHT),
+      Spell(S.GIFT_OF_THE_NAARU_SHAMAN),
+      Spell(S.GIFT_OF_THE_NAARU_MAGE),
+      Spell(S.GIFT_OF_THE_NAARU_MONK),
+    },
+  },
   movement = {
     name = "Movement",
     candidates = {

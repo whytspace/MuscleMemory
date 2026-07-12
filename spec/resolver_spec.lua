@@ -184,5 +184,18 @@ describe("Resolver", function()
       assert.is_nil(resolved)
       assert.equals("dynamic action not found", reason)
     end)
+
+    it("resolves a per-class racial to the variant this character knows", function()
+      stubs:setSpell(S.ARCANE_TORRENT_PRIEST, { name = "Arcane Torrent", known = true })
+      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "arcane_torrent" })
+      assert.equals(S.ARCANE_TORRENT_PRIEST, resolved.id)
+    end)
+
+    it("resolves a racial to nothing on a character knowing no variant", function()
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "blood_fury" })
+      assert.is_nil(resolved)
+      assert.matches("no matching candidate", reason)
+    end)
   end)
+
 end)
