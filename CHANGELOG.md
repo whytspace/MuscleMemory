@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.6.1 - 2026-07-12
+
 - **[Fix]** Added missing `/mm config suggest` command.
 
 ## 0.6.0 - 2026-07-12
