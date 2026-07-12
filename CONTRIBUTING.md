@@ -16,8 +16,11 @@ Run the checks before committing.
 To load edits in WoW, symlink the repo into the AddOns folder:
 
 ```sh
+git config core.fileMode false
 ln -s "$PWD" "/Applications/Games/World of Warcraft/_retail_/Interface/AddOns/MuscleMemory"
 ```
+
+The Git setting is local to this clone and prevents WoW's permission updates from appearing as executable-bit changes.
 
 ## Changelog
 
