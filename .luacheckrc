@@ -37,6 +37,7 @@ read_globals = {
   "C_SpellBook",
   "C_Timer",
   "C_TooltipInfo",
+  "C_ToyBox",
   "CANCEL",
   "ClearCursor",
   "CreateFrame",

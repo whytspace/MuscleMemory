@@ -116,6 +116,15 @@ function Items.IsUsable(itemId)
     return false
   end
 
+  -- A learned toy lives in the Toy Box, not the bags, so IsUsableItem reports it
+  -- unusable; the Toy Box carries its own usability answer.
+  if Items.IsToy(itemId) then
+    if C_ToyBox and C_ToyBox.IsToyUsable then
+      return C_ToyBox.IsToyUsable(itemId) ~= false
+    end
+    return true
+  end
+
   local usable
   if C_Item and C_Item.IsUsableItem then
     usable = C_Item.IsUsableItem(itemId)
@@ -144,6 +153,12 @@ function Items.GetQualityMarkup(itemId)
 end
 
 function Items.Pickup(itemId)
+  -- A learned toy can't be picked up as a bag item; the Toy Box has its own pickup.
+  if Items.IsToy(itemId) and C_ToyBox and C_ToyBox.PickupToyBoxItem then
+    C_ToyBox.PickupToyBoxItem(itemId)
+    return true
+  end
+
   if C_Item and C_Item.PickupItem then
     C_Item.PickupItem(itemId)
     return true

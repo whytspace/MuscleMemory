@@ -219,6 +219,15 @@ function Stubs.new()
       local item = world.items[id]
       return item ~= nil and item.isToy == true
     end,
+    C_ToyBox = {
+      IsToyUsable = function(id)
+        local item = world.items[id]
+        return item ~= nil and item.isToy == true and item.toyUsable ~= false
+      end,
+      PickupToyBoxItem = function(id)
+        world.cursor = { type = "item", id = id, fromToyBox = true }
+      end,
+    },
 
     -- Mounts ---------------------------------------------------------------
     C_MountJournal = {
@@ -471,6 +480,7 @@ function Stubs:setItem(id, opts)
     count = opts.count or 0,
     equipped = opts.equipped == true,
     isToy = opts.isToy == true,
+    toyUsable = opts.toyUsable ~= false,
     usable = opts.usable ~= false,
     requirement = opts.requirement, -- e.g. "Requires Engineering"; shows as a red tooltip line
   }
