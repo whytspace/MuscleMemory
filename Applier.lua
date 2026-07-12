@@ -221,7 +221,10 @@ function Applier:PreviewProfile(profileId)
       end
     else
       MM:Print(
-        string.format("%d unresolved slots would be left unchanged. Use /mm debug to list them.", unresolvedKept)
+        string.format(
+          "%d unresolved slots would be left unchanged. Enable debug (/mm debug), then preview again to list them.",
+          unresolvedKept
+        )
       )
     end
   end

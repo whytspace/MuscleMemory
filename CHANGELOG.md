@@ -4,6 +4,8 @@ All notable user-facing changes will be recorded here.
 
 ## Unreleased
 
+- Clearer debug hint: the preview summary now says to enable debug and preview again to list unresolved slots (`/mm debug` itself only toggles the flag).
+
 - Dynamic Actions tab: the list is split into "Your Dynamic Actions" and "Predefined (read-only)" sections (replacing the lock icon), candidates show their spell/item id so same-named per-class variants can be told apart, plus minor design improvements.
 - Binding a spell or item that a Dynamic Action resolves to now offers to bind the Dynamic Action instead (e.g. Kick -> Interrupt), so the slot keeps working across your characters. Choose the behavior under Settings -> "When binding an action": Never, Suggest (popup, the default) or Automatic.
 - Added predefined Dynamic Actions for the racials whose spell differs by class: **Blood Elf: Arcane Torrent**, **Orc: Blood Fury** and **Draenei: Gift of the Naaru**. Bind these instead of the raw racial and every character gets the variant it actually knows.
