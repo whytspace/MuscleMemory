@@ -156,6 +156,38 @@ describe("Applier", function()
       assert.equals(1766, stubs.world.slots[3].id)
       assert.is_nil(stubs.world.cursor)
     end)
+
+    it("recreates a restorable macro before placing it", function()
+      local entry = {
+        slot = 3,
+        resolved = {
+          kind = "macro",
+          restore = { name = "Mine", body = "/cast Mine", scope = "character" },
+          label = "Mine",
+        },
+      }
+      assert.is_true(MM.Applier:ApplyEntry(entry))
+      assert.equals("Mine", stubs.world.charMacros[1].name)
+      assert.equals("macro", stubs.world.slots[3].actionType)
+      assert.equals(121, stubs.world.slots[3].id)
+    end)
+
+    it("fails a restorable macro when creation fails", function()
+      for index = 1, 30 do
+        stubs:addCharacterMacro({ name = "M" .. index, body = "/cast " .. index })
+      end
+      local entry = {
+        slot = 3,
+        resolved = {
+          kind = "macro",
+          restore = { name = "Mine", body = "/cast Mine", scope = "character" },
+          label = "Mine",
+        },
+      }
+      local ok, reason = MM.Applier:ApplyEntry(entry)
+      assert.is_false(ok)
+      assert.equals("character macro slots are full", reason)
+    end)
   end)
 
   describe("ApplyProfile", function()

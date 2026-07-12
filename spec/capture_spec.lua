@@ -49,6 +49,7 @@ describe("Capture", function()
       assert.equals("global", assignment.scope)
       assert.equals("Heal", assignment.nameHint)
       assert.equals(MM.Macros.HashBody("/cast Heal"), assignment.bodyHash)
+      assert.equals("/cast Heal", assignment.body)
     end)
 
     it("captures a slot macro by name and icon when the action id isn't a macro index", function()

@@ -113,6 +113,48 @@ describe("Resolver", function()
     end)
   end)
 
+  describe("macro", function()
+    it("returns a restorable resolved action for a missing macro with a stored body", function()
+      local resolved = MM.Resolver:ResolveAction({
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Gone",
+        body = "/cast Gone",
+        scope = "character",
+      })
+      assert.equals("macro", resolved.kind)
+      assert.is_nil(resolved.macro)
+      assert.equals("Gone", resolved.restore.name)
+      assert.equals("/cast Gone", resolved.restore.body)
+      assert.equals("character", resolved.restore.scope)
+    end)
+
+    it("stays unresolved for a missing macro without a stored body", function()
+      local resolved, reason = MM.Resolver:ResolveAction({
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Gone",
+        scope = "character",
+      })
+      assert.is_nil(resolved)
+      assert.equals('macro "Gone" not found', reason)
+    end)
+
+    it("stays unresolved when the name is ambiguous, despite a stored body", function()
+      stubs:addGlobalMacro({ name = "Dup", body = "/one" })
+      stubs:addGlobalMacro({ name = "Dup", body = "/two" })
+      local resolved, reason = MM.Resolver:ResolveAction({
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Dup",
+        body = "/three",
+        scope = "global",
+      })
+      assert.is_nil(resolved)
+      assert.equals('macro name "Dup" is ambiguous', reason)
+    end)
+  end)
+
   describe("dynamicAction", function()
     local S, I
     before_each(function()

@@ -35,6 +35,9 @@ local function macroAssignment(index, slot)
   return {
     type = "macro",
     bodyHash = MM.Macros.HashBody(body),
+    -- The full body, so a macro missing on another character can be recreated
+    -- there (in the same scope) at apply time.
+    body = body,
     scope = indexHint and MM.Macros.GetMacroScope(indexHint, globalCount) or nil,
     indexHint = indexHint,
     nameHint = name,

@@ -155,6 +155,8 @@ function Applier:PreviewProfile(profileId)
             local record = MM.DB:GetMacroRecord(entry.layerId, slot)
             local verb = MM.Macros.WouldUpdate(record, macroBody) and "updates the macro" or "creates a macro"
             label = label .. " (" .. verb .. ")"
+          elseif entry.resolved.kind == "macro" and not entry.resolved.macro then
+            label = label .. " (recreates the macro)"
           end
           MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), label))
         end
@@ -280,6 +282,16 @@ function Applier:ApplyEntry(entry)
   local body = MM.Macros.ResolvedAsMacro(entry.resolved)
   if body then
     return self:ApplyMacroEntry(entry, slot, entry.resolved.dynamicAction, body)
+  end
+
+  -- A restorable macro doesn't exist on this character yet: recreate it in its
+  -- captured scope first, then place it like any other macro.
+  if entry.resolved.kind == "macro" and not entry.resolved.macro then
+    local restored, restoreReason = MM.Macros.RestoreUserMacro(entry.resolved.restore)
+    if not restored then
+      return false, restoreReason
+    end
+    entry.resolved.macro = restored
   end
 
   local pickedUp

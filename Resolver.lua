@@ -75,11 +75,28 @@ local resolvers = {
   end,
 
   macro = function(assignment)
-    local macro, reason = MM.Macros.Resolve(assignment)
-    if not macro then
-      return nil, reason
+    local macro, reason, state = MM.Macros.Resolve(assignment)
+    if macro then
+      return { kind = "macro", macro = macro, label = macro.name }
     end
-    return { kind = "macro", macro = macro, label = macro.name }
+    -- A stored body makes a *missing* macro restorable: apply recreates it in
+    -- its captured scope. An ambiguous name stays an error — creating another
+    -- same-named macro would make it worse. Resolution itself never creates
+    -- anything (it runs in previews and the login change-scan).
+    if state == "missing" and assignment.body and assignment.nameHint then
+      return {
+        kind = "macro",
+        restore = {
+          name = assignment.nameHint,
+          body = assignment.body,
+          scope = assignment.scope,
+          icon = assignment.iconHint,
+        },
+        label = assignment.nameHint,
+        icon = assignment.iconHint,
+      }
+    end
+    return nil, reason
   end,
 
   mount = function(assignment, options)

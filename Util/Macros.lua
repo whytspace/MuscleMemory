@@ -91,10 +91,10 @@ function Macros.FindUniqueByName(name)
   end
 
   if count > 1 then
-    return nil, "macro name is ambiguous"
+    return nil, string.format("macro name %q is ambiguous", name)
   end
 
-  return nil, "macro name not found"
+  return nil, string.format("macro %q not found", name)
 end
 
 -- Best-effort lookup of the macro shown on `slot`. The slot's action id isn't a
@@ -154,7 +154,33 @@ function Macros.Resolve(reference)
     end
   end
 
-  return nil, "macro body hash not found"
+  -- Name fallback: the body changed (edited, or another character's copy of an
+  -- addon-generated macro), but a macro of the captured name still exists —
+  -- bind that; the exact hash matches above always win. Same scope preferred;
+  -- an ambiguous name is a real error the user must resolve, not a guess.
+  -- EnsureMacro passes no name, so generated macros never reuse by name.
+  local name = reference.nameHint or reference.name
+  if name then
+    local inScope, anywhere = {}, {}
+    for _, macro in ipairs(macros) do
+      if macro.name == name then
+        anywhere[#anywhere + 1] = macro
+        if macro.scope == reference.scope then
+          inScope[#inScope + 1] = macro
+        end
+      end
+    end
+    local pool = #inScope > 0 and inScope or anywhere
+    if #pool == 1 then
+      return pool[1]
+    end
+    if #pool > 1 then
+      return nil, string.format("macro name %q is ambiguous", name)
+    end
+    return nil, string.format("macro %q not found", name), "missing"
+  end
+
+  return nil, "macro body hash not found", "missing"
 end
 
 function Macros.Pickup(macro)
@@ -358,6 +384,40 @@ function Macros.Delete(index)
   end
   DeleteMacro(index)
   return true
+end
+
+-- Recreate a user's captured macro (name + body) in its captured scope — a
+-- global macro stays global, a character macro stays per-character. Unlike
+-- EnsureMacro's generated macros these belong to the player: no owner marker,
+-- never touched by orphan cleanup.
+function Macros.RestoreUserMacro(restore)
+  if not (CreateMacro and GetNumMacros) then
+    return nil, "macro API unavailable"
+  end
+  if not restore or not restore.name or not restore.body then
+    return nil, "no stored macro body to restore"
+  end
+
+  local globalCount, characterCount = GetNumMacros()
+  local perCharacter = restore.scope ~= "global"
+  if perCharacter and (characterCount or 0) >= (MAX_CHARACTER_MACROS or 30) then
+    return nil, "character macro slots are full"
+  end
+  if not perCharacter and (globalCount or 0) >= (MAX_ACCOUNT_MACROS or 120) then
+    return nil, "account macro slots are full"
+  end
+
+  local index = CreateMacro(restore.name, restore.icon or MM.MACRO_DYNAMIC_ICON, restore.body, perCharacter)
+  if not index then
+    return nil, "could not create macro"
+  end
+  return {
+    index = index,
+    scope = perCharacter and "character" or "global",
+    name = restore.name,
+    body = restore.body,
+    bodyHash = Macros.HashBody(restore.body),
+  }
 end
 
 -- Reconcile the macro for a slot to `name` + `body`, reusing where possible:
