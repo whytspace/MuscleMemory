@@ -421,6 +421,9 @@ local function paintSlot(icon, layer, slot, suppressSelected, otherLayers)
     else
       icon:SetGlyph("?", colors.goldDim)
     end
+    -- A pinned user macro carries the macro badge too, not just macro-rendered
+    -- dynamic actions.
+    icon:SetMacroBadge(assignment.type == "macro")
     icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
   end
 end
@@ -515,11 +518,11 @@ function LayersTab:BuildLegend(parent)
   -- show the badge tile itself (as it appears on a cell) rather than a
   -- bordered swatch.
   local entries = {
-    { icon = Widgets.ICON.dynamicAction, label = "Dynamic Action-driven" },
-    { icon = Widgets.ICON.macro, label = "Rendered as a macro" },
+    { icon = Widgets.ICON.dynamicAction, label = "Dynamic Action" },
+    { icon = Widgets.ICON.macro, label = "Macro" },
     { label = "Managed (pinned)", newRow = true },
-    { symbol = Widgets.TEX.empty, label = "Empty (clears)" },
     { label = "Managed by another Layer", color = colors.otherLayer, alpha = 0.55 },
+    { symbol = Widgets.TEX.empty, label = "Empty (clears)" },
   }
 
   -- Wrap-flow within the grid's width so the legend never runs into the
