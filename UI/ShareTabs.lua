@@ -120,11 +120,16 @@ local function buildPanels(parent, key)
 
   local columns = { { "layers", "Layers" }, { "actions", "Dynamic Actions" }, { "macros", "Macros" } }
   local left = PAD + columnWidth
-  for _, column in ipairs(columns) do
-    local groove = Widgets.VGroove(parent)
-    groove:SetPoint("TOP", parent, "TOP", 0, -6)
-    groove:SetPoint("BOTTOM", parent, "BOTTOM", 0, 6)
-    groove:SetPoint("LEFT", parent, "LEFT", left + GROOVE_GAP, 0)
+  panels.columnFrames = {}
+  for index, column in ipairs(columns) do
+    -- Only one groove, next to the intro column; the three lists separate
+    -- themselves through their headers and whitespace.
+    if index == 1 then
+      local groove = Widgets.VGroove(parent)
+      groove:SetPoint("TOP", parent, "TOP", 0, -6)
+      groove:SetPoint("BOTTOM", parent, "BOTTOM", 0, 6)
+      groove:SetPoint("LEFT", parent, "LEFT", left + GROOVE_GAP, 0)
+    end
 
     local host = CreateFrame("Frame", nil, parent)
     host:SetPoint("TOPLEFT", parent, "TOPLEFT", left + between, -14)
@@ -152,7 +157,37 @@ local function buildPanels(parent, key)
 
     panels[column[1] .. "Host"] = host
     panels[column[1] .. "List"] = list
+    panels.columnFrames[#panels.columnFrames + 1] = host
     left = left + between + columnWidth
+  end
+
+  -- Empty state replacing the three columns (mirrors the Layers tab's): a
+  -- centered heading + body over the column area, right of the intro.
+  panels.empty = CreateFrame("Frame", nil, parent)
+  panels.empty:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD + columnWidth, 0)
+  panels.empty:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+  panels.empty:Hide()
+
+  panels.empty.heading = Widgets.Label(panels.empty, "GameFontNormalLarge", "", colors.parchment)
+  panels.empty.heading:SetPoint("CENTER", panels.empty, "CENTER", 0, 30)
+
+  panels.empty.body = Widgets.Label(panels.empty, "GameFontHighlightSmall", "")
+  panels.empty.body:SetPoint("TOP", panels.empty.heading, "BOTTOM", 0, -10)
+  panels.empty.body:SetWidth(360)
+  panels.empty.body:SetJustifyH("CENTER")
+  panels.empty.body:SetTextColor(Widgets.unpackColor(colors.faint))
+
+  -- Pass a heading + body to swap the columns for the message; nil restores them.
+  function panels.SetEmpty(heading, body)
+    local isEmpty = heading ~= nil
+    for _, frame in ipairs(panels.columnFrames) do
+      frame:SetShown(not isEmpty)
+    end
+    panels.empty:SetShown(isEmpty)
+    if isEmpty then
+      panels.empty.heading:SetText(heading)
+      panels.empty.body:SetText(body or "")
+    end
   end
 
   return panels
@@ -398,6 +433,22 @@ function ExportTab:Refresh()
 
   self.settingsCheck:SetChecked(not state.excludeSettings)
 
+  -- Nothing to share yet: swap the columns for a pointer to the other tabs.
+  if not next(profile.layers or {}) and not next(profile.dynamicActions or {}) then
+    panels.SetEmpty(
+      "Nothing to export yet",
+      "This profile has no Layers or Dynamic Actions. Create some first — or import someone else's — then come back to share them."
+    )
+    self.exportText = ""
+    self.output.EditBox:SetText("")
+    self.output:Hide()
+    self.outputHeader:Hide()
+    self.outputHint:Hide()
+    self.note:SetText("")
+    return
+  end
+  panels.SetEmpty(nil)
+
   local layersByKey = profile.layers or {}
   local included = function(id)
     return not state.excludedLayers[id]
@@ -462,11 +513,16 @@ function ExportTab:Refresh()
   setHeader(panels.macrosHeader, #macros, #macroItems(layersByKey, everything, actionsByKey, everything))
   self.note:SetText(equipmentSets and "Equipment sets only resolve for users with same-named sets." or "")
 
-  local package, reason = MM.Share:BuildPackage(state.profileId, exportSelection(profile, state))
+  -- The whole "Share This" block only exists while there is a string to copy;
+  -- an empty selection hides it rather than showing an empty box.
+  local package = MM.Share:BuildPackage(state.profileId, exportSelection(profile, state))
   local text = package and MM.Share:Encode(package)
   self.exportText = text or ""
   self.output.EditBox:SetText(text or "")
-  self.outputHint:SetText(text and "Click the string, then press Ctrl+C." or ("|cffd1a05f" .. (reason or "") .. "|r"))
+  self.output:SetShown(text ~= nil)
+  self.outputHeader:SetShown(text ~= nil)
+  self.outputHint:SetShown(text ~= nil)
+  self.outputHint:SetText("Click the string, then press Ctrl+C.")
 end
 
 function ExportTab:Build(parent)
@@ -518,8 +574,8 @@ function ExportTab:Build(parent)
     self.output:SetPoint("BOTTOMRIGHT", self.outputHint, "TOPRIGHT", 0, 8)
     self.output:SetHeight(56)
 
-    local outputHeader = Widgets.SectionHeader(intro, "Share This")
-    outputHeader:SetPoint("BOTTOMLEFT", self.output, "TOPLEFT", 0, 8)
+    self.outputHeader = Widgets.SectionHeader(intro, "Share This")
+    self.outputHeader:SetPoint("BOTTOMLEFT", self.output, "TOPLEFT", 0, 8)
 
     -- Output, not input: edits snap back and focusing selects everything so
     -- Ctrl+C is the only step left.
@@ -556,21 +612,26 @@ function ImportTab:Refresh()
   end
 
   if not package then
-    panels.layersList:SetItems({})
-    panels.actionsList:SetItems({})
-    panels.macrosList:SetItems({})
-    setHeader(panels.layersHeader)
-    setHeader(panels.actionsHeader)
-    setHeader(panels.macrosHeader)
+    -- Nothing decoded yet (or the paste is invalid): swap the columns for a
+    -- message; the paste box on the left stays the call to action.
+    if importState.reason then
+      panels.SetEmpty(
+        "Not a valid sharing string",
+        "The pasted text couldn't be read. Copy the whole string, from !MM: to the end, and paste it again."
+      )
+    else
+      panels.SetEmpty(
+        "Nothing to preview yet",
+        "Paste a sharing string on the left to see the Layers, Dynamic Actions and macros it contains."
+      )
+    end
     self.note:SetText("")
-    self.summary:SetText(
-      importState.reason and ("|cffd1a05f" .. importState.reason .. "|r")
-        or "Paste a sharing string to see what it contains."
-    )
+    self.summary:SetText(importState.reason and ("|cffd1a05f" .. importState.reason .. "|r") or "")
     self.nameBox:SetShown(self.newProfileCheck:GetChecked())
     self.accept:SetEnabled(false)
     return
   end
+  panels.SetEmpty(nil)
 
   local layersByKey = {}
   for _, entry in ipairs(package.layers) do
