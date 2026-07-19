@@ -104,7 +104,8 @@ function UI:CreateFrame()
   end
 
   local frame = CreateFrame("Frame", "MuscleMemoryFrame", UIParent, "PortraitFrameTemplate")
-  frame:SetSize(1000, 714)
+  -- Tall enough for a 15-bar grid plus the legend on the Layers tab.
+  frame:SetSize(1000, 754)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("MEDIUM")
   frame:SetToplevel(true)
