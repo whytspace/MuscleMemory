@@ -2,7 +2,7 @@
 ## Title: Muscle Memory
 ## Notes: Bind buttons by purpose, not just spells.
 ## Author: whytspace
-## Version: 0.8.0
+## Version: 0.9.0
 ## IconTexture: Interface\AddOns\MuscleMemory\Assets\logo
 ## X-Website: https://github.com/whytspace/MuscleMemory/
 ## X-Curse-Project-ID: 1585706
