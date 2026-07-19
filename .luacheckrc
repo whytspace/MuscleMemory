@@ -39,6 +39,7 @@ read_globals = {
   "C_SpellBook",
   "C_Timer",
   "C_TooltipInfo",
+  "C_TransmogOutfitInfo",
   "C_ToyBox",
   "CANCEL",
   "ClearCursor",

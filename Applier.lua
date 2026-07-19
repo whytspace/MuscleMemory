@@ -309,6 +309,8 @@ function Applier:ApplyEntry(entry)
     pickedUp = MM.Flyouts.Pickup(entry.resolved.id)
   elseif entry.resolved.kind == "equipmentset" then
     pickedUp = MM.EquipmentSets.Pickup(entry.resolved.name)
+  elseif entry.resolved.kind == "outfit" then
+    pickedUp = MM.Outfits.Pickup(entry.resolved.id)
   else
     return false, "unsupported resolved action kind " .. tostring(entry.resolved.kind)
   end

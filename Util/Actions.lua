@@ -85,6 +85,11 @@ local function getAssignmentName(assignment)
     return assignment.name
   end
 
+  if assignment.type == "outfit" then
+    local info = MM.Outfits.GetInfo(assignment.id)
+    return info and info.name or assignment.nameHint
+  end
+
   return nil
 end
 
@@ -247,6 +252,11 @@ function Actions.GetAssignmentLabel(assignment)
 
   if assignment.type == "equipmentset" then
     return "Equipment Set: " .. tostring(assignment.name)
+  end
+
+  if assignment.type == "outfit" then
+    local info = MM.Outfits.GetInfo(assignment.id)
+    return "Outfit: " .. tostring(info and info.name or assignment.nameHint or assignment.id)
   end
 
   return assignment.type or "Unknown"
@@ -496,6 +506,10 @@ local function slotMatches(slot, target)
       return false
     end
     return C_EquipmentSet.GetEquipmentSetInfo(info.id) == target.setName
+  end
+
+  if target.kind == "outfit" then
+    return info.actionType == "outfit" and info.id == target.id
   end
 
   return false

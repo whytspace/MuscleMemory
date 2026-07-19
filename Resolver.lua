@@ -118,6 +118,14 @@ local resolvers = {
     return { kind = "equipmentset", name = assignment.name, label = assignment.name, pickupAvailable = true }
   end,
 
+  outfit = function(assignment)
+    local info = MM.Outfits.GetInfo(assignment.id)
+    if not info then
+      return nil, "outfit not found"
+    end
+    return { kind = "outfit", id = assignment.id, label = info.name, icon = info.icon, pickupAvailable = true }
+  end,
+
   battlepet = function(assignment, options)
     local info = MM.BattlePets.GetInfo(assignment.id)
     local available = MM.BattlePets.IsKnown(assignment.id)

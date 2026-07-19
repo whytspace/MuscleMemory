@@ -62,6 +62,16 @@ local function equipmentSetAssignment(id)
   return { type = "equipmentset", name = name }
 end
 
+-- Outfit ids are per-character and can shift, so keep the name as a display
+-- hint (resolution stays by id, like macros keep their nameHint).
+local function outfitAssignment(id)
+  local info = MM.Outfits.GetInfo(id)
+  if not info then
+    return nil, "outfit not found"
+  end
+  return { type = "outfit", id = id, nameHint = info.name }
+end
+
 -- Cursor type -> assignment builder.
 local fromCursor = {
   spell = simple("spell"),
@@ -73,6 +83,7 @@ local fromCursor = {
     return macroAssignment(id, nil)
   end,
   equipmentset = equipmentSetAssignment,
+  outfit = outfitAssignment,
 }
 
 -- Action-slot type -> assignment builder. Mount variants normalise to "mount";
@@ -84,6 +95,7 @@ local fromSlot = {
   summonmount = simple("mount"),
   summonpet = simple("battlepet"),
   equipmentset = equipmentSetAssignment,
+  outfit = outfitAssignment,
   macro = macroAssignment,
   flyout = simple("flyout"),
 }

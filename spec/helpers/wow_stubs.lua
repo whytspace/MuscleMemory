@@ -54,6 +54,7 @@ function Stubs.new()
     battlePets = {}, -- [guid] = { speciesId, customName, name, icon }
     flyouts = {}, -- 1-based list of { id, name, numSlots, isKnown, slots }
     equipmentSets = {}, -- [name] = id
+    outfits = {}, -- [id] = { name, icon }
     globalMacros = {}, -- 1-based list of { name, icon, body }
     charMacros = {}, -- list mapped to indices macroLimit+1 ..
     slots = {}, -- [slot] = { actionType, id, subType, text, texture }
@@ -342,6 +343,17 @@ function Stubs.new()
       end,
     },
 
+    -- Transmog outfits -----------------------------------------------------
+    C_TransmogOutfitInfo = {
+      GetOutfitInfo = function(id)
+        local outfit = world.outfits[id]
+        return outfit and { outfitID = id, name = outfit.name, icon = outfit.icon }
+      end,
+      PickupOutfit = function(id)
+        world.cursor = { type = "outfit", id = id }
+      end,
+    },
+
     -- Macros ---------------------------------------------------------------
     MAX_ACCOUNT_MACROS = world.macroLimit,
     MAX_CHARACTER_MACROS = world.charMacroLimit,
@@ -527,6 +539,11 @@ end
 
 function Stubs:setEquipmentSet(name, id)
   self.world.equipmentSets[name] = id or (#self.world.equipmentSets + 100)
+  return self
+end
+
+function Stubs:setOutfit(id, outfit)
+  self.world.outfits[id] = outfit
   return self
 end
 

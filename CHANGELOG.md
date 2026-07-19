@@ -4,6 +4,7 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[New]** Transmog outfits on action bars are now captured and restored.
 - **[Change]** Export and import are now their own tabs, previewing Layers, Dynamic Actions, and macros side by side.
 - **[Fix]** Capturing an equipment set from an action bar slot works again.
 
