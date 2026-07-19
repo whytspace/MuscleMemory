@@ -47,10 +47,17 @@ local function macroAssignment(index, slot)
   }
 end
 
+-- The cursor carries the numeric set id, but an action slot reports the set's
+-- NAME through GetActionInfo (verified in 12.0), so accept both.
 local function equipmentSetAssignment(id)
-  local name = C_EquipmentSet and C_EquipmentSet.GetEquipmentSetInfo and C_EquipmentSet.GetEquipmentSetInfo(id)
+  local name
+  if type(id) == "string" and MM.EquipmentSets.Exists(id) then
+    name = id
+  elseif type(id) == "number" and C_EquipmentSet and C_EquipmentSet.GetEquipmentSetInfo then
+    name = C_EquipmentSet.GetEquipmentSetInfo(id)
+  end
   if not name then
-    return nil, "equipment set capture is unavailable"
+    return nil, "equipment set not found"
   end
   return { type = "equipmentset", name = name }
 end

@@ -39,6 +39,20 @@ describe("Capture", function()
       assert.same({ type = "equipmentset", name = "Tank" }, MM.Capture:FromSlot(1))
     end)
 
+    it("captures an equipment set slot that reports the set name instead of its id", function()
+      -- 12.0 action slots put the set NAME in GetActionInfo's id field.
+      stubs:setEquipmentSet("Tank", 7)
+      stubs:setSlot(1, { actionType = "equipmentset", id = "Tank" })
+      assert.same({ type = "equipmentset", name = "Tank" }, MM.Capture:FromSlot(1))
+    end)
+
+    it("rejects an equipment set name that does not exist", function()
+      stubs:setSlot(1, { actionType = "equipmentset", id = "Healer" })
+      local assignment, reason = MM.Capture:FromSlot(1)
+      assert.is_nil(assignment)
+      assert.equals("equipment set not found", reason)
+    end)
+
     it("captures a macro with body hash and hints", function()
       stubs:addGlobalMacro({ name = "Heal", icon = 9, body = "/cast Heal" })
       stubs:setSlot(1, { actionType = "macro", id = 1 })

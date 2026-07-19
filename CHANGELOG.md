@@ -5,6 +5,7 @@ All notable player-facing changes are recorded here.
 ## Unreleased
 
 - **[Change]** Export and import are now their own tabs, previewing Layers, Dynamic Actions, and macros side by side.
+- **[Fix]** Capturing an equipment set from an action bar slot works again.
 
 ## 0.8.0 - 2026-07-19
 

@@ -485,7 +485,14 @@ local function slotMatches(slot, target)
   end
 
   if target.kind == "equipmentset" then
-    if info.actionType ~= "equipmentset" or not C_EquipmentSet or not C_EquipmentSet.GetEquipmentSetInfo then
+    if info.actionType ~= "equipmentset" then
+      return false
+    end
+    -- The slot reports either the set's name (12.0) or its numeric id.
+    if type(info.id) == "string" then
+      return info.id == target.setName
+    end
+    if not C_EquipmentSet or not C_EquipmentSet.GetEquipmentSetInfo then
       return false
     end
     return C_EquipmentSet.GetEquipmentSetInfo(info.id) == target.setName
