@@ -149,18 +149,23 @@ end
 
 -- DynamicAction helpers -------------------------------------------------------------
 
+-- Custom ("your") dynamic actions and the predefined ones as separate sorted
+-- lists, so the bind list can section them like the Dynamic Actions rail.
 local function dynamicActionList()
-  local dynamicActions = {}
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
-    dynamicActions[#dynamicActions + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
-  end
+  local custom = {}
   for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
-    dynamicActions[#dynamicActions + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
+    custom[#custom + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
   end
-  table.sort(dynamicActions, function(left, right)
+  local predefined = {}
+  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
+    predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
+  end
+  local byName = function(left, right)
     return left.name < right.name
-  end)
-  return dynamicActions
+  end
+  table.sort(custom, byName)
+  table.sort(predefined, byName)
+  return custom, predefined
 end
 
 -- Layer CRUD ----------------------------------------------------------------
@@ -735,11 +740,16 @@ end
 
 -- Initializer for a "Bind to a Dynamic Action" row (recycled by Widgets.DataList). The
 -- click reads the live selected layer/slot, since the list outlives any rebuild.
+-- A `header` item renders as a plain section title instead — rows are pooled
+-- across both kinds, so each pass shows/hides the other kind's children.
 local function dynamicActionBindRowInit(row, data)
   local dynamicAction = data.dynamicAction
   if not row.mmInit then
     row.mmInit = true
     Widgets.decorateRow(row)
+
+    row.headerLabel = Widgets.SectionHeader(row, "")
+    row.headerLabel:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 4)
 
     row.tile = Widgets.Icon(row, 24)
     row.tile:SetPoint("LEFT", row, "LEFT", 0, 0)
@@ -780,6 +790,19 @@ local function dynamicActionBindRowInit(row, data)
   end
 
   row.data = data
+  if data.header then
+    row:EnableMouse(false)
+    row.headerLabel:SetText(data.header)
+    row.headerLabel:Show()
+    row.tile:Hide()
+    row.nameLabel:SetText("")
+    row.resolution:SetText("")
+    return
+  end
+  row:EnableMouse(true)
+  row.headerLabel:Hide()
+  row.tile:Show()
+
   local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = dynamicAction.source, id = dynamicAction.id })
   row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
   local resolved = resolveDynamicAction(dynamicAction.source, dynamicAction.id)
@@ -904,8 +927,15 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   list.scrollBox:SetPoint("TOPLEFT", dynamicActionHeader, "BOTTOMLEFT", 0, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", stopButton, "TOPRIGHT", 0, 10)
 
-  local items = {}
-  for _, dynamicAction in ipairs(dynamicActionList()) do
+  -- Two sections mirroring the Dynamic Actions rail, so two dynamic actions
+  -- sharing a name are still distinguishable here.
+  local custom, predefined = dynamicActionList()
+  local items = { { header = "Your Dynamic Actions", extent = 22 } }
+  for _, dynamicAction in ipairs(custom) do
+    items[#items + 1] = { dynamicAction = dynamicAction }
+  end
+  items[#items + 1] = { header = "Predefined", extent = 30 }
+  for _, dynamicAction in ipairs(predefined) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end
   list:SetItems(items)
