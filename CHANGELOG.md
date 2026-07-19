@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** Warlock Interrupt now uses Command Demon, so it works with any summoned demon.
+
 ## 0.6.1 - 2026-07-12
 
 - **[Fix]** Added missing `/mm config suggest` command.

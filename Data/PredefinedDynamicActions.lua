@@ -68,7 +68,9 @@ MM.PredefinedDynamicActions = {
       Spell(S.MUZZLE),
       Spell(S.SPEAR_HAND_STRIKE),
       Spell(S.SILENCE),
-      Spell(S.SPELL_LOCK),
+      -- Base Command Demon: casts the summoned demon's ability (Spell Lock,
+      -- Axe Toss, ...) and survives pet switches, like Command Pet for hunters.
+      Spell(S.COMMAND_DEMON),
     },
   },
   stun = {
