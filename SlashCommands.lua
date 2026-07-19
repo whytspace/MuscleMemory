@@ -386,6 +386,18 @@ local function configSuggest(args)
   report("suggest set to " .. args[1] .. ".", MM.DB:SetSuggestMode(args[1]))
 end
 
+local function openExport()
+  if MM.ui.ShareDialogs then
+    MM.ui.ShareDialogs:OpenExport()
+  end
+end
+
+local function openImport()
+  if MM.ui.ShareDialogs then
+    MM.ui.ShareDialogs:OpenImport()
+  end
+end
+
 local function toggleDebug()
   local root = MM.DB:GetRoot()
   root.debug = not root.debug
@@ -465,6 +477,8 @@ local tree = {
     },
     preview = { desc = "preview the active profile", run = preview },
     apply = { desc = "apply the active profile", run = apply },
+    export = { desc = "share layers and dynamic actions as a copyable string", run = openExport },
+    import = { desc = "import a sharing string", run = openImport },
     shot = {
       desc = "capture transparent marketing screenshots (maintainer tool)",
       commands = {
@@ -476,7 +490,7 @@ local tree = {
         },
         view = {
           desc = "capture a single view",
-          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles|suggestion>",
+          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles|export|import|suggestion>",
           run = function(args)
             MM.ScreenshotTour:RunOne(args[1])
           end,

@@ -238,9 +238,13 @@ local function layerRowInit(row, data)
       end
     end)
 
+    -- Icon-only: the rail is too narrow for the word; the grid title carries it.
+    row.pill = Widgets.Pill(row, nil, Widgets.ICON.import)
+    row.pill:SetPoint("RIGHT", row.check, "LEFT", -2, 0)
+
     row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
     row.nameLabel:SetPoint("LEFT", row.order, "RIGHT", 8, 0)
-    row.nameLabel:SetPoint("RIGHT", row.check, "LEFT", -4, 0)
+    row.nameLabel:SetPoint("RIGHT", row.pill, "LEFT", -3, 0)
     row.nameLabel:SetJustifyH("LEFT")
     row.nameLabel:SetWordWrap(false)
 
@@ -289,6 +293,7 @@ local function layerRowInit(row, data)
   row.order:SetTextColor(Widgets.unpackColor(active and colors.gold or colors.faint))
 
   row.check:SetChecked(entry.enabled)
+  row.pill:SetActive(MM.Share:IsRecentImport("layers", MM.DB:GetActiveProfileId(), entry.id))
 
   -- A conditioned layer whose conditions don't match this character won't apply,
   -- so it reads as inactive (like a disabled one).
@@ -585,6 +590,9 @@ function LayersTab:BuildGrid(parent, layerId, layer)
     grid.title = Widgets.Title(grid.frame, "")
     grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 12, -2)
 
+    grid.pill = Widgets.Pill(grid.frame, "Imported", Widgets.ICON.import)
+    grid.pill:SetPoint("LEFT", grid.title, "RIGHT", 8, 0)
+
     grid.delete = Widgets.Button(grid.frame, "Delete", 60, function()
       local id = MM.DB:GetSelectedLayerId()
       local m = MM.DB:GetLayer(id)
@@ -629,6 +637,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
   grid.frame:Show()
 
   grid.title:SetText(layer and layer.name or layerId)
+  grid.pill:SetActive(MM.Share:IsRecentImport("layers", MM.DB:GetActiveProfileId(), layerId))
   if MM.Tables.Count(MM.DB:Layers() or {}) <= 1 then
     grid.delete:Disable()
   else

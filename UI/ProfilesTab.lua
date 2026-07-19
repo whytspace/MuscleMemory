@@ -180,11 +180,45 @@ function ProfilesTab:Build(parent)
   self.manageHost = CreateFrame("Frame", nil, column)
   self.manageHost:SetPoint("TOPLEFT", manageHeader, "BOTTOMLEFT", 0, -10)
   self.manageHost:SetPoint("RIGHT", column, "RIGHT", -20, 0)
-  self.manageHost:SetHeight(400)
+  self.manageHost:SetHeight(280)
 
   -- New profile button, pushed to the far right of the manage-header row.
   self.newButton = Widgets.Button(column, "+ New profile", 130, newProfile)
   self.newButton:SetPoint("BOTTOMRIGHT", self.manageHost, "TOPRIGHT", 0, 8)
+
+  -- Sharing section, divided from the manage list like the selectors above it
+  -- (same full-bleed rule, same offsets).
+  local shareRule = Widgets.Hairline(column, true)
+  shareRule:SetPoint("TOPLEFT", self.manageHost, "BOTTOMLEFT", -31, -20)
+  shareRule:SetPoint("TOPRIGHT", self.manageHost, "BOTTOMRIGHT", 51, -20)
+
+  local shareHeader = Widgets.SectionHeader(column, "Sharing")
+  shareHeader:SetPoint("TOPLEFT", self.manageHost, "BOTTOMLEFT", 0, -54)
+  local shareHint = Widgets.Label(
+    column,
+    "GameFontDisableSmall",
+    "Export layers and dynamic actions as a copyable string, or import someone else's."
+  )
+  shareHint:SetPoint("TOPLEFT", shareHeader, "BOTTOMLEFT", 0, -4)
+
+  self.importButton = Widgets.Button(column, "Import", 90, function()
+    MM.ui.ShareDialogs:OpenImport()
+  end)
+  self.importButton:SetPoint("TOPRIGHT", self.manageHost, "BOTTOMRIGHT", 0, -48)
+  -- Shift the label right by half the icon block so icon + text sit centered
+  -- as one unit instead of the icon hanging off a centered label.
+  local importText = self.importButton:GetFontString()
+  importText:ClearAllPoints()
+  importText:SetPoint("CENTER", self.importButton, "CENTER", 8, 0)
+  local importIcon = self.importButton:CreateTexture(nil, "ARTWORK")
+  importIcon:SetSize(12, 12)
+  importIcon:SetTexture(Widgets.ICON.import)
+  importIcon:SetPoint("RIGHT", importText, "LEFT", -4, 0)
+
+  self.exportButton = Widgets.Button(column, "Export", 90, function()
+    MM.ui.ShareDialogs:OpenExport()
+  end)
+  self.exportButton:SetPoint("RIGHT", self.importButton, "LEFT", -6, 0)
 
   self:Refresh()
 end
@@ -213,6 +247,11 @@ local function buildRows(self)
 
     local name = Widgets.Label(row, "GameFontHighlight", profile.name, colors.parchment)
     name:SetPoint("LEFT", row, "LEFT", 8, 0)
+
+    if MM.Share:IsImportedProfile(id) then
+      local pill = Widgets.Pill(row, "Imported")
+      pill:SetPoint("LEFT", name, "RIGHT", 8, 0)
+    end
 
     local delete = Widgets.Button(row, "Delete", 74, function()
       deleteProfile(id)

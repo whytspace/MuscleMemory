@@ -23,6 +23,11 @@ local function uniqueId(name, fallback, taken)
   return id
 end
 
+-- Exposed for modules that insert entries directly (Share's import re-keying).
+function DB:UniqueId(name, fallback, taken)
+  return uniqueId(name, fallback, taken)
+end
+
 -- Find an entry id in `map` by exact id or case-insensitive name.
 local function matchByName(map, target)
   if not target or target == "" then

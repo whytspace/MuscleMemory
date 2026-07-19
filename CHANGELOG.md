@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[New]** Share your setup: export layers, dynamic actions, or whole profiles as a copyable string, and import shared strings into the current or a new profile (`/mm export`, `/mm import`). Imports always create new entries and are tagged until the next reload.
+
 ## 0.7.0 - 2026-07-19
 
 - **[Change]** Slot editor bind list is split into personal and predefined sections.

@@ -243,6 +243,58 @@ local function buildSteps(handle)
       end,
     },
     {
+      key = "export",
+      label = "Export dialog",
+      -- The dialog overlay is FULLSCREEN_DIALOG; capture its box like the modal.
+      raise = false,
+      arrange = function()
+        MM.UI:SelectTab("profiles")
+        MM.ui.ShareDialogs:OpenExport()
+        local dialog = MM.ui.ShareDialogs.exportDialog
+        if not dialog then
+          return nil
+        end
+        dialog.shade:SetAlpha(0)
+        return dialog.box
+      end,
+      after = function()
+        local dialog = MM.ui.ShareDialogs.exportDialog
+        if dialog then
+          dialog.shade:SetAlpha(1)
+          dialog:Hide()
+        end
+      end,
+    },
+    {
+      key = "import",
+      label = "Import dialog — decoded preview",
+      raise = false,
+      arrange = function()
+        -- A real sharing string of the showcase profile, so the preview shows
+        -- decoded layers and dynamic actions rather than an empty paste box.
+        local package = MM.Share:BuildPackage(MM.DB:GetActiveProfileId())
+        local text = package and MM.Share:Encode(package)
+        if not text then
+          return nil
+        end
+        MM.ui.ShareDialogs:OpenImport()
+        local dialog = MM.ui.ShareDialogs.importDialog
+        if not dialog then
+          return nil
+        end
+        dialog.input.EditBox:SetText(text)
+        dialog.shade:SetAlpha(0)
+        return dialog.box
+      end,
+      after = function()
+        local dialog = MM.ui.ShareDialogs.importDialog
+        if dialog then
+          dialog.shade:SetAlpha(1)
+          dialog:Hide()
+        end
+      end,
+    },
+    {
       key = "suggestion",
       label = "Bind suggestion dialog",
       -- The modal's overlay is FULLSCREEN_DIALOG, already above the backdrop;
@@ -354,7 +406,7 @@ end
 -- Capture a single view (faster iteration). Same build/restore, one matte.
 function Tour:RunOne(key)
   if not key then
-    MM:Warn("usage: /mm shot view <layers|dynamic-actions|macro-editor|macro-window|profiles|suggestion>")
+    MM:Warn("usage: /mm shot view <layers|dynamic-actions|macro-editor|macro-window|profiles|export|import|suggestion>")
     return
   end
   start(self, function(handle)

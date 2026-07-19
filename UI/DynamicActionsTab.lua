@@ -202,9 +202,14 @@ local function dynamicActionRowInit(row, data)
     row.tile = Widgets.Icon(row, 30)
     row.tile:SetPoint("LEFT", row, "LEFT", 8, 0)
 
+    -- Icon-only: the rail is too narrow for the word; the centre title carries it.
+    row.pill = Widgets.Pill(row, nil, Widgets.ICON.import)
+    row.pill:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.pill:SetPoint("TOP", row, "TOP", 0, -8)
+
     row.nameLabel = Widgets.Label(row, "GameFontHighlight", "")
     row.nameLabel:SetPoint("TOPLEFT", row.tile, "TOPRIGHT", 9, -1)
-    row.nameLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.nameLabel:SetPoint("RIGHT", row.pill, "LEFT", -3, 0)
     row.nameLabel:SetJustifyH("LEFT")
     row.nameLabel:SetWordWrap(false)
 
@@ -247,6 +252,7 @@ local function dynamicActionRowInit(row, data)
     row.tile:Hide()
     row.nameLabel:SetText("")
     row.sub:SetText("")
+    row.pill:SetActive(false)
     return
   end
   row:EnableMouse(true)
@@ -267,6 +273,11 @@ local function dynamicActionRowInit(row, data)
     row.tile:SetSymbol(Widgets.TEX.warning)
     row.tile:SetBorder(1, colors.warn, 0.7)
   end
+
+  row.pill:SetActive(
+    dynamicAction.source == "custom"
+      and MM.Share:IsRecentImport("dynamicActions", MM.DB:GetActiveProfileId(), dynamicAction.id)
+  )
 
   row.nameLabel:SetText(dynamicAction.name)
   if active then
@@ -459,6 +470,12 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
 
   local title = Widgets.Title(center, dynamicAction and dynamicAction.name or "\226\128\148")
   title:SetPoint("TOPLEFT", center, "TOPLEFT", 12, -2)
+
+  local pill = Widgets.Pill(center, "Imported", Widgets.ICON.import)
+  pill:SetPoint("LEFT", title, "RIGHT", 8, 0)
+  pill:SetActive(
+    ref.source == "custom" and MM.Share:IsRecentImport("dynamicActions", MM.DB:GetActiveProfileId(), ref.id)
+  )
 
   local locked = ref.source == "predefined"
   if locked then

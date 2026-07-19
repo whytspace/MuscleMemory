@@ -7,7 +7,8 @@ ignore = {
 }
 
 exclude_files = {
-  ".devcontainer/**"
+  ".devcontainer/**",
+  "Libs/**"
 }
 
 -- Test files run under Busted, which injects describe/it/assert/spy/etc.
@@ -26,6 +27,7 @@ globals = {
 
 read_globals = {
   "ADDON_LOADED",
+  "LibStub",
   "C_ActionBar",
   "C_AddOns",
   "C_AssistedCombat",

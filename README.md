@@ -40,6 +40,8 @@ has for the job. One binding, every class.
 - **Scriptable.** Everything in the window is also a slash command 😉
 - **Separate setups.** Profiles keep independent configurations you can switch at once — an
   account-wide default, or a dedicated one per character.
+- **Share your setup.** Export layers, dynamic actions, or whole profiles as a copyable string;
+  imports preview what's inside and always create new entries, never overwrite yours.
 
 ## Layers, not snapshots
 
@@ -101,6 +103,7 @@ or `/mm <topic> help`, to explore it. The essentials:
 - `/mm preview` — show what Apply would change, without touching your bars
 - `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
 - `/mm profile` · `/mm layer` · `/mm action` — manage profiles, layers, and dynamic actions
+- `/mm export` · `/mm import` — share your setup as a copyable string
 
 ## Screenshots
 

@@ -75,6 +75,9 @@ function Stubs.new()
   end
 
   self.globals = {
+    -- WoW's global string aliases, used by the vendored libraries (LibStub).
+    strmatch = string.match,
+
     -- Identity -------------------------------------------------------------
     UnitName = function(unit)
       return unit == "player" and world.playerName or nil

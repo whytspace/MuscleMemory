@@ -44,6 +44,7 @@ Widgets.ICON = {
   layers = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-layers",
   dynamicAction = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-dynamicaction",
   macro = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-macro",
+  import = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-import",
 }
 
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
@@ -155,6 +156,58 @@ function Widgets.Checkbox(parent, checked, onClick)
     box:SetScript("OnClick", onClick)
   end
   return box
+end
+
+-- A small gold tag pill: text, an icon glyph, or both (icon-only fits where a
+-- narrow rail has no room for a word). Toggle with :SetActive — an inactive
+-- pill collapses to 1px but keeps its anchors, so neighbours can anchor to it
+-- unconditionally in recycled rows.
+function Widgets.Pill(parent, text, iconTexture)
+  local pill = CreateFrame("Frame", nil, parent)
+  pill:SetHeight(14)
+
+  local bg = pill:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  bg:SetColorTexture(unpackColor(Widgets.colors.gold, 0.18))
+
+  local icon
+  if iconTexture then
+    icon = pill:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(10, 10)
+    icon:SetTexture(iconTexture)
+  end
+
+  local hasText = text ~= nil and text ~= ""
+  local label = Widgets.Label(pill, "GameFontNormalSmall", string.upper(text or ""), Widgets.colors.gold)
+  if icon and hasText then
+    icon:SetPoint("LEFT", pill, "LEFT", 5, 0)
+    label:SetPoint("LEFT", icon, "RIGHT", 3, 0)
+  elseif icon then
+    icon:SetPoint("CENTER", 0, 0)
+  else
+    label:SetPoint("CENTER", 0, 0)
+  end
+  pill.bg, pill.label, pill.icon = bg, label, icon
+
+  function pill:SetActive(active)
+    self.bg:SetShown(active)
+    self.label:SetShown(active and hasText)
+    if self.icon then
+      self.icon:SetShown(active)
+    end
+    if not active then
+      self:SetWidth(1)
+    elseif self.icon and hasText then
+      self:SetWidth(5 + 10 + 3 + self.label:GetStringWidth() + 6)
+    elseif self.icon then
+      self:SetWidth(18)
+    else
+      self:SetWidth(self.label:GetStringWidth() + 12)
+    end
+  end
+
+  pill:SetActive(true)
+  return pill
 end
 
 -- A dark inset panel — the rails and content backgrounds sit on these.
