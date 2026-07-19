@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Change]** Export and import are now their own tabs, previewing Layers, Dynamic Actions, and macros side by side.
+
 ## 0.8.0 - 2026-07-19
 
 - **[New]** Share your setup: export layers, dynamic actions, or whole profiles as a copyable string, and import shared strings into the current or a new profile (`/mm export`, `/mm import`). Imports always create new entries and are tagged until the next reload.

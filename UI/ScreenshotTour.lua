@@ -244,31 +244,15 @@ local function buildSteps(handle)
     },
     {
       key = "export",
-      label = "Export dialog",
-      -- The dialog overlay is FULLSCREEN_DIALOG; capture its box like the modal.
-      raise = false,
+      label = "Export tab",
       arrange = function()
-        MM.UI:SelectTab("profiles")
-        MM.ui.ShareDialogs:OpenExport()
-        local dialog = MM.ui.ShareDialogs.exportDialog
-        if not dialog then
-          return nil
-        end
-        dialog.shade:SetAlpha(0)
-        return dialog.box
-      end,
-      after = function()
-        local dialog = MM.ui.ShareDialogs.exportDialog
-        if dialog then
-          dialog.shade:SetAlpha(1)
-          dialog:Hide()
-        end
+        MM.UI:SelectTab("export")
+        return MM.UI.frame
       end,
     },
     {
       key = "import",
-      label = "Import dialog — decoded preview",
-      raise = false,
+      label = "Import tab — decoded preview",
       arrange = function()
         -- A real sharing string of the showcase profile, so the preview shows
         -- decoded layers and dynamic actions rather than an empty paste box.
@@ -277,21 +261,12 @@ local function buildSteps(handle)
         if not text then
           return nil
         end
-        MM.ui.ShareDialogs:OpenImport()
-        local dialog = MM.ui.ShareDialogs.importDialog
-        if not dialog then
-          return nil
-        end
-        dialog.input.EditBox:SetText(text)
-        dialog.shade:SetAlpha(0)
-        return dialog.box
+        MM.UI:SelectTab("import")
+        MM.ui.ImportTab:SetString(text)
+        return MM.UI.frame
       end,
       after = function()
-        local dialog = MM.ui.ShareDialogs.importDialog
-        if dialog then
-          dialog.shade:SetAlpha(1)
-          dialog:Hide()
-        end
+        MM.ui.ImportTab:SetString("")
       end,
     },
     {

@@ -45,6 +45,7 @@ Widgets.ICON = {
   dynamicAction = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-dynamicaction",
   macro = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-macro",
   import = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-import",
+  export = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-export",
 }
 
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
@@ -73,6 +74,9 @@ function Widgets.SectionHeader(parent, text)
   local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   label:SetText(string.upper(text or ""))
   label:SetTextColor(unpackColor(Widgets.colors.goldDim))
+  -- Left-justified: an auto-sized FontString centers its glyphs inside a
+  -- pixel-rounded rect, which makes changing text (live counters) wobble.
+  label:SetJustifyH("LEFT")
   return label
 end
 

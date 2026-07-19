@@ -223,8 +223,13 @@ function DB:GetProfileList()
   for id, profile in pairs(self:GetRoot().profiles) do
     list[#list + 1] = { id = id, name = profile.name or id }
   end
+  -- Duplicate names are legal (ids are the identity), so tie-break on the id
+  -- to keep the order stable across rebuilds.
   table.sort(list, function(left, right)
-    return left.name < right.name
+    if left.name ~= right.name then
+      return left.name < right.name
+    end
+    return left.id < right.id
   end)
   return list
 end

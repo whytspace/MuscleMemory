@@ -387,15 +387,13 @@ local function configSuggest(args)
 end
 
 local function openExport()
-  if MM.ui.ShareDialogs then
-    MM.ui.ShareDialogs:OpenExport()
-  end
+  MM:Open()
+  MM.UI:SelectTab("export")
 end
 
 local function openImport()
-  if MM.ui.ShareDialogs then
-    MM.ui.ShareDialogs:OpenImport()
-  end
+  MM:Open()
+  MM.UI:SelectTab("import")
 end
 
 local function toggleDebug()

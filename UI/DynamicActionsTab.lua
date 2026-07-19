@@ -30,8 +30,13 @@ local function dynamicActionList()
   for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
     predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
   end
+  -- Duplicate names are legal for custom actions; tie-break on the id so the
+  -- rail order is stable across rebuilds.
   local byName = function(left, right)
-    return left.name < right.name
+    if left.name ~= right.name then
+      return left.name < right.name
+    end
+    return left.id < right.id
   end
   table.sort(custom, byName)
   table.sort(predefined, byName)
