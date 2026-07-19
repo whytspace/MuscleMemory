@@ -6,6 +6,7 @@ All notable player-facing changes are recorded here.
 
 - **[Change]** Slot editor bind list is split into personal and predefined sections.
 - **[Fix]** Warlock Interrupt now uses Command Demon, so it works with any summoned demon.
+- **[Fix]** Capturing a generated macro now suggests its Dynamic Action.
 
 ## 0.6.1 - 2026-07-12
 

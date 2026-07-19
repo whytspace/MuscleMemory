@@ -169,17 +169,33 @@ end
 -- All dynamic actions (predefined and the active profile's own) that currently
 -- resolve to the given assignment on this character, as sorted `{ source, id,
 -- name }` references. Backs the bind-time suggestion: "this spell is covered by
--- a dynamic action — bind that instead?". Only id-carrying kinds can match, so
--- macro and equipment-set assignments never suggest.
+-- a dynamic action — bind that instead?". A captured macro matches the dynamic
+-- action that generated it (same rendered body, or the owner-marked name after
+-- the resolution changed); equipment sets never suggest.
 function Resolver:FindDynamicActionsResolvingTo(assignment)
-  if not assignment or not assignment.id then
+  if not assignment or not (assignment.id or assignment.type == "macro") then
     return {}
   end
 
   local matches = {}
   local function check(source, id, dynamicAction)
     local resolved = self:ResolveAction({ type = "dynamicaction", source = source, id = id })
-    if resolved and resolved.kind == assignment.type and resolved.id == assignment.id then
+    if not resolved then
+      return
+    end
+    local match
+    if assignment.type == "macro" then
+      local body = MM.Macros.ResolvedAsMacro(resolved)
+      match = (body and MM.Macros.HashBody(body) == assignment.bodyHash)
+        or (
+          body
+          and MM.Macros.IsOwned({ name = assignment.nameHint })
+          and MM.Macros.MacroName(dynamicAction) == assignment.nameHint
+        )
+    else
+      match = resolved.kind == assignment.type and resolved.id == assignment.id
+    end
+    if match then
       matches[#matches + 1] = { source = source, id = id, name = dynamicAction.name or id }
     end
   end
