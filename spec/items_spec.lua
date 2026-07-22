@@ -69,9 +69,15 @@ describe("Items", function()
       assert.is_true(MM.Items.IsUsable(6948))
     end)
 
-    it("is false when out of level range or class (IsUsableItem says so)", function()
-      stubs:setItem(40772, { usable = false })
+    it("is false when the tooltip shows an unmet level or class requirement", function()
+      stubs:setItem(40772, { requirement = "Requires Level 80" })
       assert.is_false(MM.Items.IsUsable(40772))
+    end)
+
+    it("is true for an item the player doesn't own but has no unmet requirement", function()
+      -- Ownership ignored: a usable item you're out of still counts.
+      stubs:setItem(21215, { name = "Fruitcake", count = 0 })
+      assert.is_true(MM.Items.IsUsable(21215))
     end)
 
     it("is false for a profession the player lacks, despite IsUsableItem (the red tooltip line)", function()
@@ -92,6 +98,12 @@ describe("Items", function()
     it("is false for a learned toy the Toy Box reports unusable", function()
       stubs:setItem(212500, { count = 0, isToy = true, toyUsable = false })
       assert.is_false(MM.Items.IsUsable(212500))
+    end)
+
+    it("is false for an unlearned toy (recognised as a toy, but not in the Toy Box)", function()
+      -- A toy must be learned to place; unlearned -> falls through.
+      stubs:setItem(182694, { count = 0, toy = true })
+      assert.is_false(MM.Items.IsUsable(182694))
     end)
   end)
 

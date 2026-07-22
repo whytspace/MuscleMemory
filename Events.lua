@@ -41,12 +41,10 @@ function Events:PromptApplyIfChanged()
   end
 end
 
--- Login fires these events in a burst while pet, spell and action-bar data
--- stream in. An early read can briefly show a slot as a restorable change
--- before the data settles (e.g. a pet ability that is actually unavailable).
--- Trailing-debounce the burst so we evaluate once it quiesces, matching what
--- /mm preview reports.
-local REEVALUATE_DELAY = 1.0
+-- Login and spec swaps stream spell/item/bar data in a burst; an early read can
+-- misjudge a slot before item tooltips load. Trailing-debounce a few seconds so
+-- we evaluate once it settles.
+local REEVALUATE_DELAY = 3.0
 local reevaluateGen = 0
 
 local function reevaluateProfile()

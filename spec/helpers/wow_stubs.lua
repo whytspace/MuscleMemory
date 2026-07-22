@@ -224,6 +224,14 @@ function Stubs.new()
       return item ~= nil and item.isToy == true
     end,
     C_ToyBox = {
+      -- Recognises a toy id whether or not it's learned (isToy = learned).
+      GetToyInfo = function(id)
+        local item = world.items[id]
+        if item and item.toy then
+          return id
+        end
+        return nil
+      end,
       IsToyUsable = function(id)
         local item = world.items[id]
         return item ~= nil and item.isToy == true and item.toyUsable ~= false
@@ -495,6 +503,8 @@ function Stubs:setItem(id, opts)
     count = opts.count or 0,
     equipped = opts.equipped == true,
     isToy = opts.isToy == true,
+    -- A toy id GetToyInfo recognises; a learned toy (isToy) is always one.
+    toy = opts.toy == true or opts.isToy == true,
     toyUsable = opts.toyUsable ~= false,
     usable = opts.usable ~= false,
     requirement = opts.requirement, -- e.g. "Requires Engineering"; shows as a red tooltip line

@@ -57,13 +57,21 @@ describe("Resolver", function()
   end)
 
   describe("item / mount / equipmentset", function()
-    it("resolves an existing but unowned item as unavailable", function()
+    it("resolves an unowned item as placeable (placed grey, not skipped)", function()
       stubs:setItem(6948, { name = "HS", icon = 134414, count = 0 })
       local resolved = MM.Resolver:ResolveAction({ type = "item", id = 6948 })
       assert.equals("item", resolved.kind)
       assert.equals("HS", resolved.label)
       assert.equals(134414, resolved.icon)
-      assert.is_false(resolved.pickupAvailable)
+      assert.is_true(resolved.pickupAvailable)
+    end)
+
+    it("resolves a not-yet-cached item on its id alone (stable precedence)", function()
+      -- Uncached (no setItem) must still resolve placeable, so precedence is stable.
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "item", id = 241301 })
+      assert.is_nil(reason)
+      assert.equals("item", resolved.kind)
+      assert.is_true(resolved.pickupAvailable)
     end)
 
     it("refuses an unowned item when availability is required", function()
@@ -74,17 +82,18 @@ describe("Resolver", function()
     end)
 
     it("refuses an owned but unusable item (out of level range / wrong profession)", function()
-      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, usable = false })
+      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, requirement = "Requires Level 80" })
       local resolved, reason = MM.Resolver:ResolveAction({ type = "item", id = 40772 }, { requireAvailable = true })
       assert.is_nil(resolved)
       assert.equals("item not usable", reason)
     end)
 
-    it("marks an owned but unusable item as unavailable for pickup", function()
-      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, usable = false })
-      local resolved = MM.Resolver:ResolveAction({ type = "item", id = 40772 })
-      assert.equals("item", resolved.kind)
-      assert.is_false(resolved.pickupAvailable)
+    it("does not resolve an unusable item (red requirement) so it falls through", function()
+      -- Unusable (owned or not) -> nil, so it yields to the layer below.
+      stubs:setItem(40772, { name = "Gnomish Army Knife", count = 1, requirement = "Requires Engineering" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "item", id = 40772 })
+      assert.is_nil(resolved)
+      assert.equals("item not usable", reason)
     end)
 
     it("resolves an uncollected mount as unavailable", function()
@@ -182,7 +191,10 @@ describe("Resolver", function()
 
     it("skips a rez item the player owns but cannot use (out of level range / no engineering)", function()
       stubs.world.class = "MAGE"
-      stubs:setItem(I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q3, { name = "Jumper Cables", count = 1, usable = false })
+      stubs:setItem(
+        I.CONVINCINGLY_REALISTIC_JUMPER_CABLES_Q3,
+        { name = "Jumper Cables", count = 1, requirement = "Requires Engineering" }
+      )
       stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
       local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
       assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)

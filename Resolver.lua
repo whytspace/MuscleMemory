@@ -58,19 +58,21 @@ local resolvers = {
   item = function(assignment, options)
     local info = MM.Items.GetInfo(assignment.id)
     local owned = MM.Items.IsOwned(assignment.id)
-    local available = owned and MM.Items.IsUsable(assignment.id)
-    if options.requireAvailable and not available then
+    local usable = MM.Items.IsUsable(assignment.id) -- ownership-independent
+    -- Dynamic-action candidates need the item in hand; a plain assignment doesn't.
+    if options.requireAvailable and not (owned and usable) then
       return nil, owned and "item not usable" or "item not owned"
     end
-    if not (info or available) then
-      return nil, "item not found"
+    -- Place a usable item even if unowned (WoW greys it); an unusable one falls through.
+    if not usable then
+      return nil, "item not usable"
     end
     return {
       kind = "item",
       id = assignment.id,
       label = info and info.name or ("item " .. tostring(assignment.id)),
       icon = info and info.icon,
-      pickupAvailable = available,
+      pickupAvailable = true,
     }
   end,
 

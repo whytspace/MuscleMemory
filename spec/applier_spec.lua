@@ -33,6 +33,36 @@ describe("Applier", function()
       assert.equals(1766, plan.slots[1].resolved.id)
     end)
 
+    it("keeps a higher layer's unowned item over a lower layer's spell", function()
+      -- Regression: an unowned/uncached item must still win its slot, not vanish
+      -- and flip to the lower layer (the phantom-prompt non-determinism).
+      local lower = addLowerLayer()
+      MM.DB:SetSlot("Core", 1, { type = "item", id = 241301 }) -- unowned, uncached
+      MM.DB:SetSlot(lower, 1, { type = "spell", id = 1766 })
+
+      local plan = MM.Applier:BuildPlan()
+      assert.equals("item", plan.slots[1].resolved.kind)
+      assert.equals(241301, plan.slots[1].resolved.id)
+      assert.is_true(plan.slots[1].resolved.pickupAvailable)
+    end)
+
+    it("falls through an unusable item to a usable one below, ignoring ownership", function()
+      -- Unusable item yields to a usable-but-unowned item below; the spell under
+      -- that is never reached.
+      local mid = MM.DB:CreateLayer("Mid")
+      local low = MM.DB:CreateLayer("Low")
+      stubs:setItem(40772, { name = "Engineering Item", count = 1, requirement = "Requires Engineering" }) -- can't use
+      stubs:setItem(5512, { name = "Healthstone", count = 0, usable = true }) -- usable, unowned
+      MM.DB:SetSlot("Core", 1, { type = "item", id = 40772 }) -- highest: unusable -> fall through
+      MM.DB:SetSlot(mid, 1, { type = "item", id = 5512 }) -- usable but unowned -> wins (grey)
+      MM.DB:SetSlot(low, 1, { type = "spell", id = 1766 }) -- never reached
+
+      local plan = MM.Applier:BuildPlan()
+      assert.equals("item", plan.slots[1].resolved.kind)
+      assert.equals(5512, plan.slots[1].resolved.id)
+      assert.is_true(plan.slots[1].resolved.pickupAvailable)
+    end)
+
     it("skips a layer whose conditions don't match the character", function()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 1766 })
       MM.DB:GetLayer("Core").conditions = { classes = { "WARRIOR" } }

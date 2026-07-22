@@ -4,6 +4,9 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** Usable items you're out of are restored greyed instead of falling back to a lower layer, and unlearned toys are no longer placed.
+- **[Fix]** The apply prompt no longer keeps reappearing for changes that can't be applied.
+
 ## 0.9.0 - 2026-07-19
 
 - **[New]** Transmog outfits on action bars are now captured and restored.

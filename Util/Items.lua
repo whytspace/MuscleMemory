@@ -103,36 +103,25 @@ local function tooltipHasUnmetRequirement(itemId)
   return false
 end
 
--- Whether the player currently meets the item's use requirements (level range,
--- class, and required profession), so out-of-range items resolve correctly
--- without custom conditions.
---
--- IsUsableItem only knows about level and class; it reports a profession-gated
--- item (e.g. an engineering battle rez) as usable even on a character without the
--- profession. So we trust IsUsableItem only to rule items out, and otherwise scan
--- the tooltip, whose red requirement lines do reflect profession and level caps.
+-- Whether the character could use the item (meets level/class/profession), read
+-- from the red requirement lines in its tooltip. Ownership-independent: a usable
+-- item you're out of still counts, so it restores greyed rather than yielding the
+-- slot. IsUsableItem is avoided -- it reports items you don't own as unusable.
 function Items.IsUsable(itemId)
   if not itemId then
     return false
   end
 
-  -- A learned toy lives in the Toy Box, not the bags, so IsUsableItem reports it
-  -- unusable; the Toy Box carries its own usability answer.
-  if Items.IsToy(itemId) then
-    if C_ToyBox and C_ToyBox.IsToyUsable then
+  -- Toys must be learned to place; an unlearned toy (GetToyInfo knows it anyway)
+  -- falls through. A learned toy defers to the Toy Box's own usability answer.
+  if C_ToyBox and C_ToyBox.GetToyInfo and C_ToyBox.GetToyInfo(itemId) then
+    if not (PlayerHasToy and PlayerHasToy(itemId)) then
+      return false
+    end
+    if C_ToyBox.IsToyUsable then
       return C_ToyBox.IsToyUsable(itemId) ~= false
     end
     return true
-  end
-
-  local usable
-  if C_Item and C_Item.IsUsableItem then
-    usable = C_Item.IsUsableItem(itemId)
-  elseif IsUsableItem then
-    usable = IsUsableItem(itemId)
-  end
-  if usable == false then
-    return false
   end
 
   return tooltipHasUnmetRequirement(itemId) ~= true
