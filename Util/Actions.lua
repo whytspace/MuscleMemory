@@ -262,6 +262,36 @@ function Actions.GetAssignmentLabel(assignment)
   return assignment.type or "Unknown"
 end
 
+-- Human label for the action currently live in `slot`, or "empty".
+function Actions.GetLiveActionLabel(slot)
+  local info = Actions.GetInfo(slot)
+  if not info or not info.actionType then
+    return "empty"
+  end
+  local kind, id = info.actionType, info.id
+  if kind == "spell" then
+    local s = MM.Spells.GetInfo(id)
+    return s and s.name or ("spell " .. tostring(id))
+  elseif kind == "item" then
+    local i = MM.Items.GetInfo(id)
+    return i and i.name or ("item " .. tostring(id))
+  elseif kind == "macro" then
+    return (GetActionText and GetActionText(slot)) or ("macro " .. tostring(id))
+  elseif kind == "flyout" then
+    local f = MM.Flyouts.GetInfo(id)
+    return f and f.name or ("flyout " .. tostring(id))
+  elseif kind == "mount" or kind == "summonmount" or kind == "companion" then
+    local m = MM.Mounts.GetInfo(id)
+    return m and m.name or ("mount " .. tostring(id))
+  elseif kind == "battlepet" or kind == "summonpet" then
+    local p = MM.BattlePets.GetInfo(id)
+    return p and p.name or ("pet " .. tostring(id))
+  elseif kind == "equipmentset" then
+    return "equipment set"
+  end
+  return tostring(kind)
+end
+
 function Actions.GetRawSlotLabel(slot)
   local info = Actions.GetInfo(slot)
   if not info then

@@ -237,12 +237,20 @@ describe("Applier", function()
       assert.equals(1766, stubs.world.slots[10].id)
     end)
 
+    it("reports each change as `from → to` with an updated count", function()
+      MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
+      stubs:setSlot(10, { actionType = "spell", id = 2050 }) -- Heal currently there
+      MM.Applier:ApplyProfile()
+      assert.is_true(printedMatches(stubs.world, "Heal → Kick"))
+      assert.is_true(printedMatches(stubs.world, "1 slot updated"))
+    end)
+
     it("skips a resolved slot that already matches", function()
       MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
       stubs:setSlot(10, { actionType = "spell", id = 1766 })
 
       assert.is_true(MM.Applier:ApplyProfile())
-      assert.is_true(printedMatches(stubs.world, "applied 0 slots, skipped 1 unchanged"))
+      assert.is_true(printedMatches(stubs.world, "no changes"))
     end)
 
     it("renders a macro for a macro-mode dynamic action and stays idempotent", function()
@@ -391,10 +399,13 @@ describe("Applier", function()
 
     it("reports slots that would change without touching the bars", function()
       MM.DB:SetSlot("Core", 10, { type = "spell", id = 1766 })
+      stubs:setSlot(10, { actionType = "spell", id = 2050 }) -- Heal currently there
       local plan = MM.Applier:PreviewProfile()
       assert.is_table(plan)
-      assert.is_true(printedMatches(stubs.world, "would change"))
-      assert.is_nil(stubs.world.slots[10]) -- preview never applies
+      assert.is_true(printedMatches(stubs.world, "Heal → Kick"))
+      assert.is_true(printedMatches(stubs.world, "1 slot would change"))
+      assert.equals("spell", stubs.world.slots[10].actionType) -- preview never applies
+      assert.equals(2050, stubs.world.slots[10].id)
     end)
 
     it("reports when nothing would change", function()

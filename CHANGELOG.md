@@ -6,6 +6,7 @@ All notable player-facing changes are recorded here.
 
 - **[Fix]** Usable items you're out of are restored greyed instead of falling back to a lower layer, and unlearned toys are no longer placed.
 - **[Fix]** The apply prompt no longer keeps reappearing for changes that can't be applied.
+- **[Change]** Improved `/mm preview` and `/mm apply` output: each changed slot is listed; enable `/mm debug` for the rest.
 
 ## 0.9.0 - 2026-07-19
 

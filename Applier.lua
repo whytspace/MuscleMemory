@@ -101,6 +101,28 @@ function Applier:HasUnappliedChanges(profileId)
   return false
 end
 
+-- Label for what a resolved entry would place, annotating the macro lifecycle.
+function Applier:DescribeTo(entry)
+  local resolved = entry.resolved
+  if not resolved or resolved.kind == "empty" then
+    return "empty"
+  end
+  local label = resolved.label
+  local body = MM.Macros.ResolvedAsMacro(resolved)
+  if body then
+    local record = MM.DB:GetMacroRecord(entry.layerId, entry.slot)
+    label = label .. (MM.Macros.WouldUpdate(record, body) and " (updates the macro)" or " (creates a macro)")
+  elseif resolved.kind == "macro" and not resolved.macro then
+    label = label .. " (recreates the macro)"
+  end
+  return label
+end
+
+-- A "N slot(s)" phrase without the awkward "1 slots".
+local function slotCount(n)
+  return n == 1 and "1 slot" or (n .. " slots")
+end
+
 function Applier:PreviewProfile(profileId)
   local plan, reason = self:BuildPlan(profileId)
   if not plan then
@@ -108,126 +130,55 @@ function Applier:PreviewProfile(profileId)
     return nil
   end
 
-  if #plan.conflicts > 0 then
-    for _, conflict in ipairs(plan.conflicts) do
-      MM:Warn(
-        string.format(
-          "layer %s contains invalid slot %s (%s).",
-          conflict.firstLayer,
-          tostring(conflict.slot),
-          conflict.secondLayer
-        )
+  local debug = MM.DB:GetRoot().debug
+
+  for _, conflict in ipairs(plan.conflicts) do
+    MM:Warn(
+      string.format(
+        "layer %s contains invalid slot %s (%s).",
+        conflict.firstLayer,
+        tostring(conflict.slot),
+        conflict.secondLayer
       )
-    end
+    )
   end
 
-  local managed = 0
+  -- Body: one "slot: from → to" line per change. Resolution problems are debug-only.
   local changed = 0
-  local unchanged = 0
-  local unresolvedKept = 0
-  local unresolvedCleared = 0
-  local unresolvedKeptEntries = {}
-  local unrestorableEntries = {}
-  local unavailable = 0
+  local issues = {}
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
     if entry then
-      managed = managed + 1
-
-      if entry.resolved then
-        if MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
-          unchanged = unchanged + 1
-        elseif entry.resolved.pickupAvailable == false then
-          unavailable = unavailable + 1
-          unchanged = unchanged + 1
-          MM:Warn(
+      if entry.resolved and not MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
+        if entry.resolved.pickupAvailable == false then
+          issues[#issues + 1] =
+            string.format("%s: cannot restore %s (not available)", MM.Actions.GetSlotLabel(slot), entry.resolved.label)
+        else
+          changed = changed + 1
+          MM:Print(
             string.format(
-              "%s cannot restore %s because it is not currently available.",
+              "%s: %s → %s",
               MM.Actions.GetSlotLabel(slot),
-              entry.resolved.label
+              MM.Actions.GetLiveActionLabel(slot),
+              self:DescribeTo(entry)
             )
           )
-        else
-          changed = changed + 1
-          local label = entry.resolved.label
-          local macroBody = MM.Macros.ResolvedAsMacro(entry.resolved)
-          if macroBody then
-            local record = MM.DB:GetMacroRecord(entry.layerId, slot)
-            local verb = MM.Macros.WouldUpdate(record, macroBody) and "updates the macro" or "creates a macro"
-            label = label .. " (" .. verb .. ")"
-          elseif entry.resolved.kind == "macro" and not entry.resolved.macro then
-            label = label .. " (recreates the macro)"
-          end
-          MM:Print(string.format("%s -> %s", MM.Actions.GetSlotLabel(slot), label))
         end
-      elseif entry.fallback == "clear" then
-        if HasAction and HasAction(slot) then
-          changed = changed + 1
-          unresolvedCleared = unresolvedCleared + 1
-          MM:Print(
-            string.format("%s -> clear unresolved slot (%s)", MM.Actions.GetSlotLabel(slot), entry.unresolvedReason)
-          )
-        else
-          unchanged = unchanged + 1
-        end
-      elseif MM.Actions.IsAssignmentInSlot(entry.assignment, slot) then
-        unchanged = unchanged + 1
-        unrestorableEntries[#unrestorableEntries + 1] = entry
-      else
-        unchanged = unchanged + 1
-        unresolvedKept = unresolvedKept + 1
-        unresolvedKeptEntries[#unresolvedKeptEntries + 1] = entry
+      elseif not entry.resolved and entry.fallback == "clear" and HasAction and HasAction(slot) then
+        changed = changed + 1
+        MM:Print(string.format("%s: %s → empty", MM.Actions.GetSlotLabel(slot), MM.Actions.GetLiveActionLabel(slot)))
+      elseif not entry.resolved and not MM.Actions.IsAssignmentInSlot(entry.assignment, slot) then
+        issues[#issues + 1] =
+          string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(slot), tostring(entry.unresolvedReason))
       end
     end
   end
 
-  if MM.DB:GetRoot().debug and #unrestorableEntries > 0 then
-    for _, entry in ipairs(unrestorableEntries) do
-      MM:Debug(
-        string.format(
-          "%s currently matches but is not restorable: %s (%s).",
-          MM.Actions.GetSlotLabel(entry.slot),
-          tostring(entry.unresolvedReason),
-          MM.Actions.GetAssignmentLabel(entry.assignment)
-        )
-      )
-      MM:Debug(MM.Actions.GetRawSlotLabel(entry.slot))
-    end
-  end
+  MM:Print(changed == 0 and "no changes" or (slotCount(changed) .. " would change"))
 
-  if changed == 0 then
-    MM:Print(string.format("previewed %d managed slots: no changes.", managed))
-  else
-    MM:Print(string.format("previewed %d managed slots: %d would change, %d unchanged.", managed, changed, unchanged))
-  end
-
-  if unresolvedCleared > 0 then
-    MM:Print(string.format("%d unresolved slots would be cleared by fallback.", unresolvedCleared))
-  end
-
-  if unavailable > 0 then
-    MM:Print(string.format("%d managed slots cannot currently be restored.", unavailable))
-  end
-
-  if unresolvedKept > 0 then
-    if MM.DB:GetRoot().debug then
-      for _, entry in ipairs(unresolvedKeptEntries) do
-        MM:Debug(
-          string.format(
-            "%s unresolved: %s. Fallback keep leaves it unchanged.",
-            MM.Actions.GetSlotLabel(entry.slot),
-            tostring(entry.unresolvedReason) .. " (" .. MM.Actions.GetAssignmentLabel(entry.assignment) .. ")"
-          )
-        )
-        MM:Debug(MM.Actions.GetRawSlotLabel(entry.slot))
-      end
-    else
-      MM:Print(
-        string.format(
-          "%d unresolved slots would be left unchanged. Enable debug (/mm debug), then preview again to list them.",
-          unresolvedKept
-        )
-      )
+  if debug then
+    for _, line in ipairs(issues) do
+      MM:Debug(line)
     end
   end
 
@@ -415,50 +366,42 @@ function Applier:ApplyProfile(profileId, options)
     return false
   end
 
-  local applied = 0
-  local skipped = 0
-  local unresolved = 0
+  local updated = 0
   local failed = 0
+  local issues = {} -- debug-only: failures and left-unchanged slots
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
-    if entry then
-      if entry.resolved and MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
-        skipped = skipped + 1
+    if entry and not (entry.resolved and MM.Actions.IsResolvedInSlot(entry.resolved, slot)) then
+      -- Capture the outgoing action before ApplyEntry overwrites the slot.
+      local from = MM.Actions.GetLiveActionLabel(slot)
+      local to = entry.resolved and self:DescribeTo(entry) or "empty"
+      local ok, applyReason = self:ApplyEntry(entry)
+      if ok and entry.resolved then
+        updated = updated + 1
+        MM:Print(string.format("%s: %s → %s", MM.Actions.GetSlotLabel(slot), from, to))
+      elseif ok and applyReason == "cleared unresolved slot" then
+        updated = updated + 1
+        MM:Print(string.format("%s: %s → empty", MM.Actions.GetSlotLabel(slot), from))
+      elseif ok then
+        issues[#issues + 1] =
+          string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(slot), tostring(entry.unresolvedReason))
       else
-        local ok, applyReason = self:ApplyEntry(entry)
-        if ok then
-          if entry.resolved then
-            applied = applied + 1
-          else
-            unresolved = unresolved + 1
-            MM:Warn(
-              string.format(
-                "%s unresolved: %s. %s.",
-                MM.Actions.GetSlotLabel(entry.slot),
-                entry.unresolvedReason,
-                entry.fallback == "clear" and "Cleared slot" or "Left existing action unchanged"
-              )
-            )
-          end
-        else
-          failed = failed + 1
-          MM:Warn(string.format("%s failed: %s", MM.Actions.GetSlotLabel(entry.slot), applyReason))
-        end
+        failed = failed + 1
+        issues[#issues + 1] = string.format("%s: %s", MM.Actions.GetSlotLabel(slot), applyReason)
       end
     end
   end
 
   self:CleanupMacroOrphans(plan)
 
-  MM:Print(
-    string.format(
-      "applied %d slots, skipped %d unchanged, left %d unresolved, failed %d.",
-      applied,
-      skipped,
-      unresolved,
-      failed
-    )
-  )
+  MM:Print(updated == 0 and "no changes" or (slotCount(updated) .. " updated"))
+
+  if MM.DB:GetRoot().debug then
+    for _, line in ipairs(issues) do
+      MM:Debug(line)
+    end
+  end
+
   return failed == 0
 end
