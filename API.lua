@@ -194,17 +194,15 @@ api.layers = {
   -- setConditions(layerId, conditions)
   -- Sets when the layer applies (class, spec, level, ...).
   setConditions = function(layerId, conditions)
-    local layer, layerReason = validLayer(layerId)
-    if not layer then
-      return false, layerReason
+    local ok, idReason = validId(layerId, "layerId")
+    if not ok then
+      return false, idReason
     end
     local validated, reason = MM.Validate.Conditions(conditions or {})
     if not validated then
       return false, reason
     end
-    layer.conditions = validated
-    refresh()
-    return true
+    return refreshing(MM.DB:SetLayerConditions(layerId, validated))
   end,
 
   -- getSlot(layerId, slot) -> assignment

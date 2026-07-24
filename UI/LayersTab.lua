@@ -866,13 +866,16 @@ function LayersTab:BuildEditor(parent, layerId, layer)
     hint:SetJustifyH("LEFT")
 
     if layer then
-      layer.conditions = layer.conditions or {}
       -- The editor outgrows the panel once several sections are expanded, so it
       -- lives in a scroll region; the scrollbar appears only when it overflows.
       local scrollBox, content = Widgets.ScrollList(inset, "layers.conditions")
       scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
       scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
-      local editor = MM.ui.ConditionsEditor:Build(content, layer.conditions, true, function()
+      -- The editor edits a scratch copy; every change is committed through the
+      -- DB so config mutations stay behind one door.
+      local working = MM.Tables.DeepCopy(layer.conditions or {})
+      local editor = MM.ui.ConditionsEditor:Build(content, working, true, function()
+        MM.DB:SetLayerConditions(layerId, working)
         refresh()
       end, EDITOR_WIDTH - 40)
       editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)

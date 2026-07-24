@@ -469,6 +469,17 @@ function DB:MoveLayer(layerId, toIndex, profileId)
   return true
 end
 
+-- Replace a layer's conditions wholesale. The editor works on a scratch copy
+-- and commits it through here, so config mutations stay inside DB.
+function DB:SetLayerConditions(layerId, conditions)
+  local layer = self:GetLayer(layerId)
+  if not layer then
+    return false, "unknown layer"
+  end
+  layer.conditions = conditions
+  return true
+end
+
 function DB:SetSlot(layerId, slot, assignment)
   local layer = self:GetLayer(layerId)
   slot = tonumber(slot)
@@ -532,11 +543,11 @@ function DB:GetFallback()
   return (profile and profile.fallback) or "keep"
 end
 
-function DB:SetFallback(value)
+function DB:SetFallback(value, profileId)
   if value ~= "keep" and value ~= "clear" then
     return false, "fallback must be keep or clear"
   end
-  local profile = self:GetProfile()
+  local profile = self:GetProfile(profileId)
   if not profile then
     return false, "no active profile"
   end
@@ -553,11 +564,11 @@ function DB:GetResponse()
   return (profile and profile.response) or "popup"
 end
 
-function DB:SetResponse(value)
+function DB:SetResponse(value, profileId)
   if not RESPONSES[value] then
     return false, "response must be ignore, print, popup or apply"
   end
-  local profile = self:GetProfile()
+  local profile = self:GetProfile(profileId)
   if not profile then
     return false, "no active profile"
   end
@@ -649,6 +660,36 @@ end
 
 -- Predefined dynamicActions are immutable add-on data, so create / rename / delete and
 -- all candidate edits operate only on the profile's own dynamicActions.
+
+-- Adoption: the import door. Insert a fully-formed table under a key the caller
+-- has already uniqued (imports allocate all keys up front so cross-references
+-- can be rewritten before anything is stored).
+function DB:AdoptDynamicAction(profileId, key, action)
+  local dynamicActions = self:DynamicActions(profileId)
+  if not self:GetProfile(profileId) then
+    return nil, "unknown profile"
+  end
+  if dynamicActions[key] then
+    return nil, "dynamic action already exists"
+  end
+  dynamicActions[key] = action
+  return key
+end
+
+-- Adopt a fully-formed layer: stored under a fresh key and appended below the
+-- existing layers.
+function DB:AdoptLayer(profileId, layer)
+  local profile = self:GetProfile(profileId)
+  if not profile then
+    return nil, "unknown profile"
+  end
+  local layers = self:Layers(profileId)
+  local key = uniqueId(layer.name, "layer", layers)
+  layers[key] = layer
+  profile.layerOrder = profile.layerOrder or {}
+  profile.layerOrder[#profile.layerOrder + 1] = key
+  return key
+end
 
 function DB:CreateDynamicAction(name)
   local dynamicActions = self:DynamicActions()
@@ -756,6 +797,24 @@ function DB:RemoveCandidate(dynamicActionId, index)
   end
 
   table.remove(dynamicAction.candidates, index)
+  return true
+end
+
+-- Replace a candidate's conditions wholesale (scratch-copy commit, like
+-- SetLayerConditions).
+function DB:SetCandidateConditions(dynamicActionId, index, conditions)
+  local dynamicAction = self:DynamicActions()[dynamicActionId]
+  if not dynamicAction then
+    return false, "only profile dynamic actions can be edited"
+  end
+
+  index = tonumber(index)
+  local candidate = index and dynamicAction.candidates and dynamicAction.candidates[index]
+  if not candidate then
+    return false, "no candidate at that position"
+  end
+
+  candidate.conditions = conditions
   return true
 end
 

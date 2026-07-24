@@ -220,10 +220,10 @@ function Share:Import(package, selection, target)
   if target and target.newProfile then
     local name = target.newProfile ~= "" and target.newProfile or package.profileName
     profileId = MM.DB:CreateProfile(name)
-    local profile = MM.DB:GetProfile(profileId)
     if package.settings then
-      profile.fallback = package.settings.fallback or profile.fallback
-      profile.response = package.settings.response or profile.response
+      -- Invalid or absent values are simply rejected by the setters.
+      MM.DB:SetFallback(package.settings.fallback, profileId)
+      MM.DB:SetResponse(package.settings.response, profileId)
     end
     markImported("profiles", profileId, profileId)
   else
@@ -235,38 +235,39 @@ function Share:Import(package, selection, target)
 
   local result = { profileId = profileId, layers = {}, dynamicActions = {} }
 
-  -- Pass 1: dynamic actions get fresh keys in the target profile. Candidates
-  -- are rewritten after every new key exists, so imports can reference each
-  -- other regardless of insertion order.
-  local dynamicActions = MM.DB:DynamicActions(profileId)
+  -- Pass 1: allocate a fresh key for every dynamic action up front (against a
+  -- shadow `taken` set), rewrite cross-references on the copies, and only then
+  -- adopt the finished tables into the profile.
   local keyMap = {}
+  local adopted = {}
+  local taken = {}
+  for key in pairs(MM.DB:DynamicActions(profileId)) do
+    taken[key] = true
+  end
   for _, key in ipairs(actionKeys) do
     local action = MM.Tables.DeepCopy(package.dynamicActions[key])
-    local newKey = MM.DB:UniqueId(action.name, "dynamicaction", dynamicActions)
-    dynamicActions[newKey] = action
+    local newKey = MM.DB:UniqueId(action.name, "dynamicaction", taken)
+    taken[newKey] = true
     keyMap[key] = newKey
-    markImported("dynamicActions", profileId, newKey)
-    result.dynamicActions[#result.dynamicActions + 1] = newKey
+    adopted[#adopted + 1] = { key = newKey, action = action }
   end
-  for _, key in ipairs(actionKeys) do
-    for _, candidate in ipairs(dynamicActions[keyMap[key]].candidates or {}) do
+  for _, entry in ipairs(adopted) do
+    for _, candidate in ipairs(entry.action.candidates or {}) do
       rewriteReference(candidate, keyMap)
     end
+    MM.DB:AdoptDynamicAction(profileId, entry.key, entry.action)
+    markImported("dynamicActions", profileId, entry.key)
+    result.dynamicActions[#result.dynamicActions + 1] = entry.key
   end
 
-  -- Pass 2: layers get fresh keys too; their slots follow the key map. Imports
-  -- append below the existing layers, keeping their own order.
-  local profile = MM.DB:GetProfile(profileId)
-  local layers = MM.DB:Layers(profileId)
-  profile.layerOrder = profile.layerOrder or {}
+  -- Pass 2: layers follow the key map; their slots are rewritten before the
+  -- layer is adopted (appended below the existing layers, keeping their order).
   for _, entry in ipairs(layerEntries) do
     local layer = MM.Tables.DeepCopy(entry.layer)
     for _, assignment in pairs(layer.slots or {}) do
       rewriteReference(assignment, keyMap)
     end
-    local newKey = MM.DB:UniqueId(layer.name, "layer", layers)
-    layers[newKey] = layer
-    profile.layerOrder[#profile.layerOrder + 1] = newKey
+    local newKey = MM.DB:AdoptLayer(profileId, layer)
     markImported("layers", profileId, newKey)
     result.layers[#result.layers + 1] = newKey
   end

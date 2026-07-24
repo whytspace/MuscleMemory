@@ -724,9 +724,6 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   -- their conditions read-only.
   local ref = selectedRef()
   local editable = ref and ref.source == "custom"
-  if editable then
-    candidate.conditions = candidate.conditions or {}
-  end
 
   local hint = Widgets.Hint(
     inset,
@@ -741,7 +738,11 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   local scrollBox, content = Widgets.ScrollList(inset, "dynamicActions.conditions")
   scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
   scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
-  local editor = MM.ui.ConditionsEditor:Build(content, candidate.conditions or {}, editable, function()
+  -- The editor edits a scratch copy; every change is committed through the DB
+  -- so config mutations stay behind one door.
+  local working = MM.Tables.DeepCopy(candidate.conditions or {})
+  local editor = MM.ui.ConditionsEditor:Build(content, working, editable, function()
+    MM.DB:SetCandidateConditions(ref.id, MM.ui.state.candidate, working)
     refresh()
   end, RULE_WIDTH - 40)
   editor:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)

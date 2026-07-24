@@ -463,6 +463,42 @@ describe("DB", function()
     end)
   end)
 
+  describe("conditions setters", function()
+    it("replaces layer conditions wholesale", function()
+      local layerId = MM.DB:CreateLayer("Healing")
+      assert.is_true(MM.DB:SetLayerConditions(layerId, { classes = { "PALADIN" } }))
+      assert.same({ "PALADIN" }, MM.DB:GetLayer(layerId).conditions.classes)
+      assert.is_false((MM.DB:SetLayerConditions("nope", {})))
+    end)
+
+    it("replaces candidate conditions wholesale", function()
+      local key = MM.DB:CreateDynamicAction("Custom")
+      MM.DB:AddCandidate(key, { type = "spell", id = 11 })
+      assert.is_true(MM.DB:SetCandidateConditions(key, 1, { roles = { "TANK" } }))
+      assert.same({ "TANK" }, MM.DB:DynamicActions()[key].candidates[1].conditions.roles)
+      assert.is_false((MM.DB:SetCandidateConditions(key, 2, {})))
+    end)
+  end)
+
+  describe("adoption", function()
+    it("adopts a dynamic action under a caller-uniqued key", function()
+      local key = MM.DB:AdoptDynamicAction(nil, "imported", { name = "Imported", candidates = {} })
+      assert.equals("imported", key)
+      assert.equals("Imported", MM.DB:DynamicActions()["imported"].name)
+
+      local duplicate, reason = MM.DB:AdoptDynamicAction(nil, "imported", { name = "Again" })
+      assert.is_nil(duplicate)
+      assert.equals("dynamic action already exists", reason)
+    end)
+
+    it("adopts a layer under a fresh key and appends it to the order", function()
+      local key = MM.DB:AdoptLayer(nil, { name = "Imported", slots = {}, enabled = true })
+      assert.is_string(key)
+      local order = MM.DB:GetProfile().layerOrder
+      assert.equals(key, order[#order])
+    end)
+  end)
+
   describe("character state", function()
     it("keys character state by realm and name", function()
       stubs.world.realm = "Ragnaros"
