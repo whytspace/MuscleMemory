@@ -31,14 +31,17 @@ local resolvers = {
   end,
 
   spell = function(assignment, options)
-    local info = MM.Spells.GetInfo(assignment.id)
+    -- An override id (spec/talent rename) is neither known nor placeable;
+    -- resolve on its base spell instead.
+    local id = MM.Spells.GetBaseSpell(assignment.id)
+    local info = MM.Spells.GetInfo(id)
     -- The Single Button Assistant isn't a "known" spell; gate it on whether the
     -- assisted-combat feature is available instead.
     local available
-    if MM.Spells.IsAssistedCombatActionSpell(assignment.id) then
+    if MM.Spells.IsAssistedCombatActionSpell(id) then
       available = MM.Spells.IsAssistedCombatAvailable()
     else
-      available = MM.Spells.IsKnown(assignment.id)
+      available = MM.Spells.IsKnown(id)
     end
     if options.requireAvailable and not available then
       return nil, "spell not known"
@@ -48,8 +51,8 @@ local resolvers = {
     end
     return {
       kind = "spell",
-      id = assignment.id,
-      label = info and info.name or ("spell " .. tostring(assignment.id)),
+      id = id,
+      label = info and info.name or ("spell " .. tostring(id)),
       icon = info and info.icon,
       pickupAvailable = available,
     }
@@ -205,7 +208,9 @@ function Resolver:FindDynamicActionsResolvingTo(assignment)
           and MM.Macros.MacroName(dynamicAction) == assignment.nameHint
         )
     else
-      match = resolved.kind == assignment.type and resolved.id == assignment.id
+      -- Spells compare on the base id: resolution normalises overrides there.
+      local targetId = assignment.type == "spell" and MM.Spells.GetBaseSpell(assignment.id) or assignment.id
+      match = resolved.kind == assignment.type and resolved.id == targetId
     end
     if match then
       matches[#matches + 1] = { source = source, id = id, name = dynamicAction.name or id }

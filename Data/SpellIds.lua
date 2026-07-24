@@ -6,7 +6,8 @@ MM.SpellIds = {
   HEROISM = 32182,
   TIME_WARP = 80353,
   FURY_OF_THE_ASPECTS = 390386,
-  PRIMAL_RAGE = 264667,
+  -- Command Pet's override with a ferocity pet out (264667 is the pet's own spell).
+  PRIMAL_RAGE = 272678,
   COMMAND_PET = 272651,
 
   -- Interrupts

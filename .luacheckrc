@@ -71,6 +71,7 @@ read_globals = {
   "CreateMacro",
   "DeleteMacro",
   "EditMacro",
+  "FindBaseSpellByID",
   "GetCursorInfo",
   "GetFlyoutInfo",
   "GetFlyoutSlotInfo",

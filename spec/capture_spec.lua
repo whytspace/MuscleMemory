@@ -137,6 +137,12 @@ describe("Capture", function()
       assert.same({ type = "spell", id = 1766 }, MM.Capture:FromCursor())
     end)
 
+    it("captures an override spell from the cursor as its base spell", function()
+      stubs:setSpell(431443, { name = "Chrono Flames", baseSpellId = 361469 })
+      stubs:setCursor({ type = "spell", id = 431443 })
+      assert.same({ type = "spell", id = 361469 }, MM.Capture:FromCursor())
+    end)
+
     it("captures a flyout from the cursor", function()
       stubs:setCursor({ type = "flyout", id = 12 })
       assert.same({ type = "flyout", id = 12 }, MM.Capture:FromCursor())

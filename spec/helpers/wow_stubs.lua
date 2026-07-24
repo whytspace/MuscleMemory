@@ -132,6 +132,12 @@ function Stubs.new()
       local spell = world.spells[id]
       return spell ~= nil and spell.known == true
     end,
+    -- Real WoW maps an override id to its base spell and returns other ids
+    -- unchanged (verified in 12.0: FindBaseSpellByID(272678) -> 272651).
+    FindBaseSpellByID = function(id)
+      local spell = world.spells[id]
+      return (spell and spell.baseSpellId) or id
+    end,
     C_ActionBar = {
       -- Real WoW returns nil (not an empty table) when the spell is on no bar,
       -- and for spells it never indexes such as the Single Button Assistant.
@@ -510,6 +516,7 @@ function Stubs:setSpell(id, opts)
     name = opts.name or ("Spell " .. tostring(id)),
     icon = opts.icon or (1000 + id),
     known = opts.known == true,
+    baseSpellId = opts.baseSpellId,
   }
   return self
 end

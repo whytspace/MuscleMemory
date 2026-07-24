@@ -9,6 +9,12 @@ local function simple(type)
   end
 end
 
+-- Spells capture as their base spell: a spec/talent override id (e.g. Chrono
+-- Flames for Living Flame) is neither known nor placeable on other specs.
+local function spellAssignment(id)
+  return { type = "spell", id = MM.Spells.GetBaseSpell(id) }
+end
+
 local function macroAssignment(index, slot)
   if not GetMacroInfo then
     return nil, "macro API unavailable"
@@ -79,7 +85,7 @@ end
 
 -- Cursor type -> assignment builder.
 local fromCursor = {
-  spell = simple("spell"),
+  spell = spellAssignment,
   item = simple("item"),
   mount = simple("mount"),
   battlepet = simple("battlepet"),
@@ -94,7 +100,7 @@ local fromCursor = {
 -- Action-slot type -> assignment builder. Mount variants normalise to "mount";
 -- a summoned battle pet ("summonpet") normalises to "battlepet" (its cursor type).
 local fromSlot = {
-  spell = simple("spell"),
+  spell = spellAssignment,
   item = simple("item"),
   mount = simple("mount"),
   summonmount = simple("mount"),
@@ -147,7 +153,7 @@ function Capture:FromCursor()
     if not spellId then
       return nil, "could not read a spell from the cursor"
     end
-    return { type = "spell", id = spellId }
+    return spellAssignment(spellId)
   end
 
   local builder = fromCursor[cursorType]

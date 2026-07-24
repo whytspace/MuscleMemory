@@ -33,6 +33,22 @@ function Spells.GetInfo(spellId)
   return nil
 end
 
+-- Spec/talent overrides (e.g. Chrono Flames replacing Living Flame) drag from
+-- the spellbook with the override id, but only the base spell is "known" and
+-- placeable. Map an override back to its base; other ids return unchanged.
+function Spells.GetBaseSpell(spellId)
+  if not spellId then
+    return nil
+  end
+  if FindBaseSpellByID then
+    local ok, base = pcall(FindBaseSpellByID, spellId)
+    if ok and type(base) == "number" and base > 0 then
+      return base
+    end
+  end
+  return spellId
+end
+
 function Spells.IsKnown(spellId)
   if not spellId then
     return false
@@ -55,6 +71,11 @@ function Spells.IsKnown(spellId)
     if ok and known then
       return true
     end
+  end
+
+  local base = Spells.GetBaseSpell(spellId)
+  if base ~= spellId then
+    return Spells.IsKnown(base)
   end
 
   return false
