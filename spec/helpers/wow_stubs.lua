@@ -62,6 +62,7 @@ function Stubs.new()
 
     cursor = nil, -- { type = , id = } or nil
     printed = {}, -- captured MM:Print / print output
+    timers = {}, -- pending C_Timer.After callbacks, fired by Stubs:flushTimers
 
     assistedCombat = { spell = nil, available = false }, -- Single Button Assistant
   }
@@ -471,6 +472,13 @@ function Stubs.new()
     SlashCmdList = {},
     StaticPopupDialogs = {},
     StaticPopup_Show = function() end,
+    -- Queues the callback instead of running it; Stubs:flushTimers fires the
+    -- burst so tests can drive the trailing-debounce deterministically.
+    C_Timer = {
+      After = function(delay, fn)
+        world.timers[#world.timers + 1] = { delay = delay, fn = fn }
+      end,
+    },
     time = function()
       return 0
     end,
@@ -483,6 +491,18 @@ function Stubs.new()
 end
 
 -- Configuration helpers -----------------------------------------------------
+
+-- Fire every callback queued through C_Timer.After, in schedule order, then
+-- clear the queue. Mirrors the trailing timers landing once an event burst
+-- settles; a callback that schedules another timer lands in the fresh queue.
+function Stubs:flushTimers()
+  local pending = self.world.timers
+  self.world.timers = {}
+  for _, timer in ipairs(pending) do
+    timer.fn()
+  end
+  return self
+end
 
 function Stubs:setSpell(id, opts)
   opts = opts or {}
