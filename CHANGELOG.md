@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.12.0 - 2026-07-25
+
 - **[New]** The slash commands have been replaced by a public API: everything they did (and more, like creating Dynamic Actions) is now available to macros and other add-ons through the global `MuscleMemory`. For example:
   - `/run MuscleMemory.profiles.setCharacter("raid")` — switch this character to a profile
   - `/run MuscleMemory.layers.captureAll("healing")` — capture your current bars into a layer
