@@ -262,6 +262,29 @@ function Actions.GetAssignmentLabel(assignment)
   return assignment.type or "Unknown"
 end
 
+-- Bare display name (no type prefixes or id suffixes), e.g. as a name prefill;
+-- falls back to the full label when no clean name is available.
+function Actions.GetAssignmentName(assignment)
+  local name
+  if assignment then
+    if assignment.type == "spell" then
+      local info = MM.Spells.GetInfo(assignment.id)
+      name = info and info.name
+    elseif assignment.type == "item" then
+      local info = MM.Items.GetInfo(assignment.id)
+      name = info and info.name
+    elseif assignment.type == "macro" then
+      name = assignment.nameHint
+    elseif assignment.type == "equipmentset" then
+      name = assignment.name
+    elseif assignment.type == "outfit" then
+      local info = MM.Outfits.GetInfo(assignment.id)
+      name = (info and info.name) or assignment.nameHint
+    end
+  end
+  return name or Actions.GetAssignmentLabel(assignment)
+end
+
 -- Human label for the action currently live in `slot`, or "empty".
 function Actions.GetLiveActionLabel(slot)
   local info = Actions.GetInfo(slot)

@@ -139,6 +139,17 @@ local function manageSlot(layerId, slot)
   assignSuggesting(layerId, slot, assignment)
 end
 
+-- Turn a regular assignment into a fresh Dynamic Action seeded with that
+-- action as its only candidate, then rebind the slot to it.
+local function convertToDynamicAction(layerId, slot, assignment)
+  local prefill = MM.Actions.GetAssignmentName(assignment)
+  MM.ui.Modals.Input("Convert to Dynamic Action", "Name the new Dynamic Action", prefill, "Convert", function(name)
+    local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
+    MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
+    assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
+  end)
+end
+
 local function unmanageSlot(layerId, slot)
   MM.DB:SetSlot(layerId, slot, nil)
   if MM.DB:GetSelectedSlot() == slot then
@@ -929,9 +940,19 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   dropHint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   dropHint:SetJustifyH("LEFT")
 
+  -- Regular assignments can be promoted into a new Dynamic Action in one step.
+  local sectionAnchor = dropHint
+  if assignment and assignment.type ~= "empty" and assignment.type ~= "dynamicaction" then
+    local convert = Widgets.Button(inset, "Convert to Dynamic Action", 180, function()
+      convertToDynamicAction(layerId, slot, assignment)
+    end)
+    convert:SetPoint("TOPLEFT", dropHint, "BOTTOMLEFT", 0, -12)
+    sectionAnchor = convert
+  end
+
   -- "Bind to a Dynamic Action"
   local dynamicActionHeader = Widgets.SectionHeader(inset, "Bind to a Dynamic Action")
-  dynamicActionHeader:SetPoint("TOPLEFT", dropHint, "BOTTOMLEFT", 0, -16)
+  dynamicActionHeader:SetPoint("TOPLEFT", sectionAnchor, "BOTTOMLEFT", 0, -16)
 
   local list = Widgets.DataList(inset, "layers.dynamicActionbind", {
     extent = 34,
