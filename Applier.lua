@@ -143,7 +143,8 @@ function Applier:PreviewProfile(profileId)
     )
   end
 
-  -- Body: one "slot: from → to" line per change. Resolution problems are debug-only.
+  -- Body: one "slot: from → to" line per change. Failures are always warned;
+  -- expected left-unchanged slots are debug-only.
   local changed = 0
   local issues = {}
   for slot = 1, MM.MAX_ACTION_SLOT do
@@ -151,8 +152,9 @@ function Applier:PreviewProfile(profileId)
     if entry then
       if entry.resolved and not MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
         if entry.resolved.pickupAvailable == false then
-          issues[#issues + 1] =
+          MM:Warn(
             string.format("%s: cannot restore %s (not available)", MM.Actions.GetSlotLabel(slot), entry.resolved.label)
+          )
         else
           changed = changed + 1
           MM:Print(
@@ -368,7 +370,7 @@ function Applier:ApplyProfile(profileId, options)
 
   local updated = 0
   local failed = 0
-  local issues = {} -- debug-only: failures and left-unchanged slots
+  local issues = {} -- debug-only: left-unchanged slots; failures are always warned
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
@@ -388,14 +390,18 @@ function Applier:ApplyProfile(profileId, options)
           string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(slot), tostring(entry.unresolvedReason))
       else
         failed = failed + 1
-        issues[#issues + 1] = string.format("%s: %s", MM.Actions.GetSlotLabel(slot), applyReason)
+        MM:Warn(string.format("%s: %s", MM.Actions.GetSlotLabel(slot), applyReason))
       end
     end
   end
 
   self:CleanupMacroOrphans(plan)
 
-  MM:Print(updated == 0 and "no changes" or (slotCount(updated) .. " updated"))
+  local summary = updated == 0 and "no changes" or (slotCount(updated) .. " updated")
+  if failed > 0 then
+    summary = summary .. ", " .. slotCount(failed) .. " failed"
+  end
+  MM:Print(summary)
 
   if MM.DB:GetRoot().debug then
     for _, line in ipairs(issues) do
