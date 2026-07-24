@@ -66,6 +66,26 @@ describe("Capture", function()
       assert.equals("/cast Heal", assignment.body)
     end)
 
+    it("splits display and restore icons for a dynamic-icon macro", function()
+      -- Dynamic "?" macro: GetMacroInfo reports the placeholder, but the slot shows
+      -- the live resolved texture.
+      stubs:addGlobalMacro({ name = "Dyn", icon = MM.MACRO_DYNAMIC_ICON, body = "#showtooltip\n/cast Dyn" })
+      stubs:setSlot(1, { actionType = "macro", id = 1, texture = 249170 })
+
+      local assignment = MM.Capture:FromSlot(1)
+      assert.equals(249170, assignment.iconHint)
+      assert.equals(MM.MACRO_DYNAMIC_ICON, assignment.restoreIcon)
+    end)
+
+    it("keeps a hardcoded icon as the restore icon for a static macro", function()
+      stubs:addGlobalMacro({ name = "Belt", icon = 132120, body = "#showtooltip\n/use 10" })
+      stubs:setSlot(1, { actionType = "macro", id = 1, texture = 132120 })
+
+      local assignment = MM.Capture:FromSlot(1)
+      assert.equals(132120, assignment.iconHint)
+      assert.equals(132120, assignment.restoreIcon)
+    end)
+
     it("captures a slot macro by name and icon when the action id isn't a macro index", function()
       stubs:addGlobalMacro({ name = "Dup", icon = 11, body = "/one" })
       stubs:addGlobalMacro({ name = "Dup", icon = 22, body = "/two" })

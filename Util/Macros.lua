@@ -407,6 +407,10 @@ function Macros.RestoreUserMacro(restore)
     return nil, "account macro slots are full"
   end
 
+  -- restore.icon is the macro's raw icon as GetMacroInfo reports it: the dynamic
+  -- "?" placeholder (MACRO_DYNAMIC_ICON) when the user chose no icon, else the
+  -- hardcoded one. Passing it back verbatim recreates either faithfully; the
+  -- fallback only matters for older captures that stored no icon.
   local index = CreateMacro(restore.name, restore.icon or MM.MACRO_DYNAMIC_ICON, restore.body, perCharacter)
   if not index then
     return nil, "could not create macro"

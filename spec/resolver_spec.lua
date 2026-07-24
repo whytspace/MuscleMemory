@@ -138,6 +138,34 @@ describe("Resolver", function()
       assert.equals("character", resolved.restore.scope)
     end)
 
+    it("restores the raw macro icon, not the live display texture", function()
+      -- A dynamic-icon macro captures its live resolved texture for display but the
+      -- "?" placeholder as its raw icon; restore must use the placeholder so the
+      -- recreated macro stays dynamic instead of freezing the resolved texture.
+      local resolved = MM.Resolver:ResolveAction({
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Gone",
+        body = "#showtooltip\n/cast Gone",
+        scope = "character",
+        iconHint = 249170,
+        restoreIcon = MM.MACRO_DYNAMIC_ICON,
+      })
+      assert.equals(MM.MACRO_DYNAMIC_ICON, resolved.restore.icon)
+    end)
+
+    it("falls back to the display icon for captures saved before restoreIcon", function()
+      local resolved = MM.Resolver:ResolveAction({
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Gone",
+        body = "/cast Gone",
+        scope = "character",
+        iconHint = 132120,
+      })
+      assert.equals(132120, resolved.restore.icon)
+    end)
+
     it("stays unresolved for a missing macro without a stored body", function()
       local resolved, reason = MM.Resolver:ResolveAction({
         type = "macro",

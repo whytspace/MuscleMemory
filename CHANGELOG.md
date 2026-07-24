@@ -4,6 +4,7 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** Restoring a macro with no chosen icon keeps its dynamic `#showtooltip` icon instead of freezing the icon that happened to show when it was captured. Macros captured before this fix need re-capturing to benefit.
 - **[Fix]** Usable items you're out of are restored greyed instead of falling back to a lower layer, and unlearned toys are no longer placed.
 - **[Fix]** The apply prompt no longer keeps reappearing for changes that can't be applied.
 - **[Change]** Improved `/mm preview` and `/mm apply` output: each changed slot is listed; enable `/mm debug` for the rest.

@@ -41,9 +41,14 @@ local function macroAssignment(index, slot)
     scope = indexHint and MM.Macros.GetMacroScope(indexHint, globalCount) or nil,
     indexHint = indexHint,
     nameHint = name,
-    -- #showtooltip macros have no static icon, so prefer the slot's live
-    -- (dynamic) texture over GetMacroInfo's "?" placeholder.
+    -- Display icon: a macro with no chosen icon reports GetMacroInfo's "?"
+    -- placeholder, so prefer the slot's live (resolved) texture for a meaningful
+    -- preview of a missing/restorable macro.
     iconHint = (slot and GetActionTexture and GetActionTexture(slot)) or icon,
+    -- Restore icon: the macro's raw icon exactly as stored — the "?" placeholder
+    -- when dynamic, the hardcoded id otherwise. Kept distinct from iconHint so a
+    -- dynamic macro is recreated dynamic instead of freezing its resolved texture.
+    restoreIcon = icon,
   }
 end
 

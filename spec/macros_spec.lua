@@ -182,6 +182,26 @@ describe("Macros", function()
       assert.is_nil(macro)
       assert.equals("no stored macro body to restore", reason)
     end)
+
+    it("recreates a dynamic macro with the dynamic icon placeholder", function()
+      MM.Macros.RestoreUserMacro({
+        name = "Mine",
+        body = "#showtooltip\n/cast Mine",
+        scope = "character",
+        icon = MM.MACRO_DYNAMIC_ICON,
+      })
+      assert.equals(MM.MACRO_DYNAMIC_ICON, stubs.world.charMacros[1].icon)
+    end)
+
+    it("preserves a hardcoded icon", function()
+      MM.Macros.RestoreUserMacro({
+        name = "Mine",
+        body = "#showtooltip\n/use 10",
+        scope = "character",
+        icon = 132120,
+      })
+      assert.equals(132120, stubs.world.charMacros[1].icon)
+    end)
   end)
 
   describe("CandidatesCompatible / EffectiveMode", function()
