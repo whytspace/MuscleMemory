@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.10.0 - 2026-07-24
+
 - **[Fix]** Spells renamed by a spec or talent (e.g. Evoker's Chrono Flames replacing Living Flame) now capture and resolve as their base spell, so they no longer show as "no match" in Dynamic Actions. Already-saved candidates work without re-adding them.
 - **[Fix]** Restoring a macro with no chosen icon keeps its dynamic `#showtooltip` icon instead of freezing the icon that happened to show when it was captured. Macros captured before this fix need re-capturing to benefit.
 - **[Fix]** Usable items you're out of are restored greyed instead of falling back to a lower layer, and unlearned toys are no longer placed.
