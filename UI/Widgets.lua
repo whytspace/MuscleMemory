@@ -46,6 +46,7 @@ Widgets.ICON = {
   macro = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-macro",
   import = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-import",
   export = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-export",
+  invert = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-invert",
 }
 
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font

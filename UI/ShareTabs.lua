@@ -95,6 +95,36 @@ local function rowInit(row, data)
   row.label:SetTextColor(Widgets.unpackColor(data.locked and colors.muted or colors.parchment))
 end
 
+-- Small invert-selection icon sitting at the right edge of a column header.
+-- The tab assigns `onInvert`; it flips every non-locked checkbox in the column.
+-- `hint` is an optional extra tooltip line (the actions column's locked note).
+local function invertLink(host, hint)
+  local button = CreateFrame("Button", nil, host)
+  button:SetSize(16, 16)
+  local icon = button:CreateTexture(nil, "ARTWORK")
+  icon:SetSize(13, 13)
+  icon:SetPoint("CENTER")
+  icon:SetTexture(Widgets.ICON.invert)
+  icon:SetAlpha(0.65)
+  button:SetScript("OnEnter", function(self)
+    icon:SetAlpha(1)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Invert selection")
+    GameTooltip:AddLine("Flips every checkbox in this column." .. (hint and (" " .. hint) or ""), 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  button:SetScript("OnLeave", function()
+    icon:SetAlpha(0.65)
+    GameTooltip:Hide()
+  end)
+  button:SetScript("OnClick", function(self)
+    if self.onInvert then
+      self.onInvert()
+    end
+  end)
+  return button
+end
+
 -- Build the shared skeleton into `parent`: intro column plus three groove-split
 -- list columns. Returns a table of hosts the tab fills in.
 local function buildPanels(parent, key)
@@ -140,6 +170,14 @@ local function buildPanels(parent, key)
     header:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
     header.baseTitle = column[2]
     panels[column[1] .. "Header"] = header
+
+    -- Macros only ride along; there is no selection to invert there.
+    if column[1] ~= "macros" then
+      local hint = column[1] == "actions" and "Items a selected layer needs stay included." or nil
+      local link = invertLink(host, hint)
+      link:SetPoint("RIGHT", host, "TOPRIGHT", -SCROLLBAR_INSET, -5)
+      panels[column[1] .. "Invert"] = link
+    end
 
     local list = Widgets.DataList(host, key .. "." .. column[1], {
       extent = 24,
@@ -301,6 +339,16 @@ local function requiredActions(layersByKey, isIncluded)
     end
   end
   return required
+end
+
+-- Flip each key's exclusion, skipping locked ones. A locked row keeps whatever
+-- state is stored underneath — the lock only overrides it while it lasts.
+local function invertExcluded(excluded, keys, locked)
+  for key in pairs(keys) do
+    if not locked[key] then
+      excluded[key] = (not excluded[key]) or nil
+    end
+  end
 end
 
 -- The captured macros riding along in the selection (deduped by body): macros
@@ -489,7 +537,7 @@ function ExportTab:Refresh()
       selectedActions = selectedActions + 1
     end
     actionItems[#actionItems + 1] = {
-      label = action.name .. (locked and "  |cff8a8474(needed by a layer)|r" or ""),
+      label = action.name,
       selfKey = action.key,
       checked = checked,
       locked = locked,
@@ -531,6 +579,26 @@ function ExportTab:Build(parent)
 
   if not self.built then
     self.built = true
+
+    self.panels.layersInvert.onInvert = function()
+      local state = ensureExportState()
+      local profile = MM.DB:GetProfile(state.profileId)
+      if profile then
+        invertExcluded(state.excludedLayers, profile.layers or {}, {})
+        ExportTab:Refresh()
+      end
+    end
+    self.panels.actionsInvert.onInvert = function()
+      local state = ensureExportState()
+      local profile = MM.DB:GetProfile(state.profileId)
+      if profile then
+        local required = requiredActions(profile.layers or {}, function(id)
+          return not state.excludedLayers[id]
+        end)
+        invertExcluded(state.excludedActions, profile.dynamicActions or {}, required)
+        ExportTab:Refresh()
+      end
+    end
 
     local blurb = Widgets.Label(intro, "GameFontHighlight", "Choose what to include in your export.")
     blurb:SetPoint("TOPLEFT", intro, "TOPLEFT", 0, 0)
@@ -674,7 +742,7 @@ function ImportTab:Refresh()
       actionCount = actionCount + 1
     end
     actionItems[#actionItems + 1] = {
-      label = action.name .. (locked and "  |cff8a8474(needed by a layer)|r" or ""),
+      label = action.name,
       selfKey = action.key,
       checked = checked,
       locked = locked,
@@ -795,6 +863,32 @@ function ImportTab:Build(parent)
 
   if not self.built then
     self.built = true
+
+    self.panels.layersInvert.onInvert = function()
+      local package = importState.package
+      if package then
+        local keys = {}
+        for _, entry in ipairs(package.layers) do
+          keys[entry.key] = true
+        end
+        invertExcluded(importState.excludedLayers, keys, {})
+        ImportTab:Refresh()
+      end
+    end
+    self.panels.actionsInvert.onInvert = function()
+      local package = importState.package
+      if package then
+        local layersByKey = {}
+        for _, entry in ipairs(package.layers) do
+          layersByKey[entry.key] = entry.layer
+        end
+        local required = requiredActions(layersByKey, function(key)
+          return not importState.excludedLayers[key]
+        end)
+        invertExcluded(importState.excludedActions, package.dynamicActions or {}, required)
+        ImportTab:Refresh()
+      end
+    end
 
     local blurb =
       Widgets.Label(intro, "GameFontHighlight", "Paste a sharing string, choose what to take, and import it.")
