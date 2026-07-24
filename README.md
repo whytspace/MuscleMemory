@@ -37,7 +37,9 @@ has for the job. One binding, every class.
   equipment sets.
 - **No surprises.** Preview shows what Apply would change first, and Apply is blocked in combat or
   with something on the cursor — it waits rather than half-applying.
-- **Scriptable.** Everything in the window is also a slash command 😉
+- **Undo your slips.** Every configuration change — a deleted layer, a mis-assigned slot, a whole
+  import — reverts step by step, and the window jumps to what changed.
+- **Scriptable.** A public API lets macros and other add-ons drive everything in the window 😉
 - **Separate setups.** Profiles keep independent configurations you can switch at once — an
   account-wide default, or a dedicated one per character.
 - **Share your setup.** Export layers, dynamic actions, or whole profiles as a copyable string;
