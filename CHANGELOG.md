@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.11.0 - 2026-07-24
+
 - **[New]** New Dynamic Actions can be created directly from a slot's regular action.
 - **[New]** Export and import columns have an invert-selection button that flips every checkbox at once.
 - **[Fix]** Slots that fail to apply (e.g. all macro slots are full) are now warned about visibly instead of only with `/mm debug`, and the apply summary reports the failed count.
