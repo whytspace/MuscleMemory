@@ -18,6 +18,7 @@ files["spec"] = {
 
 globals = {
   "MacroFrame",
+  "MuscleMemory",
   "MuscleMemoryDB",
   "SLASH_MUSCLEMEMORY1",
   "SLASH_MUSCLEMEMORY2",

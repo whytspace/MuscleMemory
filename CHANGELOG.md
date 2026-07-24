@@ -4,6 +4,12 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[New]** The slash commands have been replaced by a public API: everything they did (and more, like creating Dynamic Actions) is now available to macros and other add-ons through the global `MuscleMemory`. For example:
+  - `/run MuscleMemory.profiles.setCharacter("raid")` — switch this character to a profile
+  - `/run MuscleMemory.layers.captureAll("healing")` — capture your current bars into a layer
+  - `/run MuscleMemory.actions.create("Defensives")` — create a Dynamic Action, previously UI-only
+- **[Change]** `/mm` is trimmed to the essentials: open the window, `preview`, `apply` and `debug`. Everything else is managed in the window or through the new API.
+
 ## 0.11.0 - 2026-07-24
 
 - **[New]** New Dynamic Actions can be created directly from a slot's regular action.

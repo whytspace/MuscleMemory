@@ -727,8 +727,9 @@ end
 
 -- Candidates -----------------------------------------------------------------
 
--- Append a candidate (a captured assignment) to a profile dynamicAction.
-function DB:AddCandidate(dynamicActionId, assignment)
+-- Add a candidate (a captured assignment) to a profile dynamicAction, at `index`
+-- (clamped) or appended when no index is given.
+function DB:AddCandidate(dynamicActionId, assignment, index)
   local dynamicAction = self:DynamicActions()[dynamicActionId]
   if not dynamicAction then
     return false, "only profile dynamic actions can be edited"
@@ -738,7 +739,8 @@ function DB:AddCandidate(dynamicActionId, assignment)
   end
 
   dynamicAction.candidates = dynamicAction.candidates or {}
-  dynamicAction.candidates[#dynamicAction.candidates + 1] = assignment
+  index = math.max(1, math.min(tonumber(index) or (#dynamicAction.candidates + 1), #dynamicAction.candidates + 1))
+  table.insert(dynamicAction.candidates, index, assignment)
   return true
 end
 

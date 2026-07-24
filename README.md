@@ -93,17 +93,18 @@ the macro follows:
 2. Click a faded slot to capture whatever is on that action bar button.
 3. Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
 
-## Commands
+## Commands & API
 
-Everything in the window is also a slash command, in a self-documenting tree — type **`/mm help`**,
-or `/mm <topic> help`, to explore it. The essentials:
+The slash commands cover the daily essentials:
 
 - `/mm` — open the window
-- `/mm apply` — restore your bars from the active profile
 - `/mm preview` — show what Apply would change, without touching your bars
-- `/mm layer capture [slot|all]` — capture a live bar slot, or all of them, into the selected layer
-- `/mm profile` · `/mm layer` · `/mm action` — manage profiles, layers, and dynamic actions
-- `/mm export` · `/mm import` — share your setup as a copyable string
+- `/mm apply` — restore your bars from the active profile
+
+Everything else — profiles, layers, dynamic actions, settings — is managed in the window, or
+programmatically through the public API: the global `MuscleMemory` exposes it all to macros and
+other add-ons (e.g. `/run MuscleMemory.layers.captureAll("healing")`). Explore it with
+`/dump MuscleMemory`; [API.lua](API.lua) documents every function and the data shapes.
 
 ## Screenshots
 

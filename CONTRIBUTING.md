@@ -37,7 +37,11 @@ Keep entries short and player-focused. Use one flat list. Start every entry with
 ## Project rules
 
 - Support current retail WoW only.
-- Give every user-facing feature a matching `/mm` command.
+- Expose capabilities through the public API rather than slash commands. `/mm` stays a deliberately tiny set: open, `preview`, `apply`, `debug` (plus the undocumented maintainer tool `/mm shot`).
+
+## Public API
+
+`API.lua` exposes the global `MuscleMemory` (versioned with `apiVersion`) and is the developer-facing reference: conventions and data shapes in the header, one signature comment per function. Behavior contract: invalid inputs are rejected with a reason, and returned tables are snapshots — editing them changes nothing. Slash commands adapt onto the API. Published signatures are a compatibility contract; breaking them needs a release note.
 - Use `WowScrollBox`, `MinimalScrollBar`, `MenuUtil`, and `TabSystem`. Avoid legacy UI systems.
 - Verify UI and command changes in-game with `/reload`.
 

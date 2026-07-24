@@ -27,6 +27,7 @@ Util/EquipmentSets.lua
 Util/Outfits.lua
 Util/Flyouts.lua
 Util/Actions.lua
+Util/Validate.lua
 
 Data/SpellIds.lua
 Data/ItemIds.lua
@@ -37,6 +38,7 @@ Share.lua
 Resolver.lua
 Capture.lua
 Applier.lua
+API.lua
 Events.lua
 SlashCommands.lua
 
