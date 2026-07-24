@@ -47,6 +47,8 @@ Widgets.ICON = {
   import = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-import",
   export = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-export",
   invert = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-invert",
+  undo = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-undo",
+  redo = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-redo",
 }
 
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
@@ -137,12 +139,35 @@ function Widgets.IconButton(parent, texture, tooltip, onClick)
 
   button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
   if onClick then
-    button:SetScript("OnClick", onClick)
+    button:SetScript("OnClick", function(self, ...)
+      onClick(self, ...)
+      -- Clicking can change what the tooltip says (e.g. the next undo step);
+      -- re-run OnEnter so a hovering pointer sees the fresh text immediately.
+      local onEnter = self:IsMouseOver() and self:GetScript("OnEnter")
+      if onEnter then
+        onEnter(self)
+      end
+    end)
   end
   if tooltip then
+    -- A function tooltip is re-evaluated on every hover; it may return a
+    -- second value for a dimmer detail line under the title.
     button:SetScript("OnEnter", function(self)
+      local text, detail
+      if type(tooltip) == "function" then
+        text, detail = tooltip()
+      else
+        text = tooltip
+      end
+      if not text then
+        GameTooltip:Hide()
+        return
+      end
       GameTooltip:SetOwner(self, "ANCHOR_TOP")
-      GameTooltip:SetText(tooltip)
+      GameTooltip:SetText(text)
+      if detail then
+        GameTooltip:AddLine(detail, 0.82, 0.78, 0.66, true)
+      end
       GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function()

@@ -8,6 +8,7 @@ All notable player-facing changes are recorded here.
   - `/run MuscleMemory.profiles.setCharacter("raid")` — switch this character to a profile
   - `/run MuscleMemory.layers.captureAll("healing")` — capture your current bars into a layer
   - `/run MuscleMemory.actions.create("Defensives")` — create a Dynamic Action, previously UI-only
+- **[New]** Accidental changes are no longer final: Undo and Redo revert configuration edits step by step — a deleted layer, a mis-assigned slot or a whole import comes back with one click, and the window jumps to what changed so you can see it. Your live action bars are never touched by an undo; only Apply changes those.
 - **[Change]** `/mm` is trimmed to the essentials: open the window, `preview`, `apply` and `debug`. Everything else is managed in the window or through the new API.
 
 ## 0.11.0 - 2026-07-24

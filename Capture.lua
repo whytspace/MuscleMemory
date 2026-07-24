@@ -212,16 +212,19 @@ function Capture:CaptureFilledSlots(layerId)
   local captured = 0
   local failures = {}
 
-  for slot = 1, MM.MAX_ACTION_SLOT do
-    if HasAction and HasAction(slot) then
-      local ok, reason = self:CaptureSlot(layerId, slot)
-      if ok then
-        captured = captured + 1
-      else
-        failures[#failures + 1] = { slot = slot, reason = reason or "unknown reason" }
+  -- One undo step for the whole sweep, not one per slot.
+  MM.Undo:Batch(function()
+    for slot = 1, MM.MAX_ACTION_SLOT do
+      if HasAction and HasAction(slot) then
+        local ok, reason = self:CaptureSlot(layerId, slot)
+        if ok then
+          captured = captured + 1
+        else
+          failures[#failures + 1] = { slot = slot, reason = reason or "unknown reason" }
+        end
       end
     end
-  end
+  end, "capture all filled bar slots")
 
   return captured, failures
 end

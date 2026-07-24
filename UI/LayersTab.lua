@@ -144,9 +144,12 @@ end
 local function convertToDynamicAction(layerId, slot, assignment)
   local prefill = MM.Actions.GetAssignmentName(assignment)
   MM.ui.Modals.Input("Convert to Dynamic Action", "Name the new Dynamic Action", prefill, "Convert", function(name)
-    local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
-    MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
-    assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
+    -- One undo step for the whole conversion.
+    MM.Undo:Batch(function()
+      local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
+      MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
+      assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
+    end, "convert " .. prefill .. " to a Dynamic Action")
   end)
 end
 

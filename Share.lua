@@ -187,6 +187,13 @@ end
 -- { profileId = id } for an existing profile or { newProfile = name } to create
 -- one (package settings apply only there). Everything imported is created new.
 function Share:Import(package, selection, target)
+  -- One undo step for the whole import, however many entries it creates.
+  return MM.Undo:Batch(function()
+    return self:ImportSelection(package, selection, target)
+  end, "import a sharing string")
+end
+
+function Share:ImportSelection(package, selection, target)
   if type(package) ~= "table" then
     return nil, "nothing to import"
   end

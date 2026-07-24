@@ -15,6 +15,27 @@ function Tables.DeepCopy(value)
   return copy
 end
 
+-- Structural equality: same keys, same (recursively equal) values.
+function Tables.DeepEquals(left, right)
+  if left == right then
+    return true
+  end
+  if type(left) ~= "table" or type(right) ~= "table" then
+    return false
+  end
+  for key, value in pairs(left) do
+    if not Tables.DeepEquals(value, right[key]) then
+      return false
+    end
+  end
+  for key in pairs(right) do
+    if left[key] == nil then
+      return false
+    end
+  end
+  return true
+end
+
 function Tables.MergeDefaults(target, defaults)
   if type(target) ~= "table" then
     target = {}

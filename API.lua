@@ -452,6 +452,19 @@ function api.preview()
   return changes
 end
 
+-- undo()
+-- Reverts the most recent configuration change (session-only). Applying to the
+-- bars is never undone.
+function api.undo()
+  return MM.Undo:Undo()
+end
+
+-- redo()
+-- Restores the configuration change most recently undone.
+function api.redo()
+  return MM.Undo:Redo()
+end
+
 -- apply()
 -- Applies the active profile to the action bars.
 function api.apply()

@@ -34,6 +34,7 @@ Data/ItemIds.lua
 Data/PredefinedDynamicActions.lua
 
 Database.lua
+Undo.lua
 Share.lua
 Resolver.lua
 Capture.lua

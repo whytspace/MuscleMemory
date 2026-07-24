@@ -104,6 +104,9 @@ local function restore(saved, handle)
   if handle.profileId then
     MM.DB:DeleteProfile(handle.profileId)
   end
+  -- The tour churned the config with throwaway steps; a stale undo history
+  -- pointing into the deleted showcase profile would only mislead.
+  MM.Undo:Reset()
   if MacroFrame and HideUIPanel then
     HideUIPanel(MacroFrame)
     -- Put the macro frame's strata back the way we found it.

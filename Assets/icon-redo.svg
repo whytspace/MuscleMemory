@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24">
+  <!-- Lucide "redo-2", gold stroke. Restore the change most recently undone. -->
+  <g fill="none" stroke="#d4af37" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m15 14 5-5-5-5"/>
+    <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>
+  </g>
+</svg>

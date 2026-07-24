@@ -201,6 +201,27 @@ function UI:CreateFrame()
   end)
   preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
+  -- Undo/Redo revert configuration changes (never the bars themselves). They
+  -- keep their place and fade when there is nothing to do; tooltips stay alive
+  -- on the disabled state so the buttons remain discoverable.
+  self.redoButton = MM.ui.Widgets.IconButton(frame, MM.ui.Widgets.ICON.redo, function()
+    local label = MM.Undo:NextRedoLabel()
+    return "Redo", label or "Nothing to redo"
+  end, function()
+    MM.Undo:Redo()
+  end)
+  self.redoButton:SetPoint("RIGHT", preview, "LEFT", -16, 0)
+  self.redoButton:SetMotionScriptsWhileDisabled(true)
+
+  self.undoButton = MM.ui.Widgets.IconButton(frame, MM.ui.Widgets.ICON.undo, function()
+    local label = MM.Undo:NextUndoLabel()
+    return "Undo", label or "Nothing to undo"
+  end, function()
+    MM.Undo:Undo()
+  end)
+  self.undoButton:SetPoint("RIGHT", self.redoButton, "LEFT", -6, 0)
+  self.undoButton:SetMotionScriptsWhileDisabled(true)
+
   -- One shared inset sits behind all tab content so the three panels read as a
   -- single recessed surface; tabs separate their panels with groove dividers. It
   -- starts right under the tab row.
@@ -266,10 +287,28 @@ function UI:ShowContent()
     end
   end
 
+  self:UpdateUndoButtons()
+
   frame:Show()
   if builder and builder.Refresh and not firstBuild then
     builder:Refresh()
   end
+end
+
+-- Undo/Redo stay in place; whichever has nothing to do is disabled and faded
+-- rather than hidden, so the row never shifts.
+local function setUndoButtonState(button, enabled)
+  button:SetEnabled(enabled)
+  button.icon:SetDesaturated(not enabled)
+  button.icon:SetAlpha(enabled and 1 or 0.3)
+end
+
+function UI:UpdateUndoButtons()
+  if not self.undoButton then
+    return
+  end
+  setUndoButtonState(self.undoButton, MM.Undo:CanUndo())
+  setUndoButtonState(self.redoButton, MM.Undo:CanRedo())
 end
 
 function UI:SelectTab(tab)
