@@ -25,17 +25,17 @@ describe("Actions", function()
 
   describe("GetSlotLabel", function()
     it("labels slots by their real (non-linear) action bar", function()
-      assert.equals("bar 1 button 1", MM.Actions.GetSlotLabel(1))
-      assert.equals("bar 1 button 12", MM.Actions.GetSlotLabel(12))
-      assert.equals("bar 2 button 1", MM.Actions.GetSlotLabel(61)) -- bottom left
-      assert.equals("bar 3 button 12", MM.Actions.GetSlotLabel(60)) -- bottom right
-      assert.equals("bar 8 button 12", MM.Actions.GetSlotLabel(180))
-      assert.equals("stance 1 button 1", MM.Actions.GetSlotLabel(73)) -- form/stance page
-      assert.equals("skyriding button 1", MM.Actions.GetSlotLabel(121)) -- skyriding page
+      assert.equals("Bar 1 button 1", MM.Actions.GetSlotLabel(1))
+      assert.equals("Bar 1 button 12", MM.Actions.GetSlotLabel(12))
+      assert.equals("Bar 2 button 1", MM.Actions.GetSlotLabel(61)) -- bottom left
+      assert.equals("Bar 3 button 12", MM.Actions.GetSlotLabel(60)) -- bottom right
+      assert.equals("Bar 8 button 12", MM.Actions.GetSlotLabel(180))
+      assert.equals("Stance 1 button 1", MM.Actions.GetSlotLabel(73)) -- form/stance page
+      assert.equals("Skyriding button 1", MM.Actions.GetSlotLabel(121)) -- skyriding page
     end)
 
     it("labels a slot that isn't on any managed bar", function()
-      assert.equals("page 2 button 1", MM.Actions.GetSlotLabel(13))
+      assert.equals("Page 2 button 1", MM.Actions.GetSlotLabel(13))
       assert.equals("slot 133", MM.Actions.GetSlotLabel(133)) -- leftover override range
     end)
   end)

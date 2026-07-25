@@ -137,7 +137,7 @@ end
 function Actions.GetSlotLabel(slot)
   for _, bar in ipairs(Actions.BARS) do
     if slot > bar.base and slot <= bar.base + MM.ACTIONS_PER_BAR then
-      return string.format("%s button %d", string.lower(bar.label), slot - bar.base)
+      return string.format("%s button %d", bar.label, slot - bar.base)
     end
   end
   -- Paging / vehicle slots that aren't one of the listed bars.
