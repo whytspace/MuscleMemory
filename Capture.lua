@@ -232,6 +232,32 @@ function Capture:CaptureFilledSlots(layerId)
   return captured, failures
 end
 
+-- Captures taken before GetSelectedMacroIcon existed stored GetMacroInfo's icon,
+-- which for a dynamic-"?" macro is a frozen resolved texture. As long as the
+-- captured macro still exists, the real pick can be re-read: refresh every stored
+-- macro assignment from the live macro it resolves to, sparing players a manual
+-- re-capture. Direct writes, like schema migrations: healing is not an edit to
+-- undo. Runs on UPDATE_MACROS, so it also tracks icon changes as they happen;
+-- character macros heal while their owning character is logged in.
+function Capture:HealMacroRestoreIcons()
+  if not (C_Macro and C_Macro.GetSelectedMacroIcon) then
+    return
+  end
+  for _, profile in pairs(MM.DB:GetRoot().profiles or {}) do
+    for _, layer in pairs(profile.layers or {}) do
+      for _, assignment in pairs(layer.slots or {}) do
+        if type(assignment) == "table" and assignment.type == "macro" then
+          local macro = MM.Macros.Resolve(assignment)
+          local icon = macro and C_Macro.GetSelectedMacroIcon(macro.index)
+          if icon then
+            assignment.restoreIcon = icon
+          end
+        end
+      end
+    end
+  end
+end
+
 function Capture:PrintFailures(failures)
   for index, failure in ipairs(failures or {}) do
     if index > 5 then

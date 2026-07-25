@@ -4,7 +4,7 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
-- **[Fix]** Restored macros with the dynamic `?` icon really keep it now: capture reads the icon you picked through the game's own macro-editor API instead of the displayed one, which for `?` macros is whatever icon happened to show at save time. Hand-picked icons are preserved exactly. Macros captured before this fix need one re-capture to benefit.
+- **[Fix]** Recreated macros keep the icon you picked: the dynamic `?` no longer freezes to whatever icon showed at capture time. Existing captures heal automatically.
 - **[Fix]** A slot holding the Single Button Assistant is no longer mistaken for the ability it currently recommends: preview, apply and chat messages now treat it as the assistant.
 - **[Fix]** Preview and apply report unavailable actions consistently ("Fetch is not available"); they no longer count as failed.
 - **[Fix]** Apply no longer reports a phantom "empty → empty" update.

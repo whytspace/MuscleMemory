@@ -100,6 +100,31 @@ describe("Events", function()
     assert.is_true(MM.eventFrame._events["ACTIVE_PLAYER_SPECIALIZATION_CHANGED"])
     assert.is_true(MM.eventFrame._events["SPELLS_CHANGED"])
     assert.is_true(MM.eventFrame._events["ACTIONBAR_SLOT_CHANGED"])
+    assert.is_true(MM.eventFrame._events["UPDATE_MACROS"])
+  end)
+
+  it("heals stored macro icons whenever macro data changes", function()
+    stubs:addGlobalMacro({
+      name = "Dyn",
+      icon = 249170,
+      selectedIcon = MM.MACRO_DYNAMIC_ICON,
+      body = "#showtooltip\n/cast Dyn",
+    })
+    MM.DB:SetSlot("Core", 1, {
+      type = "macro",
+      bodyHash = MM.Macros.HashBody("#showtooltip\n/cast Dyn"),
+      nameHint = "Dyn",
+      scope = "global",
+      restoreIcon = 249170,
+    })
+
+    MM.Events:OnEvent("UPDATE_MACROS")
+    assert.equals(MM.MACRO_DYNAMIC_ICON, MM.DB:GetLayer("Core").slots[1].restoreIcon)
+
+    -- The player picks a hardcoded icon later; the next firing tracks it.
+    stubs.world.globalMacros[1].selectedIcon = 132150
+    MM.Events:OnEvent("UPDATE_MACROS")
+    assert.equals(132150, MM.DB:GetLayer("Core").slots[1].restoreIcon)
   end)
 
   describe("trailing debounce", function()

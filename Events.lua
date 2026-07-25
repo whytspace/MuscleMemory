@@ -67,6 +67,14 @@ end
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
 handlers.SPELLS_CHANGED = reevaluateProfile
 
+-- UPDATE_MACROS fires when macro data first loads after login and again on
+-- every macro change, so stored icons heal the moment the truth moves. The
+-- event carries no payload (no "which macro"), so each firing re-walks all
+-- stored macro assignments — a few thousand cheap C calls at worst.
+handlers.UPDATE_MACROS = function()
+  MM.Capture:HealMacroRestoreIcons()
+end
+
 function Events:OnInitialize()
   for event in pairs(handlers) do
     MM.eventFrame:RegisterEvent(event)

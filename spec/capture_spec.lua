@@ -186,4 +186,42 @@ describe("Capture", function()
       assert.equals(3, failures[1].slot)
     end)
   end)
+
+  describe("HealMacroRestoreIcons", function()
+    it("heals a frozen restore icon from the live macro's saved pick", function()
+      -- An old capture stored GetMacroInfo's resolved texture; the macro still
+      -- exists, so the real pick is re-read from GetSelectedMacroIcon.
+      stubs:addGlobalMacro({
+        name = "Dyn",
+        icon = 249170,
+        selectedIcon = MM.MACRO_DYNAMIC_ICON,
+        body = "#showtooltip\n/cast Dyn",
+      })
+      MM.DB:SetSlot("Core", 1, {
+        type = "macro",
+        bodyHash = MM.Macros.HashBody("#showtooltip\n/cast Dyn"),
+        nameHint = "Dyn",
+        scope = "global",
+        restoreIcon = 249170,
+      })
+
+      MM.Capture:HealMacroRestoreIcons()
+
+      assert.equals(MM.MACRO_DYNAMIC_ICON, MM.DB:GetLayer("Core").slots[1].restoreIcon)
+    end)
+
+    it("does not heal an assignment whose macro no longer exists", function()
+      MM.DB:SetSlot("Core", 1, {
+        type = "macro",
+        bodyHash = "deadbeef",
+        nameHint = "Gone",
+        scope = "global",
+        restoreIcon = 249170,
+      })
+
+      MM.Capture:HealMacroRestoreIcons()
+
+      assert.equals(249170, MM.DB:GetLayer("Core").slots[1].restoreIcon)
+    end)
+  end)
 end)
