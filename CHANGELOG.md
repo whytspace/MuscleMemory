@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.13.0 - 2026-07-25
+
 - **[Change]** When the apply prompt opens, the pending changes are now also printed to chat (like `/mm preview`), so you can see what triggered it — even if the situation has resolved itself by the time you check.
 - **[Change]** Editing a macro now updates its copy in your layers: renames, body and icon changes sync automatically, so applying on another character recreates the latest version — no re-capture needed.
 - **[Fix]** Recreated macros keep the icon you picked: the dynamic `?` no longer freezes to whatever icon showed at capture time. Existing captures heal automatically.
