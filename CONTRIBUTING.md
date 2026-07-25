@@ -26,7 +26,7 @@ The Git setting is local to this clone and prevents WoW's permission updates fro
 
 Update `CHANGELOG.md` for player-facing changes. Skip internal cleanup, tests, formatting, and development chores.
 
-Keep entries short and player-focused. Use one flat list. Start every entry with **[New]**, **[Change]**, or **[Fix]**. Always order them New, Change, then Fix.
+Keep entries short and player-focused, in one flat list. Start each with **[New]**, **[Change]**, or **[Fix]**, ordered New, Change, Fix.
 
 ```md
 - **[New]** See slots bound by other layers.
@@ -38,12 +38,13 @@ Keep entries short and player-focused. Use one flat list. Start every entry with
 
 - Support current retail WoW only.
 - Expose capabilities through the public API rather than slash commands. `/mm` stays a deliberately tiny set: open, `preview`, `apply`, `debug` (plus the undocumented maintainer tool `/mm shot`).
+- Keep decisions DRY: when several paths answer the same question, extract one shared function all of them consume instead of parallel near-copies (e.g. `Applier:ClassifyEntry` drives preview, apply, and `api.preview`).
+- Use `WowScrollBox`, `MinimalScrollBar`, `MenuUtil`, and `TabSystem`. Avoid legacy UI systems.
+- Verify UI and command changes in-game with `/reload`.
 
 ## Public API
 
 `API.lua` exposes the global `MuscleMemory` (versioned with `apiVersion`) and is the developer-facing reference: conventions and data shapes in the header, one signature comment per function. Behavior contract: invalid inputs are rejected with a reason, and returned tables are snapshots — editing them changes nothing. Slash commands adapt onto the API. Published signatures are a compatibility contract; breaking them needs a release note.
-- Use `WowScrollBox`, `MinimalScrollBar`, `MenuUtil`, and `TabSystem`. Avoid legacy UI systems.
-- Verify UI and command changes in-game with `/reload`.
 
 ## Tests
 
