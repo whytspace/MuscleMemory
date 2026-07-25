@@ -45,6 +45,38 @@ describe("Single Button Assistant", function()
     assert.is_false(MM.Actions.IsAssignmentInSlot({ type = "spell", id = SBA }, 60))
   end)
 
+  it("does not mistake an assistant slot for the ability it recommends", function()
+    -- Swapping two applied slots (assistant <-> Obliterate) must diff both: the
+    -- assistant slot reports the recommended ability through GetActionInfo and
+    -- FindSpellActionButtons, but it still holds the assistant, not that spell.
+    stubs:setAssistedCombat({ spell = SBA, available = true })
+    stubs:setSlot(59, { actionType = "spell", id = 1766, assistedCombat = true })
+
+    assert.is_false(MM.Actions.IsAssignmentInSlot({ type = "spell", id = 1766 }, 59))
+  end)
+
+  it("replaces the assistant with the ability it currently recommends", function()
+    -- The client no-ops dropping the recommended ability onto the assistant's
+    -- own slot; the applier must empty the slot first so the spell lands.
+    stubs:setAssistedCombat({ spell = SBA, available = true })
+    stubs:setSpell(1766, { name = "Kick", known = true })
+    stubs:setSlot(59, { actionType = "spell", id = 1766, assistedCombat = true })
+
+    local entry = { slot = 59, resolved = { kind = "spell", id = 1766, pickupAvailable = true } }
+    assert.is_true(MM.Applier:ApplyEntry(entry))
+    assert.equals(1766, stubs.world.slots[59].id)
+    assert.is_falsy(stubs.world.slots[59].assistedCombat)
+  end)
+
+  it("labels a live assistant slot as the assistant, not its recommendation", function()
+    stubs:setAssistedCombat({ spell = SBA, available = true })
+    stubs:setSpell(SBA, { name = "Single Button Assist", known = false })
+    stubs:setSpell(1766, { name = "Kick", known = true })
+    stubs:setSlot(59, { actionType = "spell", id = 1766, assistedCombat = true })
+
+    assert.equals("Single Button Assist", MM.Actions.GetLiveActionLabel(59))
+  end)
+
   it("treats an already-placed assistant as unchanged (no re-apply loop)", function()
     stubs:setSpell(SBA, { name = "Single Button Assist", known = false })
     stubs:setAssistedCombat({ spell = SBA, available = true })

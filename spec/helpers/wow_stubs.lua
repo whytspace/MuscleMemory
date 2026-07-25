@@ -140,15 +140,16 @@ function Stubs.new()
     end,
     C_ActionBar = {
       -- Real WoW returns nil (not an empty table) when the spell is on no bar,
-      -- and for spells it never indexes such as the Single Button Assistant.
+      -- and for spells it never indexes such as the Single Button Assistant. An
+      -- assistant slot, however, IS indexed under the ability it currently
+      -- recommends (the id GetActionInfo reports for it).
       FindSpellActionButtons = function(spellId)
+        if spellId == world.assistedCombat.spell then
+          return nil
+        end
         local slots = {}
         for slot, action in pairs(world.slots) do
-          if
-            not action.assistedCombat
-            and action.actionType == "spell"
-            and (action.id == spellId or action.baseSpellId == spellId)
-          then
+          if action.actionType == "spell" and (action.id == spellId or action.baseSpellId == spellId) then
             slots[#slots + 1] = slot
           end
         end
@@ -438,9 +439,17 @@ function Stubs.new()
     end,
     PlaceAction = function(slot)
       local cursor = world.cursor
-      if cursor then
-        world.slots[slot] = { actionType = cursor.type, id = cursor.id }
+      if not cursor then
+        return
       end
+      -- Observed in 12.0: dropping the ability the assistant currently
+      -- recommends onto the assistant's own slot is a no-op — the client thinks
+      -- the spell is already there and the assistant stays.
+      local occupant = world.slots[slot]
+      if occupant and occupant.assistedCombat and cursor.type == "spell" and cursor.id == occupant.id then
+        return
+      end
+      world.slots[slot] = { actionType = cursor.type, id = cursor.id }
     end,
 
     -- Key bindings ---------------------------------------------------------

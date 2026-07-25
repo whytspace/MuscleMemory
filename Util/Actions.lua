@@ -287,6 +287,15 @@ end
 
 -- Human label for the action currently live in `slot`, or "empty".
 function Actions.GetLiveActionLabel(slot)
+  -- An assistant slot reports the ability it currently recommends through
+  -- GetActionInfo; name the assistant itself.
+  if MM.Spells.IsAssistedCombatSlot(slot) then
+    local assistant = MM.Spells.GetInfo(MM.Spells.GetAssistedCombatActionSpell())
+    if assistant then
+      return assistant.name
+    end
+  end
+
   local info = Actions.GetInfo(slot)
   if not info or not info.actionType then
     return "empty"
@@ -459,6 +468,12 @@ local function slotMatches(slot, target)
     -- it with the dedicated assisted-combat query.
     if MM.Spells.IsAssistedCombatActionSpell(target.id) then
       return MM.Spells.IsAssistedCombatSlot(slot)
+    end
+    -- The reverse also holds: an assistant slot reports the ability it currently
+    -- recommends, but it still holds the assistant, so it never matches a
+    -- regular spell.
+    if MM.Spells.IsAssistedCombatSlot(slot) then
+      return false
     end
     -- Ask the action bar for the canonical spell id: FindSpellActionButtons
     -- accepts base spell ids when the placed button currently shows an override.

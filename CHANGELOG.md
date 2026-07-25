@@ -4,6 +4,7 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** A slot holding the Single Button Assistant is no longer mistaken for the ability it currently recommends: preview, apply and chat messages now treat it as the assistant.
 - **[Change]** When the apply prompt opens, the pending changes are now also printed to chat (like `/mm preview`), so you can see what triggered it — even if the situation has resolved itself by the time you check.
 
 ## 0.12.0 - 2026-07-25

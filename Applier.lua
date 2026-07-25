@@ -229,6 +229,13 @@ function Applier:ApplyEntry(entry)
     return false, "action is not currently available"
   end
 
+  -- The client no-ops dropping the ability the Single Button Assistant currently
+  -- recommends onto the assistant's own slot (it reads as already there); empty
+  -- the slot first so the replacement actually lands.
+  if MM.Spells.IsAssistedCombatSlot(slot) then
+    MM.Actions.ClearSlot(slot)
+  end
+
   -- Macro mode: a dynamicAction can render as a generated macro instead of the raw
   -- action. A body that won't render (action outside the family, or too long after
   -- substitution) falls back to placing the action directly rather than failing.
