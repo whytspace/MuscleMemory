@@ -357,7 +357,7 @@ function UI:PromptApply()
   -- recycle/displace path (which routes through OnCancel) can never apply.
   StaticPopupDialogs[APPLY_DIALOG] = StaticPopupDialogs[APPLY_DIALOG]
     or {
-      text = "Muscle Memory: action bar changes are available. Apply them now?\nUse /mm to open the window, or /mm preview to review first.",
+      text = "Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window.",
       button1 = "Apply",
       button2 = "Cancel",
       OnAccept = function()

@@ -36,6 +36,9 @@ describe("Events", function()
     MM.Events:OnEvent("SPELLS_CHANGED")
     stubs:flushTimers()
     assert.equals(1, prompts)
+    -- The preview prints alongside the prompt so the trigger reason is captured
+    -- even if the diff later settles away.
+    assert.equals(1, previews)
   end)
 
   it("stays silent during combat", function()

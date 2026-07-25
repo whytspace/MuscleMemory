@@ -37,6 +37,10 @@ function Events:PromptApplyIfChanged()
   elseif response == "apply" then
     MM.Applier:ApplyProfile()
   else
+    -- Print the preview alongside the popup: by the time the player types
+    -- /mm preview, late-streamed data may have settled and the diff vanished,
+    -- so capture the trigger reason at prompt time.
+    MM.Applier:PreviewProfile()
     MM.UI:PromptApply()
   end
 end

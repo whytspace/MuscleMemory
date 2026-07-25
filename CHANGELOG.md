@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Change]** When the apply prompt opens, the pending changes are now also printed to chat (like `/mm preview`), so you can see what triggered it — even if the situation has resolved itself by the time you check.
+
 ## 0.12.0 - 2026-07-25
 
 - **[New]** The slash commands have been replaced by a public API: everything they did (and more, like creating Dynamic Actions) is now available to macros and other add-ons through the global `MuscleMemory`. For example:
