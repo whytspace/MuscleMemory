@@ -436,17 +436,10 @@ function api.preview()
   local changes = {}
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
-    if entry then
-      if
-        entry.resolved
-        and entry.resolved.pickupAvailable ~= false
-        and not MM.Actions.IsResolvedInSlot(entry.resolved, slot)
-      then
-        changes[#changes + 1] =
-          { slot = slot, from = MM.Actions.GetLiveActionLabel(slot), to = MM.Applier:DescribeTo(entry) }
-      elseif not entry.resolved and entry.fallback == "clear" and HasAction and HasAction(slot) then
-        changes[#changes + 1] = { slot = slot, from = MM.Actions.GetLiveActionLabel(slot), to = "empty" }
-      end
+    local action = entry and MM.Applier:ClassifyEntry(entry)
+    if action == "place" or action == "clear" then
+      changes[#changes + 1] =
+        { slot = slot, from = MM.Actions.GetLiveActionLabel(slot), to = MM.Applier:DescribeTo(entry) }
     end
   end
   return changes

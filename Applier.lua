@@ -76,9 +76,38 @@ function Applier:BuildPlan(profileId)
   return plan
 end
 
--- True if applying the profile would change at least one slot — i.e. a managed
--- slot whose resolved action differs from what is currently there, or an
--- unresolved slot that the fallback would clear.
+-- The one decision preview, apply, the API and the pending-changes check all
+-- share: what would applying `entry` do to its slot right now? Returns "place"
+-- (resolved action differs from the live one), "clear" (unresolved slot the
+-- fallback empties), "unavailable" (resolved but not placeable), "keep"
+-- (unresolved and left unchanged — worth a debug note), or nil when there is
+-- nothing to do.
+function Applier:ClassifyEntry(entry)
+  local slot = entry.slot
+  if entry.resolved then
+    if MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
+      return nil
+    end
+    if entry.resolved.pickupAvailable == false then
+      return "unavailable"
+    end
+    return "place"
+  end
+
+  if entry.fallback == "clear" then
+    if HasAction and HasAction(slot) then
+      return "clear"
+    end
+    return nil
+  end
+
+  if not MM.Actions.IsAssignmentInSlot(entry.assignment, slot) then
+    return "keep"
+  end
+  return nil
+end
+
+-- True if applying the profile would change at least one slot.
 function Applier:HasUnappliedChanges(profileId)
   local plan = self:BuildPlan(profileId)
   if not plan then
@@ -87,14 +116,9 @@ function Applier:HasUnappliedChanges(profileId)
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
-    if entry then
-      if entry.resolved then
-        if entry.resolved.pickupAvailable ~= false and not MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
-          return true
-        end
-      elseif entry.fallback == "clear" and HasAction and HasAction(slot) then
-        return true
-      end
+    local action = entry and self:ClassifyEntry(entry)
+    if action == "place" or action == "clear" then
+      return true
     end
   end
 
@@ -118,9 +142,37 @@ function Applier:DescribeTo(entry)
   return label
 end
 
+-- Chat line for a pending change: "bar 2 button 5: Heal → Kick".
+function Applier:DescribeChange(entry)
+  return string.format(
+    "%s: %s → %s",
+    MM.Actions.GetSlotLabel(entry.slot),
+    MM.Actions.GetLiveActionLabel(entry.slot),
+    self:DescribeTo(entry)
+  )
+end
+
+-- Warning line for a resolved action that can't be placed right now.
+function Applier:DescribeUnavailable(entry)
+  return string.format("%s: %s is not available", MM.Actions.GetSlotLabel(entry.slot), entry.resolved.label or "action")
+end
+
+-- Debug line for an unresolved slot that is left unchanged.
+function Applier:DescribeKept(entry)
+  return string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(entry.slot), tostring(entry.unresolvedReason))
+end
+
 -- A "N slot(s)" phrase without the awkward "1 slots".
 local function slotCount(n)
   return n == 1 and "1 slot" or (n .. " slots")
+end
+
+-- Append ", N slot(s) <suffix>" to a summary when the count is non-zero.
+local function appendCount(summary, n, suffix)
+  if n == 0 then
+    return summary
+  end
+  return summary .. ", " .. slotCount(n) .. " " .. suffix
 end
 
 function Applier:PreviewProfile(profileId)
@@ -146,37 +198,24 @@ function Applier:PreviewProfile(profileId)
   -- Body: one "slot: from → to" line per change. Failures are always warned;
   -- expected left-unchanged slots are debug-only.
   local changed = 0
+  local unavailable = 0
   local issues = {}
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
-    if entry then
-      if entry.resolved and not MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
-        if entry.resolved.pickupAvailable == false then
-          MM:Warn(
-            string.format("%s: cannot restore %s (not available)", MM.Actions.GetSlotLabel(slot), entry.resolved.label)
-          )
-        else
-          changed = changed + 1
-          MM:Print(
-            string.format(
-              "%s: %s → %s",
-              MM.Actions.GetSlotLabel(slot),
-              MM.Actions.GetLiveActionLabel(slot),
-              self:DescribeTo(entry)
-            )
-          )
-        end
-      elseif not entry.resolved and entry.fallback == "clear" and HasAction and HasAction(slot) then
-        changed = changed + 1
-        MM:Print(string.format("%s: %s → empty", MM.Actions.GetSlotLabel(slot), MM.Actions.GetLiveActionLabel(slot)))
-      elseif not entry.resolved and not MM.Actions.IsAssignmentInSlot(entry.assignment, slot) then
-        issues[#issues + 1] =
-          string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(slot), tostring(entry.unresolvedReason))
-      end
+    local action = entry and self:ClassifyEntry(entry)
+    if action == "unavailable" then
+      unavailable = unavailable + 1
+      MM:Warn(self:DescribeUnavailable(entry))
+    elseif action == "place" or action == "clear" then
+      changed = changed + 1
+      MM:Print(self:DescribeChange(entry))
+    elseif action == "keep" then
+      issues[#issues + 1] = self:DescribeKept(entry)
     end
   end
 
-  MM:Print(changed == 0 and "no changes" or (slotCount(changed) .. " would change"))
+  local summary = changed == 0 and "no changes" or (slotCount(changed) .. " would change")
+  MM:Print(appendCount(summary, unavailable, "not available"))
 
   if debug then
     for _, line in ipairs(issues) do
@@ -226,7 +265,7 @@ function Applier:ApplyEntry(entry)
   end
 
   if entry.resolved.pickupAvailable == false then
-    return false, "action is not currently available"
+    return false, string.format("%s is not available", entry.resolved.label or "action")
   end
 
   -- The client no-ops dropping the ability the Single Button Assistant currently
@@ -376,38 +415,37 @@ function Applier:ApplyProfile(profileId, options)
   end
 
   local updated = 0
+  local unavailable = 0
   local failed = 0
   local issues = {} -- debug-only: left-unchanged slots; failures are always warned
 
   for slot = 1, MM.MAX_ACTION_SLOT do
     local entry = plan.slots[slot]
-    if entry and not (entry.resolved and MM.Actions.IsResolvedInSlot(entry.resolved, slot)) then
-      -- Capture the outgoing action before ApplyEntry overwrites the slot.
-      local from = MM.Actions.GetLiveActionLabel(slot)
-      local to = entry.resolved and self:DescribeTo(entry) or "empty"
+    local action = entry and self:ClassifyEntry(entry)
+    if action == "unavailable" then
+      unavailable = unavailable + 1
+      MM:Warn(self:DescribeUnavailable(entry))
+    elseif action == "place" or action == "clear" then
+      -- Describe the change before ApplyEntry overwrites the slot.
+      local line = self:DescribeChange(entry)
       local ok, applyReason = self:ApplyEntry(entry)
-      if ok and entry.resolved then
+      if ok then
         updated = updated + 1
-        MM:Print(string.format("%s: %s → %s", MM.Actions.GetSlotLabel(slot), from, to))
-      elseif ok and applyReason == "cleared unresolved slot" then
-        updated = updated + 1
-        MM:Print(string.format("%s: %s → empty", MM.Actions.GetSlotLabel(slot), from))
-      elseif ok then
-        issues[#issues + 1] =
-          string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(slot), tostring(entry.unresolvedReason))
+        MM:Print(line)
       else
         failed = failed + 1
         MM:Warn(string.format("%s: %s", MM.Actions.GetSlotLabel(slot), applyReason))
       end
+    elseif action == "keep" then
+      issues[#issues + 1] = self:DescribeKept(entry)
     end
   end
 
   self:CleanupMacroOrphans(plan)
 
   local summary = updated == 0 and "no changes" or (slotCount(updated) .. " updated")
-  if failed > 0 then
-    summary = summary .. ", " .. slotCount(failed) .. " failed"
-  end
+  summary = appendCount(summary, unavailable, "not available")
+  summary = appendCount(summary, failed, "failed")
   MM:Print(summary)
 
   if MM.DB:GetRoot().debug then

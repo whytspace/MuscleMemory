@@ -173,11 +173,11 @@ describe("Applier", function()
       assert.equals("left unresolved slot unchanged", reason)
     end)
 
-    it("refuses an action that is not currently available", function()
-      local entry = { slot = 3, resolved = { kind = "spell", id = 1766, pickupAvailable = false } }
+    it("refuses an action that is not currently available, naming it", function()
+      local entry = { slot = 3, resolved = { kind = "spell", id = 1766, label = "Kick", pickupAvailable = false } }
       local ok, reason = MM.Applier:ApplyEntry(entry)
       assert.is_false(ok)
-      assert.equals("action is not currently available", reason)
+      assert.equals("Kick is not available", reason)
     end)
 
     it("picks up and places a resolved spell", function()
@@ -243,6 +243,27 @@ describe("Applier", function()
       MM.Applier:ApplyProfile()
       assert.is_true(printedMatches(stubs.world, "Heal → Kick"))
       assert.is_true(printedMatches(stubs.world, "1 slot updated"))
+    end)
+
+    it("counts unavailable actions separately, not as failures", function()
+      stubs:setSpell(4321, { name = "Fetch", known = false })
+      MM.DB:SetSlot("Core", 10, { type = "spell", id = 4321 })
+
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.is_true(printedMatches(stubs.world, "Fetch is not available"))
+      assert.is_true(printedMatches(stubs.world, "no changes, 1 slot not available"))
+      assert.is_false(printedMatches(stubs.world, "failed"))
+    end)
+
+    it("does not report a phantom update for an unresolved slot that is already empty", function()
+      -- Regression: apply used to "clear" the already-empty slot again and report
+      -- "empty → empty, 1 slot updated" forever, while preview said "no changes".
+      MM.DB:SetFallback("clear")
+      MM.DB:SetSlot("Core", 11, { type = "spell", id = 999 }) -- unresolvable, slot empty
+
+      assert.is_false(MM.Applier:HasUnappliedChanges())
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.is_true(printedMatches(stubs.world, "no changes"))
     end)
 
     it("skips a resolved slot that already matches", function()
@@ -419,6 +440,15 @@ describe("Applier", function()
       setHunterLustSlot(10)
       MM.Applier:PreviewProfile()
       assert.is_true(printedMatches(stubs.world, "no changes"))
+    end)
+
+    it("counts unavailable actions in the summary like apply does", function()
+      stubs:setSpell(4321, { name = "Fetch", known = false })
+      MM.DB:SetSlot("Core", 10, { type = "spell", id = 4321 })
+
+      MM.Applier:PreviewProfile()
+      assert.is_true(printedMatches(stubs.world, "Fetch is not available"))
+      assert.is_true(printedMatches(stubs.world, "no changes, 1 slot not available"))
     end)
 
     it("notes that a macro-mode slot will create a macro", function()
