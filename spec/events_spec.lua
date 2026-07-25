@@ -103,7 +103,7 @@ describe("Events", function()
     assert.is_true(MM.eventFrame._events["UPDATE_MACROS"])
   end)
 
-  it("heals stored macro icons whenever macro data changes", function()
+  it("syncs stored macro snapshots whenever macro data changes", function()
     stubs:addGlobalMacro({
       name = "Dyn",
       icon = 249170,
@@ -118,12 +118,17 @@ describe("Events", function()
       restoreIcon = 249170,
     })
 
+    -- Selection clicks fire UPDATE_MACROS in bursts; only the settled burst syncs.
     MM.Events:OnEvent("UPDATE_MACROS")
+    MM.Events:OnEvent("UPDATE_MACROS")
+    assert.equals(249170, MM.DB:GetLayer("Core").slots[1].restoreIcon)
+    stubs:flushTimers()
     assert.equals(MM.MACRO_DYNAMIC_ICON, MM.DB:GetLayer("Core").slots[1].restoreIcon)
 
     -- The player picks a hardcoded icon later; the next firing tracks it.
     stubs.world.globalMacros[1].selectedIcon = 132150
     MM.Events:OnEvent("UPDATE_MACROS")
+    stubs:flushTimers()
     assert.equals(132150, MM.DB:GetLayer("Core").slots[1].restoreIcon)
   end)
 

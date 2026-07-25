@@ -67,12 +67,24 @@ end
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
 handlers.SPELLS_CHANGED = reevaluateProfile
 
--- UPDATE_MACROS fires when macro data first loads after login and again on
--- every macro change, so stored icons heal the moment the truth moves. The
--- event carries no payload (no "which macro"), so each firing re-walks all
--- stored macro assignments — a few thousand cheap C calls at worst.
+-- Fires at login when macro data loads, on every macro change — and on mere
+-- selection in the macro frame, in bursts. Trailing-debounce so clicking
+-- through macros stays lag-free; one sync once the burst settles.
+local SYNC_MACROS_DELAY = 1.0
+local syncMacrosGen = 0
+
 handlers.UPDATE_MACROS = function()
-  MM.Capture:HealMacroRestoreIcons()
+  if not C_Timer then
+    MM.Capture:HealMacroSnapshots()
+    return
+  end
+  syncMacrosGen = syncMacrosGen + 1
+  local gen = syncMacrosGen
+  C_Timer.After(SYNC_MACROS_DELAY, function()
+    if gen == syncMacrosGen then
+      MM.Capture:HealMacroSnapshots()
+    end
+  end)
 end
 
 function Events:OnInitialize()

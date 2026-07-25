@@ -130,12 +130,14 @@ function Macros.FindForSlot(name, slot)
   return matches[1]
 end
 
-function Macros.Resolve(reference)
+-- `macros` optionally takes a prebuilt Scan() so batch callers (the snapshot
+-- sync) don't rescan and rehash every macro per lookup.
+function Macros.Resolve(reference, macros)
   if not reference or not reference.bodyHash then
     return nil, "macro reference has no body hash"
   end
 
-  local macros = Macros.Scan()
+  macros = macros or Macros.Scan()
   for _, macro in ipairs(macros) do
     if macro.index == reference.indexHint and macro.bodyHash == reference.bodyHash then
       return macro
@@ -407,12 +409,8 @@ function Macros.RestoreUserMacro(restore)
     return nil, "account macro slots are full"
   end
 
-  -- restore.icon is the icon the player picked, as C_Macro.GetSelectedMacroIcon
-  -- reported it at capture: the "?" placeholder (MACRO_DYNAMIC_ICON) when no
-  -- icon was chosen, else the pick — so passing it back verbatim recreates
-  -- either faithfully. (GetMacroInfo is no source for this: it reports a "?"
-  -- macro's *resolved* texture; captures taken via its fallback freeze the
-  -- dynamic icon until re-captured.)
+  -- restore.icon is the captured pick ("?" placeholder or hardcoded id), so
+  -- passing it back verbatim recreates either faithfully.
   local index = CreateMacro(restore.name, restore.icon or MM.MACRO_DYNAMIC_ICON, restore.body, perCharacter)
   if not index then
     return nil, "could not create macro"

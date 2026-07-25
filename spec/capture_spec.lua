@@ -187,7 +187,7 @@ describe("Capture", function()
     end)
   end)
 
-  describe("HealMacroRestoreIcons", function()
+  describe("HealMacroSnapshots", function()
     it("heals a frozen restore icon from the live macro's saved pick", function()
       -- An old capture stored GetMacroInfo's resolved texture; the macro still
       -- exists, so the real pick is re-read from GetSelectedMacroIcon.
@@ -205,23 +205,65 @@ describe("Capture", function()
         restoreIcon = 249170,
       })
 
-      MM.Capture:HealMacroRestoreIcons()
+      MM.Capture:HealMacroSnapshots()
 
       assert.equals(MM.MACRO_DYNAMIC_ICON, MM.DB:GetLayer("Core").slots[1].restoreIcon)
     end)
 
-    it("does not heal an assignment whose macro no longer exists", function()
+    it("syncs an edited body through the name fallback", function()
+      stubs:addGlobalMacro({ name = "Burst", icon = 111, body = "/cast New" })
+      MM.DB:SetSlot("Core", 1, {
+        type = "macro",
+        bodyHash = MM.Macros.HashBody("/cast Old"),
+        body = "/cast Old",
+        nameHint = "Burst",
+        scope = "global",
+      })
+
+      MM.Capture:HealMacroSnapshots()
+
+      local snapshot = MM.DB:GetLayer("Core").slots[1]
+      assert.equals("/cast New", snapshot.body)
+      assert.equals(MM.Macros.HashBody("/cast New"), snapshot.bodyHash)
+      assert.equals(111, snapshot.restoreIcon)
+    end)
+
+    it("does not touch an assignment whose macro no longer exists", function()
       MM.DB:SetSlot("Core", 1, {
         type = "macro",
         bodyHash = "deadbeef",
+        body = "/cast Gone",
         nameHint = "Gone",
         scope = "global",
         restoreIcon = 249170,
       })
 
-      MM.Capture:HealMacroRestoreIcons()
+      MM.Capture:HealMacroSnapshots()
 
-      assert.equals(249170, MM.DB:GetLayer("Core").slots[1].restoreIcon)
+      local snapshot = MM.DB:GetLayer("Core").slots[1]
+      assert.equals(249170, snapshot.restoreIcon)
+      assert.equals("/cast Gone", snapshot.body)
+    end)
+
+    it("debug-logs the macro name only when the snapshot actually changed", function()
+      MM.DB:GetRoot().debug = true
+      stubs:addGlobalMacro({ name = "Burst", icon = 111, body = "/cast New" })
+      MM.DB:SetSlot("Core", 1, {
+        type = "macro",
+        bodyHash = MM.Macros.HashBody("/cast Old"),
+        body = "/cast Old",
+        nameHint = "Burst",
+        scope = "global",
+      })
+
+      MM.Capture:HealMacroSnapshots()
+      local first = table.concat(stubs.world.printed, "\n")
+      assert.truthy(first:find('"Burst"', 1, true))
+
+      -- A second pass finds nothing new and stays silent.
+      stubs.world.printed = {}
+      MM.Capture:HealMacroSnapshots()
+      assert.equals(0, #stubs.world.printed)
     end)
   end)
 end)

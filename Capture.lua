@@ -51,11 +51,8 @@ local function macroAssignment(index, slot)
     -- placeholder, so prefer the slot's live (resolved) texture for a meaningful
     -- preview of a missing/restorable macro.
     iconHint = (slot and GetActionTexture and GetActionTexture(slot)) or icon,
-    -- Restore icon: the icon the player actually picked — GetSelectedMacroIcon
-    -- (the API behind the macro editor's icon picker) reads the saved choice
-    -- including the "?" placeholder, while GetMacroInfo reports a "?" macro's
-    -- currently *resolved* texture (verified in 12.0 via /dump). The fallback
-    -- keeps older clients working at the cost of freezing dynamic icons.
+    -- The picked icon incl. the "?" placeholder; GetMacroInfo instead reports a
+    -- "?" macro's *resolved* texture (verified in 12.0 via /dump).
     restoreIcon = (C_Macro and C_Macro.GetSelectedMacroIcon and indexHint and C_Macro.GetSelectedMacroIcon(indexHint))
       or icon,
   }
@@ -232,25 +229,53 @@ function Capture:CaptureFilledSlots(layerId)
   return captured, failures
 end
 
--- Captures taken before GetSelectedMacroIcon existed stored GetMacroInfo's icon,
--- which for a dynamic-"?" macro is a frozen resolved texture. As long as the
--- captured macro still exists, the real pick can be re-read: refresh every stored
--- macro assignment from the live macro it resolves to, sparing players a manual
--- re-capture. Direct writes, like schema migrations: healing is not an edit to
--- undo. Runs on UPDATE_MACROS, so it also tracks icon changes as they happen;
--- character macros heal while their owning character is logged in.
-function Capture:HealMacroRestoreIcons()
-  if not (C_Macro and C_Macro.GetSelectedMacroIcon) then
-    return
+-- Sync one stored assignment to the live macro it resolves to; hints refresh
+-- silently, changes to the macro itself (name/body/pick) report for the trace.
+local function syncMacroSnapshot(assignment, macros)
+  local macro = MM.Macros.Resolve(assignment, macros)
+  if not macro then
+    return false
   end
+  assignment.indexHint = macro.index
+  assignment.scope = macro.scope
+  assignment.iconHint = macro.icon
+
+  local fresh = {
+    nameHint = macro.name,
+    body = macro.body,
+    bodyHash = macro.bodyHash,
+    restoreIcon = (C_Macro and C_Macro.GetSelectedMacroIcon and C_Macro.GetSelectedMacroIcon(macro.index))
+      or assignment.restoreIcon,
+  }
+  local changed = false
+  for key, value in pairs(fresh) do
+    if assignment[key] ~= value then
+      assignment[key] = value
+      changed = true
+    end
+  end
+  return changed, macro.name
+end
+
+-- The addon syncs, it doesn't back up: on every UPDATE_MACROS, refresh every
+-- stored macro assignment from the macro it resolves to — what Resolve binds is
+-- what apply would place. Direct writes like a migration, not an undoable edit.
+function Capture:HealMacroSnapshots()
+  local macros = MM.Macros.Scan()
   for _, profile in pairs(MM.DB:GetRoot().profiles or {}) do
     for _, layer in pairs(profile.layers or {}) do
-      for _, assignment in pairs(layer.slots or {}) do
+      for slot, assignment in pairs(layer.slots or {}) do
         if type(assignment) == "table" and assignment.type == "macro" then
-          local macro = MM.Macros.Resolve(assignment)
-          local icon = macro and C_Macro.GetSelectedMacroIcon(macro.index)
-          if icon then
-            assignment.restoreIcon = icon
+          local changed, name = syncMacroSnapshot(assignment, macros)
+          if changed then
+            MM:Debug(
+              string.format(
+                "synced stored macro %q in layer %q, %s.",
+                name,
+                layer.name or "?",
+                MM.Actions.GetSlotLabel(slot)
+              )
+            )
           end
         end
       end
