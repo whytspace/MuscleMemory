@@ -95,8 +95,9 @@ local resolvers = {
           name = assignment.nameHint,
           body = assignment.body,
           scope = assignment.scope,
-          -- Raw macro icon (dynamic "?" or hardcoded id); iconHint is display-only.
-          -- Fall back to iconHint for captures saved before restoreIcon existed.
+          -- The player's picked icon (dynamic "?" or hardcoded id) as captured;
+          -- iconHint is display-only. Fall back to iconHint for captures saved
+          -- before restoreIcon existed.
           icon = assignment.restoreIcon or assignment.iconHint,
         },
         label = assignment.nameHint,

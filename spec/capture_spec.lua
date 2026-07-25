@@ -67,9 +67,14 @@ describe("Capture", function()
     end)
 
     it("splits display and restore icons for a dynamic-icon macro", function()
-      -- Dynamic "?" macro: GetMacroInfo reports the placeholder, but the slot shows
-      -- the live resolved texture.
-      stubs:addGlobalMacro({ name = "Dyn", icon = MM.MACRO_DYNAMIC_ICON, body = "#showtooltip\n/cast Dyn" })
+      -- Dynamic "?" macro: GetMacroInfo and the slot both report the live resolved
+      -- texture; only GetSelectedMacroIcon still knows the "?" was picked.
+      stubs:addGlobalMacro({
+        name = "Dyn",
+        icon = 249170,
+        selectedIcon = MM.MACRO_DYNAMIC_ICON,
+        body = "#showtooltip\n/cast Dyn",
+      })
       stubs:setSlot(1, { actionType = "macro", id = 1, texture = 249170 })
 
       local assignment = MM.Capture:FromSlot(1)

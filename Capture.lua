@@ -51,10 +51,13 @@ local function macroAssignment(index, slot)
     -- placeholder, so prefer the slot's live (resolved) texture for a meaningful
     -- preview of a missing/restorable macro.
     iconHint = (slot and GetActionTexture and GetActionTexture(slot)) or icon,
-    -- Restore icon: the macro's raw icon exactly as stored — the "?" placeholder
-    -- when dynamic, the hardcoded id otherwise. Kept distinct from iconHint so a
-    -- dynamic macro is recreated dynamic instead of freezing its resolved texture.
-    restoreIcon = icon,
+    -- Restore icon: the icon the player actually picked — GetSelectedMacroIcon
+    -- (the API behind the macro editor's icon picker) reads the saved choice
+    -- including the "?" placeholder, while GetMacroInfo reports a "?" macro's
+    -- currently *resolved* texture (verified in 12.0 via /dump). The fallback
+    -- keeps older clients working at the cost of freezing dynamic icons.
+    restoreIcon = (C_Macro and C_Macro.GetSelectedMacroIcon and indexHint and C_Macro.GetSelectedMacroIcon(indexHint))
+      or icon,
   }
 end
 

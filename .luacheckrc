@@ -34,6 +34,7 @@ read_globals = {
   "C_AssistedCombat",
   "C_EquipmentSet",
   "C_Item",
+  "C_Macro",
   "C_MountJournal",
   "C_PetJournal",
   "C_Spell",

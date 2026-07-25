@@ -383,6 +383,15 @@ function Stubs.new()
       end
       return macro.name, macro.icon, macro.body
     end,
+    -- Raw saved icon (the "?" placeholder included); GetMacroInfo's icon is the
+    -- currently displayed one, resolved for "?" macros. selectedIcon models the
+    -- pick when a test needs the two to differ.
+    C_Macro = {
+      GetSelectedMacroIcon = function(index)
+        local macro = macroAt(index)
+        return macro and (macro.selectedIcon or macro.icon)
+      end,
+    },
     PickupMacro = function(index)
       world.cursor = { type = "macro", id = index }
     end,

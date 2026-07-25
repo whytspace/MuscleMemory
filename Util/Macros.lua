@@ -407,10 +407,12 @@ function Macros.RestoreUserMacro(restore)
     return nil, "account macro slots are full"
   end
 
-  -- restore.icon is the macro's raw icon as GetMacroInfo reports it: the dynamic
-  -- "?" placeholder (MACRO_DYNAMIC_ICON) when the user chose no icon, else the
-  -- hardcoded one. Passing it back verbatim recreates either faithfully; the
-  -- fallback only matters for older captures that stored no icon.
+  -- restore.icon is the icon the player picked, as C_Macro.GetSelectedMacroIcon
+  -- reported it at capture: the "?" placeholder (MACRO_DYNAMIC_ICON) when no
+  -- icon was chosen, else the pick — so passing it back verbatim recreates
+  -- either faithfully. (GetMacroInfo is no source for this: it reports a "?"
+  -- macro's *resolved* texture; captures taken via its fallback freeze the
+  -- dynamic icon until re-captured.)
   local index = CreateMacro(restore.name, restore.icon or MM.MACRO_DYNAMIC_ICON, restore.body, perCharacter)
   if not index then
     return nil, "could not create macro"
