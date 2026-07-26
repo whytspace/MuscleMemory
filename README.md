@@ -101,6 +101,7 @@ The window and its chat output follow your WoW client language. Any other locale
 
 - [x] English
 - [x] Deutsch
+- [x] Français
 
 ## Commands & API
 
