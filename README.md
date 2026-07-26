@@ -95,6 +95,13 @@ the macro follows:
 2. Click a faded slot to capture whatever is on that action bar button.
 3. Switch character, then press **Apply** (or run `/mm apply`) to restore the layer.
 
+## Muscle Memory speaks your language
+
+The window and its chat output follow your WoW client language. Any other locale runs in English.
+
+- [x] English
+- [x] Deutsch
+
 ## Commands & API
 
 The slash commands cover the daily essentials:

@@ -45,6 +45,49 @@ Keep entries short and player-focused, in one flat list. Start each with **[New]
 - Use `WowScrollBox`, `MinimalScrollBar`, `MenuUtil`, and `TabSystem`. Avoid legacy UI systems.
 - Verify UI and command changes in-game with `/reload`.
 
+## Adding a language
+
+A language is a file plus a `.toc` line — no code changes.
+
+1. Create `Locales/frFR.lua`, gating on the client language so only the matching one is ever loaded:
+
+   ```lua
+   local ADDON_NAME, MM = ...
+
+   if MM.locale ~= "frFR" then
+     return
+   end
+
+   MM.Locales.frFR = {
+     ["no changes"] = "aucun changement",
+   }
+   ```
+
+2. List it in `MuscleMemory.toc` beside the other locale files. Optionally add a `## Notes-frFR:` line for the add-on list.
+
+3. Fill the table. Keys are the English strings **byte for byte**, including `—`, `·` and `…`; anything missing falls back to English, so a partial file ships fine. Format markers (`%s`, `%d`) must survive in the same number, though they may be reordered.
+
+4. Add a `plural` rule only if the language needs more than the English one/other split. Count-dependent text goes through `L:Plural(n, "%d slot", "%d slots")` and is translated under the singular key with the form appended:
+
+   ```lua
+   plural = function(n)
+     if n % 10 == 1 and n % 100 ~= 11 then
+       return "one"
+     end
+     return "other"
+   end,
+   ["%d slot#one"] = "%d слот",
+   ["%d slot#other"] = "%d слотов",
+   ```
+
+5. Run `devc lua scripts/check-locales.lua`, which reports missing, redundant and mismatched-format keys.
+
+6. Tick the language off in the README list.
+
+Not translated, deliberately: class, spec, role, faction and race names (read from the client), the predefined Dynamic Action names (raid shorthand), macro syntax, debug output, and `API.lua` / `Util/Validate.lua`, which are developer-facing.
+
+To preview a translation on a client of another language, swap the two lines at the top of `Locales/Locales.lua` and `/reload`. Restore them before releasing — `scripts/check-locales.lua --release` fails if you forget.
+
 ## Public API
 
 `API.lua` exposes the global `MuscleMemory` (versioned with `apiVersion`) and is the developer-facing reference: conventions and data shapes in the header, one signature comment per function. Behavior contract: invalid inputs are rejected with a reason, and returned tables are snapshots — editing them changes nothing. Slash commands adapt onto the API. Published signatures are a compatibility contract; breaking them needs a release note.
