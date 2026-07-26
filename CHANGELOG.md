@@ -10,6 +10,7 @@ All notable player-facing changes are recorded here.
 - **[Change]** Rename, clone and delete are now icon buttons with tooltips, giving the name beside them room to breathe.
 - **[Change]** Class, role, faction and race names in the condition editor now come from the game itself, so they always match the wording you see elsewhere in the client.
 - **[Change]** Minor design improvements: section headings are set apart by size instead of capitals, and buttons grow to fit their caption.
+- **[Fix]** A spell (or mount, pet, flyout) your character can't use no longer blocks the layers below it. The next layer that has something for the slot wins, so an "empty everything" base layer now clears those buttons instead of leaving the old action on the bar.
 - **[Fix]** Exporting the same profile twice now always produces the same sharing string. It previously changed after a reload, which made two identical exports look different.
 
 ## 0.13.0 - 2026-07-25

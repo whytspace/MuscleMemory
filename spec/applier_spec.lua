@@ -99,6 +99,38 @@ describe("Applier", function()
       assert.equals("empty", plan.slots[1].resolved.kind)
     end)
 
+    it("lets a spell the character can't place yield to the layer below", function()
+      -- Regression: an unknown spell still resolves (for its name and icon), but
+      -- that must not stop the walk — an "empty everything" base layer below has
+      -- to win, or the stale action stays on the bar.
+      local lower = addLowerLayer()
+      stubs:setSpell(466930, { name = "Black Arrow", known = false })
+      MM.DB:SetSlot("Core", 1, { type = "spell", id = 466930 })
+      MM.DB:SetSlot(lower, 1, { type = "empty" })
+
+      local plan = MM.Applier:BuildPlan()
+      assert.equals("empty", plan.slots[1].resolved.kind)
+    end)
+
+    it("keeps an unplaceable action when nothing below claims the slot", function()
+      stubs:setSpell(466930, { name = "Black Arrow", known = false })
+      MM.DB:SetSlot("Core", 1, { type = "spell", id = 466930 })
+
+      local plan = MM.Applier:BuildPlan()
+      assert.is_false(plan.slots[1].resolved.pickupAvailable)
+      assert.equals("unavailable", MM.Applier:ClassifyEntry(plan.slots[1]))
+    end)
+
+    it("reports the highest layer's reason when none of them resolves", function()
+      local lower = addLowerLayer()
+      MM.DB:SetSlot("Core", 1, { type = "spell", id = 999 })
+      MM.DB:SetSlot(lower, 1, { type = "macro", nameHint = "Gone", bodyHash = "h" })
+
+      local plan = MM.Applier:BuildPlan()
+      assert.equals("Core", plan.slots[1].layerId)
+      assert.equals("spell not found", plan.slots[1].unresolvedReason)
+    end)
+
     it("records an unresolved slot with its reason", function()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 999 })
       local plan = MM.Applier:BuildPlan()

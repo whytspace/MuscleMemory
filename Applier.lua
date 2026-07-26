@@ -58,14 +58,17 @@ function Applier:BuildPlan(profileId)
         }
 
         if not (resolved and resolved.kind == "ignore") then
-          if resolved and resolved.kind == "empty" then
-            finalEntry = entry
-            break
-          elseif resolved then
+          -- An action that resolves but can't be placed right now (a spell this
+          -- character doesn't know, an unowned mount) doesn't own the slot: like
+          -- an unresolvable assignment it yields to the layer below, and only
+          -- claims the slot as a terminal entry when nothing below covers it.
+          if resolved and resolved.pickupAvailable ~= false then
             finalEntry = entry
             break
           else
-            terminalEntry = entry
+            -- The highest such layer reports the slot, so its reason is the one
+            -- preview and apply show.
+            terminalEntry = terminalEntry or entry
           end
         end
       end
