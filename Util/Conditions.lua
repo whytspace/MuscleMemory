@@ -1,6 +1,6 @@
 local ADDON_NAME, MM = ...
 
--- Shared condition evaluation for dynamicAction candidates and layers. A `conditions`
+-- Shared condition evaluation for smartAction candidates and layers. A `conditions`
 -- table carries optional dimensions — classes / specs / roles / factions / races
 -- (lists) and levelMin / levelMax — and every present, non-empty dimension must
 -- match the current character. Absent dimensions don't restrict, so an empty (or

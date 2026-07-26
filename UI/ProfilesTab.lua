@@ -2,7 +2,7 @@ local ADDON_NAME, MM = ...
 local L = MM.L
 
 -- The Profiles tab. A profile is a complete, self-contained data set (its own
--- layers, dynamicActions and fallback). This tab picks which profile applies — the
+-- layers, actions and fallback). This tab picks which profile applies — the
 -- account-wide default and an optional per-character override — and manages the
 -- list of profiles (new / clone / rename / delete).
 local ProfilesTab = {}
@@ -71,7 +71,7 @@ local function deleteProfile(id)
   local name = profile and profile.name or id
   MM.ui.Modals.Confirm(
     L["Delete Profile"],
-    string.format(L['Delete profile "%s"? Its layers and dynamicActions are gone for good.'], name),
+    string.format(L['Delete profile "%s"? Its layers and Smart Actions are gone for good.'], name),
     L["Delete"],
     function()
       local ok, reason = MM.DB:DeleteProfile(id)

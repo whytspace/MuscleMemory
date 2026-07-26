@@ -84,7 +84,7 @@ A language is a file plus a `.toc` line — no code changes.
 
 6. Tick the language off in the README list.
 
-Not translated, deliberately: class, spec, role, faction and race names (read from the client), the predefined Dynamic Action names (raid shorthand), macro syntax, debug output, and `API.lua` / `Util/Validate.lua`, which are developer-facing.
+Not translated, deliberately: class, spec, role, faction and race names (read from the client), the predefined Smart Action names (raid shorthand), macro syntax, debug output, and `API.lua` / `Util/Validate.lua`, which are developer-facing.
 
 To preview a translation on a client of another language, swap the two lines at the top of `Locales/Locales.lua` and `/reload`. Restore them before releasing — `scripts/check-locales.lua --release` fails if you forget.
 

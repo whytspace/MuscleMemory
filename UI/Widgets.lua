@@ -43,7 +43,7 @@ Widgets.TEX = {
 -- the slot/sidebar badges.
 Widgets.ICON = {
   layers = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-layers",
-  dynamicAction = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-dynamicaction",
+  smartAction = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-smartaction",
   macro = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-macro",
   import = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-import",
   export = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-export",
@@ -557,7 +557,7 @@ function Widgets.IconBadge(parent, size, glyphTexture)
 end
 
 -- A reusable icon cell: background, the action icon, an optional centred glyph
--- (∅ / ⚠ for empty / unresolved), an optional dynamicAction badge, and a settable
+-- (∅ / ⚠ for empty / unresolved), an optional smartAction badge, and a settable
 -- border. Returned object exposes Set* helpers so callers stay declarative.
 function Widgets.Icon(parent, size)
   local icon = CreateFrame("Frame", nil, parent)
@@ -653,10 +653,10 @@ function Widgets.Icon(parent, size)
     end
   end
 
-  -- The dynamic-action (fork) badge, bottom-right.
+  -- The smart-action (fork) badge, bottom-right.
   function icon:SetBadge(show)
     if show and not self.badge then
-      self.badge = Widgets.IconBadge(self, badgeSize, Widgets.ICON.dynamicAction)
+      self.badge = Widgets.IconBadge(self, badgeSize, Widgets.ICON.smartAction)
     end
     if self.badge then
       self.badge:SetShown(show)
@@ -664,7 +664,7 @@ function Widgets.Icon(parent, size)
     layoutBadges(self)
   end
 
-  -- The macro ({ }) badge, shown when a dynamic action renders as a macro.
+  -- The macro ({ }) badge, shown when a smart action renders as a macro.
   function icon:SetMacroBadge(show)
     if show and not self.macroBadge then
       self.macroBadge = Widgets.IconBadge(self, badgeSize, Widgets.ICON.macro)
@@ -719,7 +719,7 @@ end
 Widgets.decorateRow = decorateRow
 
 -- Populate GameTooltip with the rich client tooltip for an action identified by
--- kind + id — a dynamicAction candidate, or whatever a dynamicAction/slot resolves to. Falls
+-- kind + id — a smartAction candidate, or whatever a smartAction/slot resolves to. Falls
 -- back to plain text for kinds with no native tooltip (macro, equipment set, …).
 -- Callers hide the tooltip themselves on leave.
 function Widgets.SetActionTooltip(owner, kind, id, fallbackText, anchor)
@@ -754,18 +754,18 @@ function Widgets.AddBadgeTooltipSeparator()
   GameTooltip:AddLine(" ")
 end
 
-function Widgets.AddDynamicActionTooltipLine()
+function Widgets.AddSmartActionTooltipLine()
   GameTooltip:AddLine(
-    badgeLine(Widgets.ICON.dynamicAction, L["This is a dynamic action"]),
+    badgeLine(Widgets.ICON.smartAction, L["This is a smart action"]),
     unpackColor(Widgets.colors.goldDim)
   )
   GameTooltip:Show()
 end
 
 -- `leadingBlank` separates a standalone macro line from the tooltip above (used
--- where no dynamic-action line precedes it, e.g. the dynamic-actions rail).
-function Widgets.AddMacroTooltipLine(dynamicAction, leadingBlank)
-  if dynamicAction and MM.Macros.EffectiveMode(dynamicAction) == "macro" then
+-- where no smart-action line precedes it, e.g. the smart-actions rail).
+function Widgets.AddMacroTooltipLine(smartAction, leadingBlank)
+  if smartAction and MM.Macros.EffectiveMode(smartAction) == "macro" then
     if leadingBlank then
       Widgets.AddBadgeTooltipSeparator()
     end
@@ -803,7 +803,7 @@ function Widgets.AttachIconTooltip(icon, show)
   end)
 end
 
--- A selectable list row (layer rail, dynamicAction rail, slot-editor dynamicAction options).
+-- A selectable list row (layer rail, smartAction rail, slot-editor smartAction options).
 -- Returns a Button with a highlight, a left accent bar, and a `.label`.
 function Widgets.ListRow(parent, height)
   local row = CreateFrame("Button", nil, parent)
@@ -817,7 +817,7 @@ local PINNABLE = { spell = true, item = true, mount = true, macro = true, equipm
 
 -- A drop overlay that covers a panel (set via :Attach) while a pinnable action is
 -- on the cursor, so dropping anywhere on the panel runs the attached callback.
--- Shared by the Slot Editor (pin to slot) and the DynamicActions candidate list (add a
+-- Shared by the Slot Editor (pin to slot) and the SmartActions candidate list (add a
 -- candidate). One per consumer; re-Attach it to the current panel each rebuild.
 function Widgets.DropZone(labelText)
   local overlay = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
@@ -873,7 +873,7 @@ function Widgets.DropZone(labelText)
   return overlay
 end
 
--- Header text for the centre column of a tab (active layer / dynamicAction name).
+-- Header text for the centre column of a tab (active layer / smartAction name).
 function Widgets.Title(parent, text)
   local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetText(text or "")

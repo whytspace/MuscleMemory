@@ -205,18 +205,18 @@ describe("Macros", function()
   end)
 
   describe("CandidatesCompatible / EffectiveMode", function()
-    it("accepts dynamic actions whose candidates are all spell/item/mount", function()
-      local dynamicAction = { candidates = { { type = "spell" }, { type = "item" }, { type = "mount" } } }
-      assert.is_true(MM.Macros.CandidatesCompatible(dynamicAction))
+    it("accepts smart actions whose candidates are all spell/item/mount", function()
+      local smartAction = { candidates = { { type = "spell" }, { type = "item" }, { type = "mount" } } }
+      assert.is_true(MM.Macros.CandidatesCompatible(smartAction))
     end)
 
     it("rejects an empty candidate list", function()
       assert.is_false(MM.Macros.CandidatesCompatible({ candidates = {} }))
     end)
 
-    it("rejects a dynamic action containing a non-family candidate", function()
-      local dynamicAction = { candidates = { { type = "spell" }, { type = "battlepet" } } }
-      assert.is_false(MM.Macros.CandidatesCompatible(dynamicAction))
+    it("rejects a smart action containing a non-family candidate", function()
+      local smartAction = { candidates = { { type = "spell" }, { type = "battlepet" } } }
+      assert.is_false(MM.Macros.CandidatesCompatible(smartAction))
     end)
 
     it("is macro only when opted in and compatible", function()
@@ -233,39 +233,37 @@ describe("Macros", function()
     it("measures the candidate whose name renders longest", function()
       stubs:setSpell(1, { name = "Kick" })
       stubs:setSpell(2, { name = string.rep("A", 40) })
-      local dynamicAction = {
+      local smartAction = {
         macroTemplate = "/use %name%",
         candidates = { { type = "spell", id = 1 }, { type = "spell", id = 2 } },
       }
-      assert.equals(#("/use " .. string.rep("A", 40)), MM.Macros.WorstCaseLength(dynamicAction))
-      assert.is_true(MM.Macros.FitsLimit(dynamicAction))
+      assert.equals(#("/use " .. string.rep("A", 40)), MM.Macros.WorstCaseLength(smartAction))
+      assert.is_true(MM.Macros.FitsLimit(smartAction))
     end)
 
     it("reports over the cap and forces normal mode", function()
       stubs:setSpell(1, { name = string.rep("Z", 260) })
-      local dynamicAction =
-        { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
-      assert.is_false(MM.Macros.FitsLimit(dynamicAction))
-      assert.equals("normal", MM.Macros.EffectiveMode(dynamicAction))
+      local smartAction = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      assert.is_false(MM.Macros.FitsLimit(smartAction))
+      assert.equals("normal", MM.Macros.EffectiveMode(smartAction))
     end)
   end)
 
   describe("ResolvedAsMacro", function()
     it("returns the rendered body for a macro-mode family action", function()
       stubs:setSpell(1, { name = "Kick" })
-      local dynamicAction =
-        { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
-      local resolved = { kind = "spell", id = 1, label = "Kick", dynamicAction = dynamicAction }
+      local smartAction = { mode = "macro", macroTemplate = "/use %name%", candidates = { { type = "spell", id = 1 } } }
+      local resolved = { kind = "spell", id = 1, label = "Kick", smartAction = smartAction }
       assert.equals("/use Kick", MM.Macros.ResolvedAsMacro(resolved))
     end)
 
-    it("returns nil when the dynamic action is not in macro mode", function()
+    it("returns nil when the smart action is not in macro mode", function()
       local resolved =
-        { kind = "spell", id = 1, label = "Kick", dynamicAction = { candidates = { { type = "spell", id = 1 } } } }
+        { kind = "spell", id = 1, label = "Kick", smartAction = { candidates = { { type = "spell", id = 1 } } } }
       assert.is_nil(MM.Macros.ResolvedAsMacro(resolved))
     end)
 
-    it("returns nil when there is no backing dynamic action (a direct assignment)", function()
+    it("returns nil when there is no backing smart action (a direct assignment)", function()
       assert.is_nil(MM.Macros.ResolvedAsMacro({ kind = "spell", id = 1, label = "Kick" }))
     end)
   end)
@@ -302,15 +300,15 @@ describe("Macros", function()
       local name = MM.Macros.MacroName({ name = long })
       assert.is_true(#name <= MM.MACRO_NAME_LIMIT)
       assert.is_true(MM.Macros.IsOwned({ name = name }))
-      -- The visible part stays a prefix of the dynamicAction name.
+      -- The visible part stays a prefix of the smartAction name.
       local base = name:sub(1, #name - #marker)
       assert.equals(base, long:sub(1, #base))
     end)
 
-    it("refuses to name a macro for a dynamic action with no name", function()
+    it("refuses to name a macro for a smart action with no name", function()
       local name, reason = MM.Macros.MacroName({ name = "" })
       assert.is_nil(name)
-      assert.equals("dynamic action has no name", reason)
+      assert.equals("smart action has no name", reason)
       assert.is_nil(MM.Macros.MacroName({}))
     end)
 

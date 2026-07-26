@@ -35,7 +35,7 @@ Util/Validate.lua
 
 Data/SpellIds.lua
 Data/ItemIds.lua
-Data/PredefinedDynamicActions.lua
+Data/PredefinedSmartActions.lua
 
 Database.lua
 Undo.lua
@@ -53,7 +53,7 @@ UI/ShareTabs.lua
 UI/ConditionsEditor.lua
 UI/MainFrame.lua
 UI/LayersTab.lua
-UI/DynamicActionsTab.lua
+UI/SmartActionsTab.lua
 UI/ProfilesTab.lua
 UI/SettingsTab.lua
 UI/AboutTab.lua

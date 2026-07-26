@@ -120,9 +120,9 @@ describe("API", function()
       assert.is_false(ok)
       assert.matches("numeric 'id'", reason)
 
-      ok, reason = MM.API.layers.setSlot(layerId, 5, { type = "dynamicaction", source = "custom", id = "nope" })
+      ok, reason = MM.API.layers.setSlot(layerId, 5, { type = "action", source = "custom", id = "nope" })
       assert.is_false(ok)
-      assert.matches("unknown dynamic action", reason)
+      assert.matches("unknown smart action", reason)
     end)
 
     it("rejects out-of-range slots", function()
@@ -163,8 +163,7 @@ describe("API", function()
     it("rejects invalid candidates", function()
       local actionId = MM.API.actions.create("Defensives")
 
-      local ok, reason =
-        MM.API.actions.addCandidate(actionId, { type = "dynamicaction", source = "predefined", id = "lust" })
+      local ok, reason = MM.API.actions.addCandidate(actionId, { type = "action", source = "predefined", id = "lust" })
       assert.is_false(ok)
       assert.matches("cannot be a candidate", reason)
 
@@ -201,7 +200,7 @@ describe("API", function()
     it("guards macro mode and template", function()
       local actionId = MM.API.actions.create("Defensives")
       assert.is_true(MM.API.actions.setMacroMode(actionId, true))
-      assert.equals("macro", MM.DB:DynamicActions()[actionId].mode)
+      assert.equals("macro", MM.DB:SmartActions()[actionId].mode)
 
       local ok, reason = MM.API.actions.setMacroTemplate(actionId, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 1))
       assert.is_false(ok)

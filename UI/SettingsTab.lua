@@ -2,7 +2,7 @@ local ADDON_NAME, MM = ...
 local L = MM.L
 
 -- The Settings tab: the active profile's fallback, which decides what happens to
--- a managed slot whose dynamicAction can't resolve for the current character. The design
+-- a managed slot whose smartAction can't resolve for the current character. The design
 -- shows an Ignore/Clear segmented control; natively that's a pair of radios.
 -- "Ignore" maps to the stored fallback value "keep".
 local SettingsTab = {}
@@ -17,11 +17,11 @@ local FALLBACK_OPTIONS = {
   { value = "clear", label = "Clear", hint = "Remove the existing action, if any." },
 }
 
--- How binding an action covered by a Dynamic Action behaves.
+-- How binding an action covered by a Smart Action behaves.
 local SUGGEST_OPTIONS = {
   { value = "never", label = "Never", hint = "Always bind exactly what you chose." },
   { value = "suggest", label = "Suggest", hint = "Ask via a popup." },
-  { value = "auto", label = "Automatic", hint = "Bind the Dynamic Action; asks only when several match." },
+  { value = "auto", label = "Automatic", hint = "Bind the Smart Action; asks only when several match." },
 }
 
 -- How the add-on reacts when an event re-scan finds changes to apply.
@@ -76,7 +76,7 @@ function SettingsTab:Build(parent)
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    L["If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."]
+    L["If a Smart Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."]
   )
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)
@@ -113,7 +113,7 @@ function SettingsTab:Build(parent)
   local suggestBlurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    L["Some abilities are covered by a Dynamic Action (an interrupt, a per-class racial, ...). Choose what happens when you bind one of those to a slot."]
+    L["Some abilities are covered by a Smart Action (an interrupt, a per-class racial, ...). Choose what happens when you bind one of those to a slot."]
   )
   suggestBlurb:SetPoint("TOPLEFT", suggestHeading, "BOTTOMLEFT", 0, -6)
   suggestBlurb:SetWidth(480)

@@ -20,8 +20,8 @@ local ADDON_NAME, MM = ...
 -- Data shapes:
 --   assignment = { type = "spell"|"item"|"mount"|"macro"|"battlepet"|"flyout"
 --                        |"equipmentset"|"outfit"|"empty"|"ignore", id = n, ... }
---              | { type = "dynamicaction", source = "custom"|"predefined", id = actionId }
---   candidate  = an assignment (except dynamicaction/empty/ignore),
+--              | { type = "action", source = "custom"|"predefined", id = actionId }
+--   candidate  = an assignment (except action/empty/ignore),
 --                plus optional `conditions`
 --   conditions = { classes|specs|roles|factions|races = { ... },
 --                  levelMin = n, levelMax = n }
@@ -273,17 +273,17 @@ api.layers = {
   end,
 }
 
--- Dynamic Actions of the currently active profile ------------------------------
+-- Smart Actions of the currently active profile ------------------------------
 
 api.actions = {
   -- list() -> { { actionId, source, name }, ... }
-  -- Lists all dynamic actions, custom and predefined.
+  -- Lists all smart actions, custom and predefined.
   list = function()
     local list = {}
-    for actionId, action in pairs(MM.DB:DynamicActions()) do
+    for actionId, action in pairs(MM.DB:SmartActions()) do
       list[#list + 1] = { actionId = actionId, source = "custom", name = action.name or actionId }
     end
-    for actionId, action in pairs(MM.PredefinedDynamicActions or {}) do
+    for actionId, action in pairs(MM.PredefinedSmartActions or {}) do
       list[#list + 1] = { actionId = actionId, source = "predefined", name = action.name or actionId }
     end
     table.sort(list, function(left, right)
@@ -296,39 +296,39 @@ api.actions = {
   end,
 
   -- get(actionId[, source]) -> action
-  -- Returns one dynamic action's full definition. Without an explicit source
+  -- Returns one smart action's full definition. Without an explicit source
   -- ("custom" or "predefined"), custom actions are checked first.
   get = function(actionId, source)
     local ref, reason = actionRef(actionId, source)
     if not ref then
       return nil, reason
     end
-    local result = MM.Tables.DeepCopy(MM.DB:ResolveDynamicAction(ref))
+    local result = MM.Tables.DeepCopy(MM.DB:ResolveSmartAction(ref))
     result.actionId = ref.id
     result.source = ref.source
     return result
   end,
 
   -- create(name) -> actionId
-  -- Creates a new empty custom dynamic action.
+  -- Creates a new empty custom smart action.
   create = function(name)
-    local actionId = MM.DB:CreateDynamicAction(name)
+    local actionId = MM.DB:CreateSmartAction(name)
     refresh()
     return actionId
   end,
 
   -- copy(actionId[, name][, source]) -> actionId
-  -- Duplicates any dynamic action into an editable custom one.
+  -- Duplicates any smart action into an editable custom one.
   copy = function(actionId, name, source)
     local ref, reason = actionRef(actionId, source)
     if not ref then
       return nil, reason
     end
-    local newId = MM.DB:CloneDynamicAction(ref)
+    local newId = MM.DB:CloneSmartAction(ref)
     if name ~= nil then
-      local ok, renameReason = MM.DB:RenameDynamicAction(newId, name)
+      local ok, renameReason = MM.DB:RenameSmartAction(newId, name)
       if not ok then
-        MM.DB:DeleteDynamicAction(newId)
+        MM.DB:DeleteSmartAction(newId)
         return nil, renameReason
       end
     end
@@ -337,15 +337,15 @@ api.actions = {
   end,
 
   -- rename(actionId, name)
-  -- Renames a custom dynamic action.
+  -- Renames a custom smart action.
   rename = function(actionId, name)
-    return refreshing(MM.DB:RenameDynamicAction(actionId, name))
+    return refreshing(MM.DB:RenameSmartAction(actionId, name))
   end,
 
   -- delete(actionId)
-  -- Deletes a custom dynamic action.
+  -- Deletes a custom smart action.
   delete = function(actionId)
-    return refreshing(MM.DB:DeleteDynamicAction(actionId))
+    return refreshing(MM.DB:DeleteSmartAction(actionId))
   end,
 
   -- addCandidate(actionId, candidate[, index])
@@ -376,7 +376,7 @@ api.actions = {
     if type(enabled) ~= "boolean" then
       return false, "enabled must be true or false"
     end
-    return refreshing(MM.DB:SetDynamicActionMode(actionId, enabled and "macro" or "normal"))
+    return refreshing(MM.DB:SetSmartActionMode(actionId, enabled and "macro" or "normal"))
   end,
 
   -- setMacroTemplate(actionId, template)
@@ -389,7 +389,7 @@ api.actions = {
     if #template > MM.MACRO_TEMPLATE_LIMIT then
       return false, "template exceeds " .. MM.MACRO_TEMPLATE_LIMIT .. " characters"
     end
-    return refreshing(MM.DB:SetDynamicActionTemplate(actionId, template))
+    return refreshing(MM.DB:SetSmartActionTemplate(actionId, template))
   end,
 }
 
@@ -517,11 +517,11 @@ actionRef = function(actionId, source)
     return nil, "source must be 'custom' or 'predefined'"
   end
   for _, pool in ipairs(source and { source } or { "custom", "predefined" }) do
-    if MM.DB:ResolveDynamicAction({ source = pool, id = actionId }) then
+    if MM.DB:ResolveSmartAction({ source = pool, id = actionId }) then
       return { source = pool, id = actionId }
     end
   end
-  return nil, "unknown dynamic action"
+  return nil, "unknown smart action"
 end
 
 MuscleMemory = api

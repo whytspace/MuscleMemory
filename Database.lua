@@ -64,6 +64,9 @@ function DB:MigrateSchema(root, savedSchemaVersion)
   if savedSchemaVersion < 3 then
     self:MigrateToV3(root)
   end
+  if savedSchemaVersion < 4 then
+    self:MigrateToV4(root)
+  end
   if savedSchemaVersion < MM.SCHEMA_VERSION then
     root.schemaVersion = MM.SCHEMA_VERSION
   end
@@ -74,7 +77,7 @@ end
 -- The formerly shared pools are copied wholesale into every profile; the
 -- per-muscle enable flag moves from the activeMuscles entry onto the muscle.
 -- Keys here are the historical v1/v2 names ("muscles", "memories", ...) on
--- purpose; the v2 → v3 rename to "layers"/"dynamicActions" happens in MigrateToV3.
+-- purpose; the v2 → v3 rename to "layers"/"actions" happens in MigrateToV3.
 function DB:MigrateToV2(root)
   local legacyMuscles = root.muscles
   local legacyMemories = root.customMemories
@@ -126,7 +129,7 @@ function DB:MigrateToV2(root)
 end
 
 -- v2 → v3: terminology rename only. "muscles" become "action bar layers" and
--- "memories" become "dynamic actions". The persisted per-profile keys and the
+-- "memories" become "smart actions". The persisted per-profile keys and the
 -- slot-assignment discriminator are renamed in place so existing setups survive.
 function DB:MigrateToV3(root)
   for _, profile in pairs(root.profiles or {}) do
@@ -135,7 +138,7 @@ function DB:MigrateToV3(root)
       profile.muscles = nil
     end
     if profile.memories ~= nil then
-      profile.dynamicActions = profile.memories
+      profile.actions = profile.memories
       profile.memories = nil
     end
     if profile.muscleOrder ~= nil then
@@ -146,7 +149,27 @@ function DB:MigrateToV3(root)
     for _, layer in pairs(profile.layers or {}) do
       for _, assignment in pairs(layer.slots or {}) do
         if type(assignment) == "table" and assignment.type == "memory" then
-          assignment.type = "dynamicaction"
+          assignment.type = "action"
+        end
+      end
+    end
+  end
+end
+
+-- v3 → v4: terminology rename only. "dynamic actions" become "smart actions",
+-- and the persisted names drop the adjective, so renaming the concept again
+-- needs no migration: the pool is `profile.actions`, the discriminator "action".
+function DB:MigrateToV4(root)
+  for _, profile in pairs(root.profiles or {}) do
+    if profile.dynamicActions ~= nil then
+      profile.actions = profile.dynamicActions
+      profile.dynamicActions = nil
+    end
+
+    for _, layer in pairs(profile.layers or {}) do
+      for _, assignment in pairs(layer.slots or {}) do
+        if type(assignment) == "table" and assignment.type == "dynamicaction" then
+          assignment.type = "action"
         end
       end
     end
@@ -179,8 +202,8 @@ function DB:GetProfile(profileId)
   return self:GetRoot().profiles[profileId]
 end
 
--- The given (or active) profile's layer pool / dynamicAction pool, ensure-initialized.
--- All layer and dynamicAction CRUD scopes through these, so it operates on the active
+-- The given (or active) profile's layer pool / smartAction pool, ensure-initialized.
+-- All layer and smartAction CRUD scopes through these, so it operates on the active
 -- profile rather than a shared account-wide table.
 function DB:Layers(profileId)
   local profile = self:GetProfile(profileId)
@@ -191,13 +214,13 @@ function DB:Layers(profileId)
   return profile.layers
 end
 
-function DB:DynamicActions(profileId)
+function DB:SmartActions(profileId)
   local profile = self:GetProfile(profileId)
   if not profile then
     return {}
   end
-  profile.dynamicActions = profile.dynamicActions or {}
-  return profile.dynamicActions
+  profile.actions = profile.actions or {}
+  return profile.actions
 end
 
 -- The account-wide default profile (what players use unless they pick their own),
@@ -242,7 +265,7 @@ function DB:FindLayerId(target)
   return matchByName(self:Layers(), target)
 end
 
--- A new profile starts empty: its own layers, dynamicActions and fallback.
+-- A new profile starts empty: its own layers, actions and fallback.
 function DB:CreateProfile(name)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
@@ -252,12 +275,12 @@ function DB:CreateProfile(name)
     fallback = "keep",
     layerOrder = {},
     layers = {},
-    dynamicActions = {},
+    actions = {},
   }
   return id, root.profiles[id]
 end
 
--- Clone an existing profile 1:1 (layers, dynamicActions, order and fallback) under a
+-- Clone an existing profile 1:1 (layers, actions, order and fallback) under a
 -- new name, fully independent of the source.
 function DB:CloneProfile(sourceId, name)
   local root = self:GetRoot()
@@ -272,7 +295,7 @@ function DB:CloneProfile(sourceId, name)
     fallback = source.fallback or "keep",
     layerOrder = MM.Tables.DeepCopy(source.layerOrder or {}),
     layers = MM.Tables.DeepCopy(source.layers or {}),
-    dynamicActions = MM.Tables.DeepCopy(source.dynamicActions or {}),
+    actions = MM.Tables.DeepCopy(source.actions or {}),
   }
   return id, root.profiles[id]
 end
@@ -576,15 +599,15 @@ function DB:SetResponse(value, profileId)
   return true
 end
 
--- How binding a spell or item that a dynamic action resolves to behaves:
--- "never" binds the capture as-is, "suggest" offers the dynamic action in a
--- popup, "auto" binds the dynamic action directly (asking only when several
+-- How binding a spell or item that a smart action resolves to behaves:
+-- "never" binds the capture as-is, "suggest" offers the smart action in a
+-- popup, "auto" binds the smart action directly (asking only when several
 -- match). An editing-behavior preference, so it lives on the account root
 -- rather than per profile.
 local SUGGEST_MODES = { never = true, suggest = true, auto = true }
 
 function DB:GetSuggestMode()
-  local value = self:GetRoot().suggestDynamicActions
+  local value = self:GetRoot().suggestSmartActions
   if SUGGEST_MODES[value] then
     return value
   end
@@ -595,95 +618,95 @@ function DB:SetSuggestMode(value)
   if not SUGGEST_MODES[value] then
     return false, "suggestion mode must be never, suggest or auto"
   end
-  self:GetRoot().suggestDynamicActions = value
+  self:GetRoot().suggestSmartActions = value
   return true
 end
 
--- DynamicActions -------------------------------------------------------------------
--- Profile dynamicActions live in `profile.dynamicActions`; index `self:DynamicActions()` directly.
--- Predefined dynamicActions are immutable add-on data.
+-- SmartActions -------------------------------------------------------------------
+-- Profile actions live in `profile.actions`; index `self:SmartActions()` directly.
+-- Predefined actions are immutable add-on data.
 
-function DB:GetPredefinedDynamicAction(dynamicActionId)
-  return (MM.PredefinedDynamicActions or {})[dynamicActionId]
+function DB:GetPredefinedSmartAction(smartActionId)
+  return (MM.PredefinedSmartActions or {})[smartActionId]
 end
 
 -- Resolve a stored `{ source, id }` reference: "custom" -> the profile's own
--- dynamicAction, anything else (predefined) -> the built-in dynamicAction.
-function DB:ResolveDynamicAction(reference)
+-- smartAction, anything else (predefined) -> the built-in smartAction.
+function DB:ResolveSmartAction(reference)
   if not reference then
     return nil
   end
 
   if reference.source == "custom" then
-    return self:DynamicActions()[reference.id]
+    return self:SmartActions()[reference.id]
   end
 
-  return self:GetPredefinedDynamicAction(reference.id)
+  return self:GetPredefinedSmartAction(reference.id)
 end
 
--- Copy a predefined dynamicAction into an editable profile dynamicAction. Returns the new key
--- (dynamicActions are identified by key, so duplicate names are fine).
-function DB:CopyPredefinedDynamicAction(dynamicActionId, newId, newName)
-  local source = (MM.PredefinedDynamicActions or {})[dynamicActionId]
+-- Copy a predefined smartAction into an editable profile smartAction. Returns the new key
+-- (actions are identified by key, so duplicate names are fine).
+function DB:CopyPredefinedSmartAction(smartActionId, newId, newName)
+  local source = (MM.PredefinedSmartActions or {})[smartActionId]
   if not source then
-    return nil, "unknown predefined dynamic action"
+    return nil, "unknown predefined smart action"
   end
 
-  local dynamicActions = self:DynamicActions()
+  local actions = self:SmartActions()
   local name = newName or string.format(MM.L["%s Copy"], source.name)
-  local key = newId or uniqueId(name, dynamicActionId .. "_copy", dynamicActions)
-  if dynamicActions[key] then
-    return nil, "dynamic action already exists"
+  local key = newId or uniqueId(name, smartActionId .. "_copy", actions)
+  if actions[key] then
+    return nil, "smart action already exists"
   end
 
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  dynamicActions[key] = copy
+  actions[key] = copy
   return key
 end
 
--- Clone any dynamicAction (predefined or profile) into a new editable profile dynamicAction.
-function DB:CloneDynamicAction(reference)
-  local source = self:ResolveDynamicAction(reference)
+-- Clone any smartAction (predefined or profile) into a new editable profile smartAction.
+function DB:CloneSmartAction(reference)
+  local source = self:ResolveSmartAction(reference)
   if not source then
-    return nil, "unknown dynamic action"
+    return nil, "unknown smart action"
   end
 
-  local dynamicActions = self:DynamicActions()
-  local name = string.format(MM.L["%s Copy"], source.name or MM.L["Dynamic Action"])
-  local key = uniqueId(name, "dynamicaction_copy", dynamicActions)
+  local actions = self:SmartActions()
+  local name = string.format(MM.L["%s Copy"], source.name or MM.L["Smart Action"])
+  local key = uniqueId(name, "action_copy", actions)
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
-  dynamicActions[key] = copy
+  actions[key] = copy
   return key
 end
 
--- Predefined dynamicActions are immutable add-on data, so create / rename / delete and
--- all candidate edits operate only on the profile's own dynamicActions.
+-- Predefined actions are immutable add-on data, so create / rename / delete and
+-- all candidate edits operate only on the profile's own actions.
 
 -- Adoption: the import door. Insert a fully-formed table under a key the caller
 -- has already uniqued (imports allocate all keys up front so cross-references
 -- can be rewritten before anything is stored).
--- Every dynamic action is named, so anything downstream (the macro namer, the
+-- Every smart action is named, so anything downstream (the macro namer, the
 -- rail) can rely on it. Stored once, so switching language never renames one.
-local function defaultDynamicActionName(dynamicActions)
-  return string.format(MM.L["Dynamic Action %d"], MM.Tables.Count(dynamicActions) + 1)
+local function defaultSmartActionName(actions)
+  return string.format(MM.L["Smart Action %d"], MM.Tables.Count(actions) + 1)
 end
 
-function DB:AdoptDynamicAction(profileId, key, action)
-  local dynamicActions = self:DynamicActions(profileId)
+function DB:AdoptSmartAction(profileId, key, action)
+  local actions = self:SmartActions(profileId)
   if not self:GetProfile(profileId) then
     return nil, "unknown profile"
   end
-  if dynamicActions[key] then
-    return nil, "dynamic action already exists"
+  if actions[key] then
+    return nil, "smart action already exists"
   end
   -- A sharing string is untrusted: name an unnamed action here rather than
   -- letting a nameless one reach the macro namer.
   if type(action.name) ~= "string" or action.name == "" then
-    action.name = defaultDynamicActionName(dynamicActions)
+    action.name = defaultSmartActionName(actions)
   end
-  dynamicActions[key] = action
+  actions[key] = action
   return key
 end
 
@@ -702,124 +725,124 @@ function DB:AdoptLayer(profileId, layer)
   return key
 end
 
-function DB:CreateDynamicAction(name)
-  local dynamicActions = self:DynamicActions()
-  local key = uniqueId(name, "dynamicaction", dynamicActions)
-  dynamicActions[key] = {
-    name = name and name ~= "" and name or defaultDynamicActionName(dynamicActions),
+function DB:CreateSmartAction(name)
+  local actions = self:SmartActions()
+  local key = uniqueId(name, "action", actions)
+  actions[key] = {
+    name = name and name ~= "" and name or defaultSmartActionName(actions),
     candidates = {},
   }
-  return key, dynamicActions[key]
+  return key, actions[key]
 end
 
-function DB:RenameDynamicAction(dynamicActionId, name)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be renamed"
+function DB:RenameSmartAction(smartActionId, name)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be renamed"
   end
 
   name = string.gsub(name or "", "^%s+", "")
   name = string.gsub(name, "%s+$", "")
   if name == "" then
-    return false, "dynamic action name cannot be empty"
+    return false, "smart action name cannot be empty"
   end
 
-  dynamicAction.name = name
+  smartAction.name = name
   return true
 end
 
--- Switch a dynamicAction between "normal" (place the resolved action) and "macro"
+-- Switch a smartAction between "normal" (place the resolved action) and "macro"
 -- (place a generated macro). Enabling macro mode seeds the default template once;
 -- the template is kept when switching back so toggling never loses the user's body.
-function DB:SetDynamicActionMode(dynamicActionId, mode)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be edited"
+function DB:SetSmartActionMode(smartActionId, mode)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be edited"
   end
   if mode ~= "normal" and mode ~= "macro" then
     return false, "mode must be normal or macro"
   end
 
   if mode == "macro" then
-    dynamicAction.mode = "macro"
-    if not dynamicAction.macroTemplate or dynamicAction.macroTemplate == "" then
-      dynamicAction.macroTemplate = MM.MACRO_TEMPLATE_DEFAULT
+    smartAction.mode = "macro"
+    if not smartAction.macroTemplate or smartAction.macroTemplate == "" then
+      smartAction.macroTemplate = MM.MACRO_TEMPLATE_DEFAULT
     end
   else
-    dynamicAction.mode = nil
+    smartAction.mode = nil
   end
   return true
 end
 
-function DB:SetDynamicActionTemplate(dynamicActionId, template)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be edited"
+function DB:SetSmartActionTemplate(smartActionId, template)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be edited"
   end
 
   -- The limit is bytes, so cut on a character boundary — a raw sub would leave
   -- half a multi-byte character behind.
   template = MM.Macros.TruncateBytes(tostring(template or ""), MM.MACRO_TEMPLATE_LIMIT)
-  dynamicAction.macroTemplate = template
+  smartAction.macroTemplate = template
   return true
 end
 
--- Slots bound to the deleted dynamicAction simply stop resolving and fall through on the
+-- Slots bound to the deleted smartAction simply stop resolving and fall through on the
 -- next apply, so there's no reference cleanup to do.
-function DB:DeleteDynamicAction(dynamicActionId)
-  local dynamicActions = self:DynamicActions()
-  if not dynamicActions[dynamicActionId] then
-    return false, "unknown dynamic action"
+function DB:DeleteSmartAction(smartActionId)
+  local actions = self:SmartActions()
+  if not actions[smartActionId] then
+    return false, "unknown smart action"
   end
 
-  dynamicActions[dynamicActionId] = nil
+  actions[smartActionId] = nil
   return true
 end
 
 -- Candidates -----------------------------------------------------------------
 
--- Add a candidate (a captured assignment) to a profile dynamicAction, at `index`
+-- Add a candidate (a captured assignment) to a profile smartAction, at `index`
 -- (clamped) or appended when no index is given.
-function DB:AddCandidate(dynamicActionId, assignment, index)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be edited"
+function DB:AddCandidate(smartActionId, assignment, index)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be edited"
   end
   if not assignment or not assignment.type then
     return false, "no action to add"
   end
 
-  dynamicAction.candidates = dynamicAction.candidates or {}
-  index = math.max(1, math.min(tonumber(index) or (#dynamicAction.candidates + 1), #dynamicAction.candidates + 1))
-  table.insert(dynamicAction.candidates, index, assignment)
+  smartAction.candidates = smartAction.candidates or {}
+  index = math.max(1, math.min(tonumber(index) or (#smartAction.candidates + 1), #smartAction.candidates + 1))
+  table.insert(smartAction.candidates, index, assignment)
   return true
 end
 
-function DB:RemoveCandidate(dynamicActionId, index)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be edited"
+function DB:RemoveCandidate(smartActionId, index)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be edited"
   end
 
   index = tonumber(index)
-  if not index or not dynamicAction.candidates or not dynamicAction.candidates[index] then
+  if not index or not smartAction.candidates or not smartAction.candidates[index] then
     return false, "no candidate at that position"
   end
 
-  table.remove(dynamicAction.candidates, index)
+  table.remove(smartAction.candidates, index)
   return true
 end
 
 -- Replace a candidate's conditions wholesale (scratch-copy commit, like
 -- SetLayerConditions).
-function DB:SetCandidateConditions(dynamicActionId, index, conditions)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  if not dynamicAction then
-    return false, "only profile dynamic actions can be edited"
+function DB:SetCandidateConditions(smartActionId, index, conditions)
+  local smartAction = self:SmartActions()[smartActionId]
+  if not smartAction then
+    return false, "only profile smart actions can be edited"
   end
 
   index = tonumber(index)
-  local candidate = index and dynamicAction.candidates and dynamicAction.candidates[index]
+  local candidate = index and smartAction.candidates and smartAction.candidates[index]
   if not candidate then
     return false, "no candidate at that position"
   end
@@ -830,11 +853,11 @@ end
 
 -- Move the candidate at `fromIndex` to `toIndex` (clamped). Single splice, like
 -- MoveLayer.
-function DB:MoveCandidate(dynamicActionId, fromIndex, toIndex)
-  local dynamicAction = self:DynamicActions()[dynamicActionId]
-  local candidates = dynamicAction and dynamicAction.candidates
+function DB:MoveCandidate(smartActionId, fromIndex, toIndex)
+  local smartAction = self:SmartActions()[smartActionId]
+  local candidates = smartAction and smartAction.candidates
   if not candidates then
-    return false, "only profile dynamic actions can be edited"
+    return false, "only profile smart actions can be edited"
   end
 
   fromIndex = tonumber(fromIndex)

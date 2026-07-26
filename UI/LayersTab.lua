@@ -2,7 +2,7 @@ local ADDON_NAME, MM = ...
 local L = MM.L
 
 -- The Layers tab: left rail of layers in the active profile, the centre grid
--- mirroring the player's live bars (each slot managed / pinned / dynamicAction-driven /
+-- mirroring the player's live bars (each slot managed / pinned / smartAction-driven /
 -- empty / pass-through), and the right-hand Slot Editor. Wired straight to DB,
 -- Capture, Resolver and Actions.
 local LayersTab = {}
@@ -29,11 +29,11 @@ local function assignSlot(layerId, slot, assignment)
   refresh()
 end
 
-local function resolveDynamicAction(source, id)
-  return MM.Resolver:ResolveAction({ type = "dynamicaction", source = source, id = id })
+local function resolveSmartAction(source, id)
+  return MM.Resolver:ResolveAction({ type = "action", source = source, id = id })
 end
 
--- Style a suggestion row like the sidebar's "Bind to a Dynamic Action" rows —
+-- Style a suggestion row like the sidebar's "Bind to a Smart Action" rows —
 -- icon tile plus name — with the source (predefined/custom) on the right, since
 -- every match resolves to the same action anyway.
 local function suggestionRowInit(row, match)
@@ -52,9 +52,9 @@ local function suggestionRowInit(row, match)
     row.sourceLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0)
   end
 
-  local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = match.source, id = match.id })
-  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
-  local resolved = resolveDynamicAction(match.source, match.id)
+  local smartActionObj = MM.DB:ResolveSmartAction({ source = match.source, id = match.id })
+  row.tile:SetMacroBadge(smartActionObj ~= nil and MM.Macros.EffectiveMode(smartActionObj) == "macro")
+  local resolved = resolveSmartAction(match.source, match.id)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
     row.tile:SetBorder(1, colors.managed)
@@ -67,38 +67,38 @@ local function suggestionRowInit(row, match)
   row.sourceLabel:SetText(L[match.source])
 end
 
--- Bind a captured assignment, honoring the suggestion mode when dynamic actions
--- resolve to it on this character ("Kick" -> the Interrupt dynamic action):
--- "never" binds the capture as-is, "auto" binds a sole matching dynamic action
+-- Bind a captured assignment, honoring the suggestion mode when smart actions
+-- resolve to it on this character ("Kick" -> the Interrupt smart action):
+-- "never" binds the capture as-is, "auto" binds a sole matching smart action
 -- directly, and "suggest" (or several "auto" matches) asks. In the popup a row
--- binds the dynamic action, "Keep" binds the capture unchanged, Escape binds
+-- binds the smart action, "Keep" binds the capture unchanged, Escape binds
 -- nothing. Only these single-slot binds prompt; bulk layer capture stays literal.
 local function assignSuggesting(layerId, slot, assignment)
   local mode = MM.DB:GetSuggestMode()
-  local matches = mode ~= "never" and MM.Resolver:FindDynamicActionsResolvingTo(assignment) or {}
+  local matches = mode ~= "never" and MM.Resolver:FindSmartActionsResolvingTo(assignment) or {}
   if #matches == 0 then
     assignSlot(layerId, slot, assignment)
     return
   end
 
   if mode == "auto" and #matches == 1 then
-    assignSlot(layerId, slot, { type = "dynamicaction", source = matches[1].source, id = matches[1].id })
+    assignSlot(layerId, slot, { type = "action", source = matches[1].source, id = matches[1].id })
     return
   end
 
   local resolved = MM.Resolver:ResolveAction(assignment)
   local name = (resolved and resolved.label) or MM.Actions.GetAssignmentLabel(assignment)
   MM.ui.Modals.Choose({
-    title = L["Bind a Dynamic Action instead?"],
+    title = L["Bind a Smart Action instead?"],
     message = string.format(
-      L["%s is covered by %s. Do you want to bind the Dynamic Action instead? You can disable this behavior in the settings."],
+      L["%s is covered by %s. Do you want to bind the Smart Action instead? You can disable this behavior in the settings."],
       name,
-      L:Plural(#matches, "a Dynamic Action", "multiple Dynamic Actions")
+      L:Plural(#matches, "a Smart Action", "multiple Smart Actions")
     ),
     options = matches,
     rowInit = suggestionRowInit,
     onSelect = function(match)
-      assignSlot(layerId, slot, { type = "dynamicaction", source = match.source, id = match.id })
+      assignSlot(layerId, slot, { type = "action", source = match.source, id = match.id })
     end,
     cancelLabel = string.format(L["Keep %s"], name),
     onCancel = function()
@@ -140,24 +140,18 @@ local function manageSlot(layerId, slot)
   assignSuggesting(layerId, slot, assignment)
 end
 
--- Turn a regular assignment into a fresh Dynamic Action seeded with that
+-- Turn a regular assignment into a fresh Smart Action seeded with that
 -- action as its only candidate, then rebind the slot to it.
-local function convertToDynamicAction(layerId, slot, assignment)
+local function convertToSmartAction(layerId, slot, assignment)
   local prefill = MM.Actions.GetAssignmentName(assignment)
-  MM.ui.Modals.Input(
-    L["Convert to Dynamic Action"],
-    L["Name the new Dynamic Action"],
-    prefill,
-    L["Convert"],
-    function(name)
-      -- One undo step for the whole conversion.
-      MM.Undo:Batch(function()
-        local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
-        MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
-        assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
-      end, string.format(L["convert %s to a Dynamic Action"], prefill))
-    end
-  )
+  MM.ui.Modals.Input(L["Convert to Smart Action"], L["Name the new Smart Action"], prefill, L["Convert"], function(name)
+    -- One undo step for the whole conversion.
+    MM.Undo:Batch(function()
+      local key = MM.DB:CreateSmartAction(name ~= "" and name or prefill)
+      MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
+      assignSlot(layerId, slot, { type = "action", source = "custom", id = key })
+    end, string.format(L["convert %s to a Smart Action"], prefill))
+  end)
 end
 
 local function unmanageSlot(layerId, slot)
@@ -168,18 +162,18 @@ local function unmanageSlot(layerId, slot)
   refresh()
 end
 
--- DynamicAction helpers -------------------------------------------------------------
+-- SmartAction helpers -------------------------------------------------------------
 
--- Custom ("your") dynamic actions and the predefined ones as separate sorted
--- lists, so the bind list can section them like the Dynamic Actions rail.
-local function dynamicActionList()
+-- Custom ("your") smart actions and the predefined ones as separate sorted
+-- lists, so the bind list can section them like the Smart Actions rail.
+local function smartActionList()
   local custom = {}
-  for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
-    custom[#custom + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
+  for id, smartAction in pairs(MM.DB:SmartActions() or {}) do
+    custom[#custom + 1] = { source = "custom", id = id, name = smartAction.name or id }
   end
   local predefined = {}
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
-    predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
+  for id, smartAction in pairs(MM.PredefinedSmartActions or {}) do
+    predefined[#predefined + 1] = { source = "predefined", id = id, name = smartAction.name or id }
   end
   -- Sort on the displayed name; tie-break on the id since duplicate names are
   -- legal for custom actions, so the bind list order stays stable across rebuilds.
@@ -431,11 +425,11 @@ local function paintSlot(icon, layer, slot, suppressSelected, otherLayers)
     icon:SetTextureImage(MM.Actions.GetLiveSlotIcon(slot))
     icon:SetAlphaAll(0.42)
     icon:SetBorder(1, colors.faint, 0.5)
-  elseif assignment.type == "dynamicaction" then
+  elseif assignment.type == "action" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     icon:SetBadge(true)
-    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
-    icon:SetMacroBadge(dynamicAction ~= nil and MM.Macros.EffectiveMode(dynamicAction) == "macro")
+    local smartAction = MM.DB:ResolveSmartAction({ source = assignment.source, id = assignment.id })
+    icon:SetMacroBadge(smartAction ~= nil and MM.Macros.EffectiveMode(smartAction) == "macro")
     if resolved and resolved.icon then
       icon:SetTextureImage(resolved.icon)
       icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
@@ -456,7 +450,7 @@ local function paintSlot(icon, layer, slot, suppressSelected, otherLayers)
       icon:SetGlyph("?", colors.goldDim)
     end
     -- A pinned user macro carries the macro badge too, not just macro-rendered
-    -- dynamic actions.
+    -- smart actions.
     icon:SetMacroBadge(assignment.type == "macro")
     icon:SetBorder(selected and 3 or 2, selected and colors.selected or colors.managed)
   end
@@ -513,9 +507,9 @@ function LayersTab:BuildSlotCell(parent, slot)
     local assignment = layer and layer.slots and layer.slots[slot]
     if assignment then
       GameTooltip:AddLine(MM.Actions.GetAssignmentLabel(assignment), 1, 1, 1)
-      -- For a dynamicAction-driven slot, explain the badges and show what it
+      -- For a smartAction-driven slot, explain the badges and show what it
       -- resolves to for this character.
-      if assignment.type == "dynamicaction" then
+      if assignment.type == "action" then
         local resolved = MM.Resolver:ResolveAction(assignment)
         if resolved then
           GameTooltip:AddLine(string.format(L["Resolves to: %s"], resolved.label), Widgets.unpackColor(colors.goldDim))
@@ -523,8 +517,8 @@ function LayersTab:BuildSlotCell(parent, slot)
           GameTooltip:AddLine(L["No usable candidate"], 0.9, 0.4, 0.4)
         end
         Widgets.AddBadgeTooltipSeparator()
-        Widgets.AddDynamicActionTooltipLine()
-        Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id }))
+        Widgets.AddSmartActionTooltipLine()
+        Widgets.AddMacroTooltipLine(MM.DB:ResolveSmartAction({ source = assignment.source, id = assignment.id }))
       end
     else
       GameTooltip:AddLine(L["Not managed \226\128\148 click to manage"], 0.7, 0.7, 0.7)
@@ -552,7 +546,7 @@ function LayersTab:BuildLegend(parent)
   -- show the badge tile itself (as it appears on a cell) rather than a
   -- bordered swatch.
   local entries = {
-    { icon = Widgets.ICON.dynamicAction, label = L["Dynamic Action"] },
+    { icon = Widgets.ICON.smartAction, label = L["Smart Action"] },
     { icon = Widgets.ICON.macro, label = L["Macro"] },
     { label = L["Managed by this Layer"], newRow = true },
     { label = L["Managed by another Layer"], color = colors.otherLayer, alpha = 0.55 },
@@ -766,12 +760,12 @@ local function dropZone()
   return LayersTab.dropZone
 end
 
--- Initializer for a "Bind to a Dynamic Action" row (recycled by Widgets.DataList). The
+-- Initializer for a "Bind to a Smart Action" row (recycled by Widgets.DataList). The
 -- click reads the live selected layer/slot, since the list outlives any rebuild.
 -- A `header` item renders as a plain section title instead — rows are pooled
 -- across both kinds, so each pass shows/hides the other kind's children.
-local function dynamicActionBindRowInit(row, data)
-  local dynamicAction = data.dynamicAction
+local function smartActionBindRowInit(row, data)
+  local smartAction = data.smartAction
   if not row.mmInit then
     row.mmInit = true
     Widgets.decorateRow(row)
@@ -790,30 +784,30 @@ local function dynamicActionBindRowInit(row, data)
     row.resolution:SetPoint("RIGHT", row, "RIGHT", -8, 0)
 
     row:SetScript("OnClick", function(self)
-      local m = self.data and self.data.dynamicAction
+      local m = self.data and self.data.smartAction
       local layerId = MM.DB:GetSelectedLayerId()
       local slot = MM.DB:GetSelectedSlot()
       if m and layerId and slot then
-        assignSlot(layerId, slot, { type = "dynamicaction", source = m.source, id = m.id })
+        assignSlot(layerId, slot, { type = "action", source = m.source, id = m.id })
       end
     end)
 
     -- Tooltip on the icon only; the resolved spell/item plus a note on what the
     -- fork and { } badges mean.
     Widgets.AttachIconTooltip(row.tile, function(r)
-      local m = r.data and r.data.dynamicAction
+      local m = r.data and r.data.smartAction
       if not m then
         return
       end
-      local resolved = resolveDynamicAction(m.source, m.id)
+      local resolved = resolveSmartAction(m.source, m.id)
       if resolved then
         Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
       else
         Widgets.SetActionTooltip(r.tile, nil, nil, m.name)
       end
       Widgets.AddBadgeTooltipSeparator()
-      Widgets.AddDynamicActionTooltipLine()
-      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = m.source, id = m.id }))
+      Widgets.AddSmartActionTooltipLine()
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveSmartAction({ source = m.source, id = m.id }))
     end)
   end
 
@@ -831,9 +825,9 @@ local function dynamicActionBindRowInit(row, data)
   row.headerLabel:Hide()
   row.tile:Show()
 
-  local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = dynamicAction.source, id = dynamicAction.id })
-  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
-  local resolved = resolveDynamicAction(dynamicAction.source, dynamicAction.id)
+  local smartActionObj = MM.DB:ResolveSmartAction({ source = smartAction.source, id = smartAction.id })
+  row.tile:SetMacroBadge(smartActionObj ~= nil and MM.Macros.EffectiveMode(smartActionObj) == "macro")
+  local resolved = resolveSmartAction(smartAction.source, smartAction.id)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
     row.tile:SetBorder(1, colors.managed)
@@ -842,7 +836,7 @@ local function dynamicActionBindRowInit(row, data)
     row.tile:SetBorder(1, colors.warn, 0.7)
   end
 
-  row.nameLabel:SetText(dynamicAction.name)
+  row.nameLabel:SetText(smartAction.name)
   row.resolution:SetText(resolved and resolved.label or L["no match"])
   row.resolution:SetTextColor(Widgets.unpackColor(resolved and colors.goldDim or colors.danger))
 end
@@ -900,16 +894,16 @@ function LayersTab:BuildEditor(parent, layerId, layer)
     if not assignment then
       return
     end
-    if assignment.type == "dynamicaction" then
-      local resolved = resolveDynamicAction(assignment.source, assignment.id)
+    if assignment.type == "action" then
+      local resolved = resolveSmartAction(assignment.source, assignment.id)
       if resolved then
         Widgets.SetActionTooltip(icon, resolved.kind, resolved.id, resolved.label)
       else
         Widgets.SetActionTooltip(icon, nil, nil, MM.Actions.GetAssignmentLabel(assignment))
       end
       Widgets.AddBadgeTooltipSeparator()
-      Widgets.AddDynamicActionTooltipLine()
-      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id }))
+      Widgets.AddSmartActionTooltipLine()
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveSmartAction({ source = assignment.source, id = assignment.id }))
     else
       Widgets.SetActionTooltip(icon, assignment.type, assignment.id, MM.Actions.GetAssignmentLabel(assignment))
     end
@@ -944,38 +938,38 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   dropHint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   dropHint:SetJustifyH("LEFT")
 
-  -- Regular assignments can be promoted into a new Dynamic Action in one step.
+  -- Regular assignments can be promoted into a new Smart Action in one step.
   local sectionAnchor = dropHint
-  if assignment and assignment.type ~= "empty" and assignment.type ~= "dynamicaction" then
-    local convert = Widgets.Button(inset, L["Convert to Dynamic Action"], 180, function()
-      convertToDynamicAction(layerId, slot, assignment)
+  if assignment and assignment.type ~= "empty" and assignment.type ~= "action" then
+    local convert = Widgets.Button(inset, L["Convert to Smart Action"], 180, function()
+      convertToSmartAction(layerId, slot, assignment)
     end)
     convert:SetPoint("TOPLEFT", dropHint, "BOTTOMLEFT", 0, -12)
     sectionAnchor = convert
   end
 
-  -- "Bind to a Dynamic Action"
-  local dynamicActionHeader = Widgets.SectionHeader(inset, L["Bind to a Dynamic Action"])
-  dynamicActionHeader:SetPoint("TOPLEFT", sectionAnchor, "BOTTOMLEFT", 0, -16)
+  -- "Bind to a Smart Action"
+  local smartActionHeader = Widgets.SectionHeader(inset, L["Bind to a Smart Action"])
+  smartActionHeader:SetPoint("TOPLEFT", sectionAnchor, "BOTTOMLEFT", 0, -16)
 
-  local list = Widgets.DataList(inset, "layers.dynamicActionbind", {
+  local list = Widgets.DataList(inset, "layers.smartActionbind", {
     extent = 34,
     spacing = 3,
-    initializer = dynamicActionBindRowInit,
+    initializer = smartActionBindRowInit,
   })
-  list.scrollBox:SetPoint("TOPLEFT", dynamicActionHeader, "BOTTOMLEFT", 0, -8)
+  list.scrollBox:SetPoint("TOPLEFT", smartActionHeader, "BOTTOMLEFT", 0, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", stopButton, "TOPRIGHT", 0, 10)
 
-  -- Two sections mirroring the Dynamic Actions rail, so two dynamic actions
+  -- Two sections mirroring the Smart Actions rail, so two smart actions
   -- sharing a name are still distinguishable here.
-  local custom, predefined = dynamicActionList()
-  local items = { { header = L["Your Dynamic Actions"], extent = 22 } }
-  for _, dynamicAction in ipairs(custom) do
-    items[#items + 1] = { dynamicAction = dynamicAction }
+  local custom, predefined = smartActionList()
+  local items = { { header = L["Your Smart Actions"], extent = 22 } }
+  for _, smartAction in ipairs(custom) do
+    items[#items + 1] = { smartAction = smartAction }
   end
   items[#items + 1] = { header = L["Predefined"], extent = 30 }
-  for _, dynamicAction in ipairs(predefined) do
-    items[#items + 1] = { dynamicAction = dynamicAction }
+  for _, smartAction in ipairs(predefined) do
+    items[#items + 1] = { smartAction = smartAction }
   end
   list:SetItems(items)
 

@@ -211,12 +211,12 @@ function Actions.GetAssignmentLabel(assignment)
     return L["Empty"]
   end
 
-  if assignment.type == "dynamicaction" then
-    local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
-    if dynamicAction then
-      return dynamicAction.name
+  if assignment.type == "action" then
+    local smartAction = MM.DB:ResolveSmartAction({ source = assignment.source, id = assignment.id })
+    if smartAction then
+      return smartAction.name
     end
-    return string.format(L["Dynamic Action: %s"], tostring(assignment.id))
+    return string.format(L["Smart Action: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "spell" then
@@ -361,7 +361,7 @@ function Actions.GetAssignmentIcon(assignment, slot)
     return nil
   end
 
-  if assignment.type == "dynamicaction" then
+  if assignment.type == "action" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     return resolved and resolved.icon or nil
   end
@@ -414,7 +414,7 @@ function Actions.GetAssignmentIconState(assignment, slot)
     return { kind = "ignore" }
   end
 
-  if assignment.type == "dynamicaction" then
+  if assignment.type == "action" then
     local resolved = MM.Resolver:ResolveAction(assignment)
     if resolved then
       if resolved.kind == "empty" then
@@ -607,8 +607,8 @@ function Actions.IsResolvedInSlot(resolved, slot)
     return false
   end
 
-  -- A dynamicAction in macro mode places a generated macro, not the raw action. Match the
-  -- slot against the macro's current name AND rendered body: a dynamicAction rename changes
+  -- A smartAction in macro mode places a generated macro, not the raw action. Match the
+  -- slot against the macro's current name AND rendered body: a smartAction rename changes
   -- the name (not the body), so a stale-named macro must read as a pending change.
   -- A body that won't render falls through to plain matching, like the applier.
   local body = MM.Macros.ResolvedAsMacro(resolved)
@@ -617,7 +617,7 @@ function Actions.IsResolvedInSlot(resolved, slot)
     if not info or info.actionType ~= "macro" then
       return false
     end
-    local expectedName = MM.Macros.MacroName(resolved.dynamicAction)
+    local expectedName = MM.Macros.MacroName(resolved.smartAction)
     local expectedHash = MM.Macros.HashBody(body)
 
     if GetMacroInfo then

@@ -5,7 +5,7 @@ MM.Slash = Slash
 MM:RegisterModule("Slash", Slash)
 
 -- The player-facing command surface is deliberately tiny: managing profiles,
--- layers and dynamic actions lives in the UI and the public API (API.lua).
+-- layers and smart actions lives in the UI and the public API (API.lua).
 
 local function words(text)
   local list = {}
@@ -50,7 +50,7 @@ local tree = {
         },
         view = {
           desc = "capture a single view",
-          args = "<layers|dynamic-actions|macro-editor|macro-window|profiles|export|import|suggestion>",
+          args = "<layers|smart-actions|macro-editor|macro-window|profiles|export|import|suggestion>",
           run = function(args)
             MM.ScreenshotTour:RunOne(args[1])
           end,

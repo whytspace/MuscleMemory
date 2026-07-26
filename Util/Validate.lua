@@ -20,7 +20,7 @@ local ASSIGNMENT_TYPES = {
   equipmentset = { name = "string" },
   empty = {},
   ignore = {},
-  dynamicaction = {},
+  action = {},
 }
 
 local CONDITION_LISTS = { classes = true, specs = true, roles = true, factions = true, races = true }
@@ -76,12 +76,12 @@ function Validate.Assignment(assignment)
   if assignment.type == "macro" and not (result.nameHint or result.bodyHash) then
     return nil, "macro assignment needs 'nameHint' or 'bodyHash'"
   end
-  if assignment.type == "dynamicaction" then
+  if assignment.type == "action" then
     if result.source ~= "custom" and result.source ~= "predefined" then
-      return nil, "dynamicaction assignment needs source 'custom' or 'predefined'"
+      return nil, "action assignment needs source 'custom' or 'predefined'"
     end
-    if not MM.DB:ResolveDynamicAction({ source = result.source, id = result.id }) then
-      return nil, "unknown dynamic action '" .. tostring(result.id) .. "'"
+    if not MM.DB:ResolveSmartAction({ source = result.source, id = result.id }) then
+      return nil, "unknown smart action '" .. tostring(result.id) .. "'"
     end
   end
 
@@ -94,7 +94,7 @@ function Validate.Candidate(candidate)
   if type(candidate) ~= "table" then
     return nil, "candidate must be a table"
   end
-  if candidate.type == "dynamicaction" or candidate.type == "empty" or candidate.type == "ignore" then
+  if candidate.type == "action" or candidate.type == "empty" or candidate.type == "ignore" then
     return nil, "'" .. candidate.type .. "' cannot be a candidate"
   end
   local result, reason = Validate.Assignment(candidate)

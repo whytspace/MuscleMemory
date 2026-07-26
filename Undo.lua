@@ -31,7 +31,7 @@ local function capture()
   return {
     profiles = MM.Tables.DeepCopy(root.profiles),
     profile = root.profile,
-    suggest = root.suggestDynamicActions,
+    suggest = root.suggestSmartActions,
     characterProfiles = characterProfiles,
   }
 end
@@ -40,7 +40,7 @@ local function restore(snapshot)
   local root = MM.DB:GetRoot()
   root.profiles = MM.Tables.DeepCopy(snapshot.profiles)
   root.profile = snapshot.profile
-  root.suggestDynamicActions = snapshot.suggest
+  root.suggestSmartActions = snapshot.suggest
   for key, state in pairs(root.characterState or {}) do
     state.profile = snapshot.characterProfiles[key]
   end
@@ -90,10 +90,10 @@ local function layerFocus(beforeProfile, afterProfile)
   return nil
 end
 
-local function dynamicActionFocus(beforeProfile, afterProfile)
-  for actionId in pairs(unionKeys(beforeProfile.dynamicActions, afterProfile.dynamicActions)) do
-    local beforeAction = (beforeProfile.dynamicActions or {})[actionId]
-    local afterAction = (afterProfile.dynamicActions or {})[actionId]
+local function smartActionFocus(beforeProfile, afterProfile)
+  for actionId in pairs(unionKeys(beforeProfile.actions, afterProfile.actions)) do
+    local beforeAction = (beforeProfile.actions or {})[actionId]
+    local afterAction = (afterProfile.actions or {})[actionId]
     if not MM.Tables.DeepEquals(beforeAction, afterAction) then
       local candidateFocus
       if beforeAction and afterAction then
@@ -109,7 +109,7 @@ local function dynamicActionFocus(beforeProfile, afterProfile)
           candidateFocus = nil
         end
       end
-      return { tab = "dynamicActions", actionId = afterAction and actionId or nil, candidate = candidateFocus }
+      return { tab = "actions", actionId = afterAction and actionId or nil, candidate = candidateFocus }
     end
   end
   return nil
@@ -136,7 +136,7 @@ local function focusOf(before, after)
         return { tab = "settings" }
       end
       return layerFocus(beforeProfile, afterProfile)
-        or dynamicActionFocus(beforeProfile, afterProfile)
+        or smartActionFocus(beforeProfile, afterProfile)
         or { tab = "profiles" } -- anything else, e.g. a profile rename
     end
   end
@@ -164,8 +164,8 @@ local function applyFocus(focus)
   end
   if MM.ui and MM.ui.state then
     MM.ui.state.tab = focus.tab
-    if focus.tab == "dynamicActions" and focus.actionId then
-      MM.ui.state.dynamicAction = { source = "custom", id = focus.actionId }
+    if focus.tab == "actions" and focus.actionId then
+      MM.ui.state.smartAction = { source = "custom", id = focus.actionId }
       MM.ui.state.candidate = focus.candidate
     end
   end
@@ -184,7 +184,7 @@ local function layerName(layerId)
 end
 
 local function actionName(actionId)
-  local action = MM.DB:DynamicActions()[actionId]
+  local action = MM.DB:SmartActions()[actionId]
   return (action and action.name) or tostring(actionId)
 end
 
@@ -194,7 +194,7 @@ local function profileName(profileId)
 end
 
 local function candidateName(actionId, index)
-  local action = MM.DB:DynamicActions()[actionId]
+  local action = MM.DB:SmartActions()[actionId]
   local candidate = action and action.candidates and action.candidates[tonumber(index) or -1]
   return candidate and MM.Actions.GetAssignmentName(candidate) or string.format(L["candidate %s"], tostring(index))
 end
@@ -260,33 +260,33 @@ local DESCRIBE = {
   SetSuggestMode = function(value)
     return string.format(L["set suggestions to %s"], tostring(value))
   end,
-  CreateDynamicAction = function(name)
-    return name and string.format(L["create Dynamic Action %s"], name) or L["create a Dynamic Action"]
+  CreateSmartAction = function(name)
+    return name and string.format(L["create Smart Action %s"], name) or L["create a Smart Action"]
   end,
-  CopyPredefinedDynamicAction = function(actionId)
-    return string.format(L["copy predefined Dynamic Action %s"], tostring(actionId))
+  CopyPredefinedSmartAction = function(actionId)
+    return string.format(L["copy predefined Smart Action %s"], tostring(actionId))
   end,
-  CloneDynamicAction = function(reference)
-    local source = MM.DB:ResolveDynamicAction(reference)
-    return string.format(L["copy Dynamic Action %s"], tostring(source and source.name))
+  CloneSmartAction = function(reference)
+    local source = MM.DB:ResolveSmartAction(reference)
+    return string.format(L["copy Smart Action %s"], tostring(source and source.name))
   end,
-  RenameDynamicAction = function(actionId)
-    return string.format(L["rename Dynamic Action %s"], actionName(actionId))
+  RenameSmartAction = function(actionId)
+    return string.format(L["rename Smart Action %s"], actionName(actionId))
   end,
-  DeleteDynamicAction = function(actionId)
-    return string.format(L["delete Dynamic Action %s"], actionName(actionId))
+  DeleteSmartAction = function(actionId)
+    return string.format(L["delete Smart Action %s"], actionName(actionId))
   end,
-  SetDynamicActionMode = function(actionId, mode)
+  SetSmartActionMode = function(actionId, mode)
     return string.format(
       mode == "macro" and L["enable macro mode for %s"] or L["disable macro mode for %s"],
       actionName(actionId)
     )
   end,
-  SetDynamicActionTemplate = function(actionId)
+  SetSmartActionTemplate = function(actionId)
     return string.format(L["edit the macro template of %s"], actionName(actionId))
   end,
-  AdoptDynamicAction = function(_, _, action)
-    return string.format(L["import Dynamic Action %s"], tostring(action and action.name))
+  AdoptSmartAction = function(_, _, action)
+    return string.format(L["import Smart Action %s"], tostring(action and action.name))
   end,
   AddCandidate = function(actionId, assignment)
     return string.format(L["add %s to %s"], MM.Actions.GetAssignmentName(assignment), actionName(actionId))
@@ -453,14 +453,14 @@ local MUTATORS = {
   "SetFallback",
   "SetResponse",
   "SetSuggestMode",
-  "CreateDynamicAction",
-  "CopyPredefinedDynamicAction",
-  "CloneDynamicAction",
-  "RenameDynamicAction",
-  "DeleteDynamicAction",
-  "SetDynamicActionMode",
-  "SetDynamicActionTemplate",
-  "AdoptDynamicAction",
+  "CreateSmartAction",
+  "CopyPredefinedSmartAction",
+  "CloneSmartAction",
+  "RenameSmartAction",
+  "DeleteSmartAction",
+  "SetSmartActionMode",
+  "SetSmartActionTemplate",
+  "AdoptSmartAction",
   "AddCandidate",
   "RemoveCandidate",
   "MoveCandidate",

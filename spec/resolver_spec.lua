@@ -201,7 +201,7 @@ describe("Resolver", function()
     end)
   end)
 
-  describe("dynamicAction", function()
+  describe("smartAction", function()
     local S, I
     before_each(function()
       S = MM.SpellIds
@@ -211,19 +211,19 @@ describe("Resolver", function()
     it("resolves to the first usable candidate", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(S.PUMMEL, { name = "Pummel", known = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "interrupt" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", id = "interrupt" })
       assert.equals("spell", resolved.kind)
       assert.equals(S.PUMMEL, resolved.id)
-      assert.equals("Interrupt", resolved.dynamicAction.name)
+      assert.equals("Interrupt", resolved.smartAction.name)
     end)
 
     it("falls through to an owned, usable engineering item for a non-rez class", function()
       stubs.world.class = "MAGE"
       stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", id = "battle_rez" })
       assert.equals("item", resolved.kind)
       assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
-      assert.equals("Battle Rez", resolved.dynamicAction.name)
+      assert.equals("Battle Rez", resolved.smartAction.name)
     end)
 
     it("skips a rez item the player owns but cannot use (out of level range / no engineering)", function()
@@ -233,7 +233,7 @@ describe("Resolver", function()
         { name = "Jumper Cables", count = 1, requirement = "Requires Engineering" }
       )
       stubs:setItem(I.EMERGENCY_SOUL_LINK_Q1, { name = "Emergency Soul Link", count = 1, usable = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", id = "battle_rez" })
       assert.equals(I.EMERGENCY_SOUL_LINK_Q1, resolved.id)
     end)
 
@@ -241,7 +241,7 @@ describe("Resolver", function()
       stubs.world.class = "MAGE"
       stubs.world.level = 80 -- above the Reanimator's level-60 cap
       stubs:setItem(I.DISPOSABLE_SPECTROPHASIC_REANIMATOR, { name = "Reanimator", count = 1, usable = true })
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "battle_rez" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "action", id = "battle_rez" })
       assert.is_nil(resolved)
       assert.matches("no matching candidate", reason)
     end)
@@ -249,7 +249,7 @@ describe("Resolver", function()
     it("skips candidates whose class requirement does not match", function()
       stubs.world.class = "MAGE"
       stubs:setSpell(S.COMMAND_PET, { name = "Command Pet", known = true })
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "lust" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "action", id = "lust" })
       assert.is_nil(resolved)
       assert.matches("no matching candidate", reason)
     end)
@@ -257,72 +257,72 @@ describe("Resolver", function()
     it("resolves a class-gated candidate for the right class", function()
       stubs.world.class = "HUNTER"
       stubs:setSpell(S.COMMAND_PET, { name = "Command Pet", known = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "lust" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", id = "lust" })
       assert.equals(S.COMMAND_PET, resolved.id)
     end)
 
-    it("resolves a custom dynamic action through the database", function()
-      MM.DB:DynamicActions().mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
+    it("resolves a custom smart action through the database", function()
+      MM.DB:SmartActions().mine = { name = "Mine", candidates = { { type = "spell", id = 1766 } } }
       stubs:setSpell(1766, { name = "Kick", known = true })
 
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", source = "custom", id = "mine" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", source = "custom", id = "mine" })
       assert.equals(1766, resolved.id)
-      assert.equals("Mine", resolved.dynamicAction.name)
+      assert.equals("Mine", resolved.smartAction.name)
     end)
 
-    it("reports a missing dynamic action", function()
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "does_not_exist" })
+    it("reports a missing smart action", function()
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "action", id = "does_not_exist" })
       assert.is_nil(resolved)
-      assert.equals("dynamic action not found", reason)
+      assert.equals("smart action not found", reason)
     end)
 
     it("resolves a per-class racial to the variant this character knows", function()
       stubs:setSpell(S.ARCANE_TORRENT_PRIEST, { name = "Arcane Torrent", known = true })
-      local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "arcane_torrent" })
+      local resolved = MM.Resolver:ResolveAction({ type = "action", id = "arcane_torrent" })
       assert.equals(S.ARCANE_TORRENT_PRIEST, resolved.id)
     end)
 
     it("resolves a racial to nothing on a character knowing no variant", function()
-      local resolved, reason = MM.Resolver:ResolveAction({ type = "dynamicaction", id = "blood_fury" })
+      local resolved, reason = MM.Resolver:ResolveAction({ type = "action", id = "blood_fury" })
       assert.is_nil(resolved)
       assert.matches("no matching candidate", reason)
     end)
   end)
 
-  describe("FindDynamicActionsResolvingTo", function()
+  describe("FindSmartActionsResolvingTo", function()
     it("returns nothing for assignments without an id", function()
-      assert.same({}, MM.Resolver:FindDynamicActionsResolvingTo({ type = "empty" }))
-      assert.same({}, MM.Resolver:FindDynamicActionsResolvingTo(nil))
+      assert.same({}, MM.Resolver:FindSmartActionsResolvingTo({ type = "empty" }))
+      assert.same({}, MM.Resolver:FindSmartActionsResolvingTo(nil))
     end)
 
-    it("finds the predefined dynamic action a spell resolves from", function()
+    it("finds the predefined smart action a spell resolves from", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
       assert.same({ { source = "predefined", id = "interrupt", name = "Interrupt" } }, matches)
     end)
 
     it("lists predefined and custom matches sorted by name", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      MM.DB:DynamicActions().mine = { name = "Mine", candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } } }
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
+      MM.DB:SmartActions().mine = { name = "Mine", candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } } }
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({ type = "spell", id = MM.SpellIds.PUMMEL })
       assert.same({
         { source = "predefined", id = "interrupt", name = "Interrupt" },
         { source = "custom", id = "mine", name = "Mine" },
       }, matches)
     end)
 
-    it("matches a captured macro generated by a macro-mode dynamic action", function()
+    it("matches a captured macro generated by a macro-mode smart action", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      MM.DB:DynamicActions().mine = {
+      MM.DB:SmartActions().mine = {
         name = "Mine",
         mode = "macro",
         macroTemplate = "/use %name%",
         candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } },
       }
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({
         type = "macro",
         bodyHash = MM.Macros.HashBody("/use Pummel"),
       })
@@ -338,8 +338,8 @@ describe("Resolver", function()
         macroTemplate = "/use %name%",
         candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } },
       }
-      MM.DB:DynamicActions().mine = mine
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({
+      MM.DB:SmartActions().mine = mine
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({
         type = "macro",
         bodyHash = MM.Macros.HashBody("/use Something Else"),
         nameHint = MM.Macros.MacroName(mine),
@@ -347,16 +347,16 @@ describe("Resolver", function()
       assert.same({ { source = "custom", id = "mine", name = "Mine" } }, matches)
     end)
 
-    it("does not match a player macro against a macro-mode dynamic action", function()
+    it("does not match a player macro against a macro-mode smart action", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      MM.DB:DynamicActions().mine = {
+      MM.DB:SmartActions().mine = {
         name = "Mine",
         mode = "macro",
         macroTemplate = "/use %name%",
         candidates = { { type = "spell", id = MM.SpellIds.PUMMEL } },
       }
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({
         type = "macro",
         bodyHash = MM.Macros.HashBody("/cast Pummel"),
         nameHint = "My own macro",
@@ -364,22 +364,22 @@ describe("Resolver", function()
       assert.same({}, matches)
     end)
 
-    it("does not match a macro against a normal-mode dynamic action", function()
+    it("does not match a macro against a normal-mode smart action", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({
         type = "macro",
         bodyHash = MM.Macros.HashBody("/use Pummel"),
       })
       assert.same({}, matches)
     end)
 
-    it("does not match a dynamic action resolving to a different action", function()
+    it("does not match a smart action resolving to a different action", function()
       stubs.world.class = "WARRIOR"
       stubs:setSpell(MM.SpellIds.PUMMEL, { name = "Pummel", known = true })
-      -- Moonfire is a candidate of no dynamic action.
+      -- Moonfire is a candidate of no smart action.
       stubs:setSpell(8921, { name = "Moonfire", known = true })
-      local matches = MM.Resolver:FindDynamicActionsResolvingTo({ type = "spell", id = 8921 })
+      local matches = MM.Resolver:FindSmartActionsResolvingTo({ type = "spell", id = 8921 })
       assert.same({}, matches)
     end)
   end)

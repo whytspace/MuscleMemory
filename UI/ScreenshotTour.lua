@@ -10,7 +10,7 @@ MM:RegisterModule("ScreenshotTour", Tour)
 -- Let a view settle (tab switch, addon load) before the matte starts capturing.
 local SETTLE = 0.3
 
--- The slot in the showcase layer that holds a dynamic action, so the Layers grid
+-- The slot in the showcase layer that holds a smart action, so the Layers grid
 -- shows real captured spells alongside one purpose-based slot.
 local SHOWCASE_SLOT = 1
 
@@ -24,11 +24,11 @@ local function buildShowcase()
   MM.DB:SetActiveProfile(profileId)
 
   -- A populated base layer: capture whatever the current character has on its
-  -- bars (valid icons, no guessing), then drop a dynamic action into one slot.
+  -- bars (valid icons, no guessing), then drop a smart action into one slot.
   local layerId = MM.DB:CreateLayer("Main")
   handle.layerId = layerId
   MM.Capture:CaptureFilledSlots(layerId)
-  MM.DB:SetSlot(layerId, SHOWCASE_SLOT, { type = "dynamicaction", source = "predefined", id = "lust" })
+  MM.DB:SetSlot(layerId, SHOWCASE_SLOT, { type = "action", source = "predefined", id = "lust" })
 
   -- A second layer owning a handful of Main's slots (bar 2, slots 61-72), so the
   -- grid shows the "managed by another Layer" marking while Main is selected.
@@ -47,21 +47,21 @@ local function buildShowcase()
   handle.suggestMode = MM.DB:GetSuggestMode()
   MM.DB:SetSuggestMode("suggest")
 
-  -- A custom macro-mode dynamic action: copy the predefined Interrupt (already a
+  -- A custom macro-mode smart action: copy the predefined Interrupt (already a
   -- focus macro with every class's kick) into an editable profile action.
-  local macroId = MM.DB:CopyPredefinedDynamicAction("interrupt", "showcase-macro", "Focus Interrupt")
+  local macroId = MM.DB:CopyPredefinedSmartAction("interrupt", "showcase-macro", "Focus Interrupt")
   if macroId then
     handle.macroId = macroId
-    MM.DB:SetDynamicActionMode(macroId, "macro")
-    MM.DB:SetDynamicActionTemplate(macroId, "#showtooltip\n/use [@focus,harm][] %name%")
+    MM.DB:SetSmartActionMode(macroId, "macro")
+    MM.DB:SetSmartActionTemplate(macroId, "#showtooltip\n/use [@focus,harm][] %name%")
 
     -- Render the macro for THIS character and write a real macro so Blizzard's
     -- macro window can show the substituted body. Skipped if nothing resolves
     -- (e.g. a class with no interrupt) or macro slots are full.
-    local resolved = MM.Resolver:ResolveDynamicActionAssignment({ source = "custom", id = macroId })
+    local resolved = MM.Resolver:ResolveSmartActionAssignment({ source = "custom", id = macroId })
     local body = resolved and MM.Macros.ResolvedAsMacro(resolved)
     if body then
-      local name = MM.Macros.MacroName(resolved.dynamicAction)
+      local name = MM.Macros.MacroName(resolved.smartAction)
       -- Clear any leftover macro of the same name from an interrupted earlier run,
       -- so we don't accumulate duplicates or select the wrong one.
       local leftover = GetMacroIndexByName(name)
@@ -83,7 +83,7 @@ end
 local function restore(saved, handle)
   -- UI selection state first, then swap off the showcase before deleting it.
   MM.ui.state.tab = saved.tab
-  MM.ui.state.dynamicAction = saved.dynamicAction
+  MM.ui.state.smartAction = saved.smartAction
   MM.ui.state.candidate = saved.candidate
 
   MM.DB:SetActiveProfile(saved.profile)
@@ -181,25 +181,25 @@ local function buildSteps(handle)
       end,
     },
     {
-      key = "dynamic-actions",
-      label = "Dynamic Actions — Bloodlust",
+      key = "smart-actions",
+      label = "Smart Actions — Bloodlust",
       arrange = function()
-        MM.ui.state.dynamicAction = { source = "predefined", id = "lust" }
+        MM.ui.state.smartAction = { source = "predefined", id = "lust" }
         MM.ui.state.candidate = nil
-        MM.UI:SelectTab("dynamicActions")
+        MM.UI:SelectTab("actions")
         return MM.UI.frame
       end,
     },
     {
       key = "macro-editor",
-      label = "Dynamic Actions — macro editor",
+      label = "Smart Actions — macro editor",
       arrange = function()
         if not handle.macroId then
           return nil
         end
-        MM.ui.state.dynamicAction = { source = "custom", id = handle.macroId }
+        MM.ui.state.smartAction = { source = "custom", id = handle.macroId }
         MM.ui.state.candidate = nil
-        MM.UI:SelectTab("dynamicActions")
+        MM.UI:SelectTab("actions")
         return MM.UI.frame
       end,
     },
@@ -258,7 +258,7 @@ local function buildSteps(handle)
       label = "Import tab — decoded preview",
       arrange = function()
         -- A real sharing string of the showcase profile, so the preview shows
-        -- decoded layers and dynamic actions rather than an empty paste box.
+        -- decoded layers and smart actions rather than an empty paste box.
         local package = MM.Share:BuildPackage(MM.DB:GetActiveProfileId())
         local text = package and MM.Share:Encode(package)
         if not text then
@@ -281,7 +281,7 @@ local function buildSteps(handle)
       arrange = function()
         -- This character's own interrupt, so the prompt shows real matches —
         -- the predefined Interrupt plus the showcase's custom copy of it.
-        local resolved = MM.Resolver:ResolveAction({ type = "dynamicaction", source = "predefined", id = "interrupt" })
+        local resolved = MM.Resolver:ResolveAction({ type = "action", source = "predefined", id = "interrupt" })
         if not resolved or resolved.kind ~= "spell" then
           MM:Warn("no interrupt resolves for this character — skipping the suggestion shot.")
           return nil
@@ -355,7 +355,7 @@ local function start(self, steps, intro)
     layer = MM.DB:GetSelectedLayerId(),
     slot = MM.DB:GetSelectedSlot(),
     tab = MM.ui.state.tab,
-    dynamicAction = MM.ui.state.dynamicAction,
+    smartAction = MM.ui.state.smartAction,
     candidate = MM.ui.state.candidate,
   }
 
@@ -384,7 +384,7 @@ end
 -- Capture a single view (faster iteration). Same build/restore, one matte.
 function Tour:RunOne(key)
   if not key then
-    MM:Warn("usage: /mm shot view <layers|dynamic-actions|macro-editor|macro-window|profiles|export|import|suggestion>")
+    MM:Warn("usage: /mm shot view <layers|smart-actions|macro-editor|macro-window|profiles|export|import|suggestion>")
     return
   end
   start(self, function(handle)

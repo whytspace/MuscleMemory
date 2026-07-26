@@ -17,7 +17,7 @@ MM.ui.LOGO_TEXTURE = "Interface\\AddOns\\MuscleMemory\\Assets\\logo"
 
 local TABS = {
   { id = "layers", label = "Layers", icon = MM.ui.Widgets.ICON.layers },
-  { id = "dynamicActions", label = "Dynamic Actions", icon = MM.ui.Widgets.ICON.dynamicAction },
+  { id = "actions", label = "Smart Actions", icon = MM.ui.Widgets.ICON.smartAction },
   { id = "settings", label = "Settings" },
   { id = "profiles", label = "Profiles" },
   { id = "export", label = "Export", icon = MM.ui.Widgets.ICON.export },
@@ -27,17 +27,17 @@ local TABS = {
 
 local TAB_DESCRIPTIONS = {
   layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; unmanaged slots show the Layer beneath.",
-  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to the first ability the current character actually has.",
+  actions = "Smart Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to the first ability the current character actually has.",
   settings = "Settings tune how the active profile behaves \226\128\148 each profile keeps its own.",
-  profiles = "Profiles are self-contained setups, each with its own Layers and Dynamic Actions. Choose the account-wide default and an optional per-character override.",
-  export = "Bundle Layers, Dynamic Actions and settings from the active profile into a copyable string other players can import.",
+  profiles = "Profiles are self-contained setups, each with its own Layers and Smart Actions. Choose the account-wide default and an optional per-character override.",
+  export = "Bundle Layers, Smart Actions and settings from the active profile into a copyable string other players can import.",
   import = "Paste a sharing string, pick what to take, and import it into the current or a new profile. Imports always create new entries — nothing of yours is overwritten.",
 }
 
 local function tabBuilder(id)
   return ({
     layers = MM.ui.LayersTab,
-    dynamicActions = MM.ui.DynamicActionsTab,
+    actions = MM.ui.SmartActionsTab,
     profiles = MM.ui.ProfilesTab,
     settings = MM.ui.SettingsTab,
     export = MM.ui.ExportTab,

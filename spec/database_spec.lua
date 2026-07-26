@@ -9,20 +9,20 @@ describe("DB", function()
   describe("Initialize", function()
     it("merges defaults into an empty saved-variables table", function()
       local root = MM.DB:GetRoot()
-      assert.equals(3, root.schemaVersion)
+      assert.equals(4, root.schemaVersion)
       assert.is_nil(root.fallback)
       assert.is_nil(root.layers)
-      assert.is_nil(root.customDynamicActions)
+      assert.is_nil(root.customSmartActions)
 
       local default = root.profiles.Default
       assert.is_table(default)
       assert.equals("keep", default.fallback)
       assert.same({ "Core" }, default.layerOrder)
       assert.is_table(default.layers.Core)
-      assert.same({}, default.dynamicActions)
+      assert.same({}, default.actions)
     end)
 
-    it("migrates a v1 save: layers, dynamic actions and fallback move into each profile", function()
+    it("migrates a v1 save: layers, smart actions and fallback move into each profile", function()
       local loadedMM, _, env = addon.load()
       -- v1 on-disk shape: the historical key names (muscles / customMemories /
       -- activeMuscles / type = "memory"), which MigrateToV2 reads literally.
@@ -46,9 +46,9 @@ describe("DB", function()
       loadedMM.DB:Initialize()
       local root = loadedMM.DB:GetRoot()
 
-      assert.equals(3, root.schemaVersion)
+      assert.equals(4, root.schemaVersion)
       assert.is_nil(root.layers)
-      assert.is_nil(root.customDynamicActions)
+      assert.is_nil(root.customSmartActions)
       assert.is_nil(root.fallback)
 
       local solo = root.profiles.Solo
@@ -57,7 +57,7 @@ describe("DB", function()
       assert.is_table(solo.layers.A)
       assert.is_table(solo.layers.B)
       assert.is_table(solo.layers.C)
-      assert.equals("Mine", solo.dynamicActions.mine.name)
+      assert.equals("Mine", solo.actions.mine.name)
       -- activeLayers -> layerOrder, enabled carried onto the layer.
       assert.is_nil(solo.activeLayers)
       assert.same({ "A", "B", "C" }, solo.layerOrder)
@@ -65,7 +65,7 @@ describe("DB", function()
       assert.is_false(solo.layers.B.enabled)
       -- Layer carried in but not part of this profile stays visible but disabled.
       assert.is_false(solo.layers.C.enabled)
-      -- Stored dynamicAction source rewritten standard -> predefined.
+      -- Stored smartAction source rewritten standard -> predefined.
       assert.equals("predefined", solo.layers.A.slots[1].source)
 
       local duo = root.profiles.Duo
@@ -76,7 +76,7 @@ describe("DB", function()
       assert.is_false(duo.layers.C.enabled)
     end)
 
-    it("migrates a v2 save: muscles/memories rename to layers/dynamic actions", function()
+    it("migrates a v2 save: muscles/memories rename to layers/smart actions", function()
       local loadedMM, _, env = addon.load()
       -- v2 on-disk shape: per-profile muscles / memories / muscleOrder and the
       -- "memory" slot discriminator, all renamed in place by MigrateToV3.
@@ -100,15 +100,49 @@ describe("DB", function()
       loadedMM.DB:Initialize()
       local solo = loadedMM.DB:GetRoot().profiles.Solo
 
-      assert.equals(3, loadedMM.DB:GetRoot().schemaVersion)
+      assert.equals(4, loadedMM.DB:GetRoot().schemaVersion)
       assert.is_nil(solo.muscles)
       assert.is_nil(solo.memories)
       assert.is_nil(solo.muscleOrder)
       assert.same({ "A" }, solo.layerOrder)
       assert.equals("A", solo.layers.A.name)
-      assert.equals("Mine", solo.dynamicActions.mine.name)
-      -- slot discriminator renamed "memory" -> "dynamicaction".
-      assert.equals("dynamicaction", solo.layers.A.slots[1].type)
+      assert.equals("Mine", solo.actions.mine.name)
+      -- slot discriminator renamed "memory" -> "action".
+      assert.equals("action", solo.layers.A.slots[1].type)
+    end)
+
+    it("migrates a v3 save: dynamic actions become the neutral action pool", function()
+      local loadedMM, _, env = addon.load()
+      -- v3 on-disk shape: per-profile dynamicActions and the "dynamicaction"
+      -- slot discriminator, both renamed in place by MigrateToV4.
+      env.MuscleMemoryDB = {
+        schemaVersion = 3,
+        profile = "Solo",
+        profiles = {
+          Solo = {
+            name = "Solo",
+            fallback = "keep",
+            layerOrder = { "A" },
+            layers = {
+              A = {
+                name = "A",
+                enabled = true,
+                slots = { [1] = { type = "dynamicaction", source = "custom", id = "mine" } },
+              },
+            },
+            dynamicActions = { mine = { name = "Mine", candidates = {} } },
+          },
+        },
+        characterState = {},
+      }
+
+      loadedMM.DB:Initialize()
+      local solo = loadedMM.DB:GetRoot().profiles.Solo
+
+      assert.equals(4, loadedMM.DB:GetRoot().schemaVersion)
+      assert.is_nil(solo.dynamicActions)
+      assert.equals("Mine", solo.actions.mine.name)
+      assert.equals("action", solo.layers.A.slots[1].type)
     end)
   end)
 
@@ -167,18 +201,18 @@ describe("DB", function()
       assert.equals("keep", profile.fallback)
       assert.same({}, profile.layerOrder)
       assert.same({}, profile.layers)
-      assert.same({}, profile.dynamicActions)
+      assert.same({}, profile.actions)
     end)
 
     it("clones a profile 1:1, fully independent of the source", function()
       MM.DB:SetSlot("Core", 1, { type = "spell", id = 42 })
-      MM.DB:CreateDynamicAction("Mine")
+      MM.DB:CreateSmartAction("Mine")
 
       local id, clone = MM.DB:CloneProfile("Default", "Raid")
       assert.equals("Raid", clone.name)
       assert.same({ "Core" }, clone.layerOrder)
       assert.equals(42, clone.layers.Core.slots[1].id)
-      assert.is_table(next(clone.dynamicActions) and clone.dynamicActions)
+      assert.is_table(next(clone.actions) and clone.actions)
 
       -- Mutating the clone must not touch the source.
       clone.layers.Core.slots[1].id = 99
@@ -223,7 +257,7 @@ describe("DB", function()
       assert.is_nil(MM.DB:FindProfileId("nope"))
     end)
 
-    it("scopes layers and dynamic actions to the active profile", function()
+    it("scopes layers and smart actions to the active profile", function()
       MM.DB:CreateLayer("Shared")
       local other = MM.DB:CreateProfile("Other")
 
@@ -357,106 +391,106 @@ describe("DB", function()
     end)
   end)
 
-  describe("dynamicActions", function()
-    it("copies a predefined dynamic action into an editable profile one", function()
-      local key = MM.DB:CopyPredefinedDynamicAction("interrupt")
-      local copy = MM.DB:DynamicActions()[key]
+  describe("actions", function()
+    it("copies a predefined smart action into an editable profile one", function()
+      local key = MM.DB:CopyPredefinedSmartAction("interrupt")
+      local copy = MM.DB:SmartActions()[key]
       assert.equals("Interrupt Copy", copy.name)
-      assert.are_not.equal(MM.PredefinedDynamicActions.interrupt.candidates, copy.candidates)
-      assert.same(MM.PredefinedDynamicActions.interrupt.candidates, copy.candidates)
+      assert.are_not.equal(MM.PredefinedSmartActions.interrupt.candidates, copy.candidates)
+      assert.same(MM.PredefinedSmartActions.interrupt.candidates, copy.candidates)
     end)
 
-    it("rejects copying an unknown predefined dynamic action", function()
-      local key, reason = MM.DB:CopyPredefinedDynamicAction("ghost")
+    it("rejects copying an unknown predefined smart action", function()
+      local key, reason = MM.DB:CopyPredefinedSmartAction("ghost")
       assert.is_nil(key)
-      assert.equals("unknown predefined dynamic action", reason)
+      assert.equals("unknown predefined smart action", reason)
     end)
 
-    it("resolves predefined dynamic actions by id and profile ones by source", function()
-      local key = MM.DB:CopyPredefinedDynamicAction("interrupt", "mine", "Mine")
-      assert.equals("Interrupt", MM.DB:ResolveDynamicAction({ id = "interrupt" }).name)
-      assert.equals("Interrupt", MM.DB:GetPredefinedDynamicAction("interrupt").name)
-      assert.equals("Mine", MM.DB:ResolveDynamicAction({ source = "custom", id = key }).name)
-      assert.is_nil(MM.DB:ResolveDynamicAction(nil))
+    it("resolves predefined smart actions by id and profile ones by source", function()
+      local key = MM.DB:CopyPredefinedSmartAction("interrupt", "mine", "Mine")
+      assert.equals("Interrupt", MM.DB:ResolveSmartAction({ id = "interrupt" }).name)
+      assert.equals("Interrupt", MM.DB:GetPredefinedSmartAction("interrupt").name)
+      assert.equals("Mine", MM.DB:ResolveSmartAction({ source = "custom", id = key }).name)
+      assert.is_nil(MM.DB:ResolveSmartAction(nil))
     end)
 
-    it("clones a profile dynamic action into a new profile dynamic action", function()
-      local source = MM.DB:CreateDynamicAction("Mine")
+    it("clones a profile smart action into a new profile smart action", function()
+      local source = MM.DB:CreateSmartAction("Mine")
       MM.DB:AddCandidate(source, { type = "spell", id = 7 })
 
-      local clone = MM.DB:CloneDynamicAction({ source = "custom", id = source })
-      local copy = MM.DB:DynamicActions()[clone]
+      local clone = MM.DB:CloneSmartAction({ source = "custom", id = source })
+      local copy = MM.DB:SmartActions()[clone]
       assert.equals("Mine Copy", copy.name)
-      assert.are_not.equal(MM.DB:DynamicActions()[source].candidates, copy.candidates)
+      assert.are_not.equal(MM.DB:SmartActions()[source].candidates, copy.candidates)
       assert.equals(7, copy.candidates[1].id)
     end)
 
-    it("creates, renames, and deletes a profile dynamic action", function()
-      local key = MM.DB:CreateDynamicAction("Cleanse")
-      assert.equals("Cleanse", MM.DB:DynamicActions()[key].name)
+    it("creates, renames, and deletes a profile smart action", function()
+      local key = MM.DB:CreateSmartAction("Cleanse")
+      assert.equals("Cleanse", MM.DB:SmartActions()[key].name)
 
-      assert.is_true(MM.DB:RenameDynamicAction(key, "Purify"))
-      assert.equals("Purify", MM.DB:DynamicActions()[key].name)
+      assert.is_true(MM.DB:RenameSmartAction(key, "Purify"))
+      assert.equals("Purify", MM.DB:SmartActions()[key].name)
 
-      assert.is_true(MM.DB:DeleteDynamicAction(key))
-      assert.is_nil(MM.DB:DynamicActions()[key])
+      assert.is_true(MM.DB:DeleteSmartAction(key))
+      assert.is_nil(MM.DB:SmartActions()[key])
     end)
 
     it("toggles macro mode, seeding and keeping the template", function()
-      local key = MM.DB:CreateDynamicAction("Kick")
+      local key = MM.DB:CreateSmartAction("Kick")
 
-      assert.is_true(MM.DB:SetDynamicActionMode(key, "macro"))
-      local dynamicAction = MM.DB:DynamicActions()[key]
-      assert.equals("macro", dynamicAction.mode)
-      assert.equals(MM.MACRO_TEMPLATE_DEFAULT, dynamicAction.macroTemplate)
+      assert.is_true(MM.DB:SetSmartActionMode(key, "macro"))
+      local smartAction = MM.DB:SmartActions()[key]
+      assert.equals("macro", smartAction.mode)
+      assert.equals(MM.MACRO_TEMPLATE_DEFAULT, smartAction.macroTemplate)
 
-      MM.DB:SetDynamicActionTemplate(key, "#showtooltip\n/use [@focus] %name%")
-      assert.is_true(MM.DB:SetDynamicActionMode(key, "normal"))
-      assert.is_nil(dynamicAction.mode)
+      MM.DB:SetSmartActionTemplate(key, "#showtooltip\n/use [@focus] %name%")
+      assert.is_true(MM.DB:SetSmartActionMode(key, "normal"))
+      assert.is_nil(smartAction.mode)
       -- The body is preserved across the round-trip so toggling never loses it.
-      assert.equals("#showtooltip\n/use [@focus] %name%", dynamicAction.macroTemplate)
+      assert.equals("#showtooltip\n/use [@focus] %name%", smartAction.macroTemplate)
     end)
 
     it("clamps the template to the limit and rejects bad modes", function()
-      local key = MM.DB:CreateDynamicAction("Kick")
-      local ok, reason = MM.DB:SetDynamicActionMode(key, "bogus")
+      local key = MM.DB:CreateSmartAction("Kick")
+      local ok, reason = MM.DB:SetSmartActionMode(key, "bogus")
       assert.is_false(ok)
       assert.matches("normal or macro", reason)
 
-      MM.DB:SetDynamicActionTemplate(key, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 50))
-      assert.equals(MM.MACRO_TEMPLATE_LIMIT, #MM.DB:DynamicActions()[key].macroTemplate)
+      MM.DB:SetSmartActionTemplate(key, string.rep("x", MM.MACRO_TEMPLATE_LIMIT + 50))
+      assert.equals(MM.MACRO_TEMPLATE_LIMIT, #MM.DB:SmartActions()[key].macroTemplate)
 
-      assert.is_false((MM.DB:SetDynamicActionMode("interrupt", "macro")))
+      assert.is_false((MM.DB:SetSmartActionMode("interrupt", "macro")))
     end)
 
-    it("refuses to edit predefined dynamic actions", function()
-      local ok, reason = MM.DB:RenameDynamicAction("interrupt", "Nope")
+    it("refuses to edit predefined smart actions", function()
+      local ok, reason = MM.DB:RenameSmartAction("interrupt", "Nope")
       assert.is_false(ok)
-      assert.equals("only profile dynamic actions can be renamed", reason)
+      assert.equals("only profile smart actions can be renamed", reason)
       assert.is_false(MM.DB:AddCandidate("interrupt", { type = "spell", id = 1 }))
     end)
 
     it("adds, removes, and reorders candidates", function()
-      local key = MM.DB:CreateDynamicAction("Custom")
+      local key = MM.DB:CreateSmartAction("Custom")
       MM.DB:AddCandidate(key, { type = "spell", id = 11 })
       MM.DB:AddCandidate(key, { type = "spell", id = 22 })
       MM.DB:AddCandidate(key, { type = "spell", id = 33 })
 
       assert.is_true(MM.DB:MoveCandidate(key, 3, 1))
-      local candidates = MM.DB:DynamicActions()[key].candidates
+      local candidates = MM.DB:SmartActions()[key].candidates
       assert.equals(33, candidates[1].id)
       assert.equals(11, candidates[2].id)
       assert.equals(22, candidates[3].id)
 
       assert.is_true(MM.DB:RemoveCandidate(key, 2))
-      candidates = MM.DB:DynamicActions()[key].candidates
+      candidates = MM.DB:SmartActions()[key].candidates
       assert.equals(2, #candidates)
       assert.equals(33, candidates[1].id)
       assert.equals(22, candidates[2].id)
     end)
 
     it("rejects bad candidate edits", function()
-      local key = MM.DB:CreateDynamicAction("Custom")
+      local key = MM.DB:CreateSmartAction("Custom")
       local ok = MM.DB:RemoveCandidate(key, 1)
       assert.is_false(ok)
       assert.is_false((MM.DB:AddCandidate(key)))
@@ -472,34 +506,34 @@ describe("DB", function()
     end)
 
     it("replaces candidate conditions wholesale", function()
-      local key = MM.DB:CreateDynamicAction("Custom")
+      local key = MM.DB:CreateSmartAction("Custom")
       MM.DB:AddCandidate(key, { type = "spell", id = 11 })
       assert.is_true(MM.DB:SetCandidateConditions(key, 1, { roles = { "TANK" } }))
-      assert.same({ "TANK" }, MM.DB:DynamicActions()[key].candidates[1].conditions.roles)
+      assert.same({ "TANK" }, MM.DB:SmartActions()[key].candidates[1].conditions.roles)
       assert.is_false((MM.DB:SetCandidateConditions(key, 2, {})))
     end)
   end)
 
   describe("adoption", function()
-    it("adopts a dynamic action under a caller-uniqued key", function()
-      local key = MM.DB:AdoptDynamicAction(nil, "imported", { name = "Imported", candidates = {} })
+    it("adopts a smart action under a caller-uniqued key", function()
+      local key = MM.DB:AdoptSmartAction(nil, "imported", { name = "Imported", candidates = {} })
       assert.equals("imported", key)
-      assert.equals("Imported", MM.DB:DynamicActions()["imported"].name)
+      assert.equals("Imported", MM.DB:SmartActions()["imported"].name)
 
-      local duplicate, reason = MM.DB:AdoptDynamicAction(nil, "imported", { name = "Again" })
+      local duplicate, reason = MM.DB:AdoptSmartAction(nil, "imported", { name = "Again" })
       assert.is_nil(duplicate)
-      assert.equals("dynamic action already exists", reason)
+      assert.equals("smart action already exists", reason)
     end)
 
     -- A sharing string is untrusted, and everything downstream (the macro namer,
-    -- the rail) relies on every dynamic action having a name.
-    it("names an imported dynamic action that arrives without one", function()
-      local missing = MM.DB:AdoptDynamicAction(nil, "nameless", { candidates = {} })
-      assert.is_string(MM.DB:DynamicActions()[missing].name)
-      assert.not_equals("", MM.DB:DynamicActions()[missing].name)
+    -- the rail) relies on every smart action having a name.
+    it("names an imported smart action that arrives without one", function()
+      local missing = MM.DB:AdoptSmartAction(nil, "nameless", { candidates = {} })
+      assert.is_string(MM.DB:SmartActions()[missing].name)
+      assert.not_equals("", MM.DB:SmartActions()[missing].name)
 
-      local blank = MM.DB:AdoptDynamicAction(nil, "blank", { name = "", candidates = {} })
-      assert.not_equals("", MM.DB:DynamicActions()[blank].name)
+      local blank = MM.DB:AdoptSmartAction(nil, "blank", { name = "", candidates = {} })
+      assert.not_equals("", MM.DB:SmartActions()[blank].name)
     end)
 
     it("adopts a layer under a fresh key and appends it to the order", function()

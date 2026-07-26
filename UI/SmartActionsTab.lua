@@ -1,12 +1,12 @@
 local ADDON_NAME, MM = ...
 local L = MM.L
 
--- The DynamicActions tab. Browsing is fully live (list, per-character resolution,
--- candidate display), predefined dynamicActions can be cloned into editable profile
--- dynamicActions, and profile candidates can be added, reordered, removed, and gated
+-- The SmartActions tab. Browsing is fully live (list, per-character resolution,
+-- candidate display), predefined actions can be cloned into editable profile
+-- actions, and profile candidates can be added, reordered, removed, and gated
 -- by conditions.
-local DynamicActionsTab = {}
-MM.ui.DynamicActionsTab = DynamicActionsTab
+local SmartActionsTab = {}
+MM.ui.SmartActionsTab = SmartActionsTab
 
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
@@ -20,16 +20,16 @@ local function refresh()
   MM.UI:Refresh()
 end
 
--- Custom ("your") dynamic actions first, then the predefined ones, each block
+-- Custom ("your") smart actions first, then the predefined ones, each block
 -- sorted by the name shown — mirroring the rail's two sections.
-local function dynamicActionList()
+local function smartActionList()
   local custom = {}
-  for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
-    custom[#custom + 1] = { source = "custom", id = id, name = dynamicAction.name or id }
+  for id, smartAction in pairs(MM.DB:SmartActions() or {}) do
+    custom[#custom + 1] = { source = "custom", id = id, name = smartAction.name or id }
   end
   local predefined = {}
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
-    predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
+  for id, smartAction in pairs(MM.PredefinedSmartActions or {}) do
+    predefined[#predefined + 1] = { source = "predefined", id = id, name = smartAction.name or id }
   end
   -- Sort on the displayed name: a predefined `name` is the English translation key.
   -- Duplicate names are legal for custom actions, so tie-break on the id to keep
@@ -45,28 +45,28 @@ local function dynamicActionList()
   return custom, predefined
 end
 
-local function resolveDynamicAction(ref)
-  return MM.Resolver:ResolveAction({ type = "dynamicaction", source = ref.source, id = ref.id })
+local function resolveSmartAction(ref)
+  return MM.Resolver:ResolveAction({ type = "action", source = ref.source, id = ref.id })
 end
 
--- The currently selected dynamicAction, defaulting to the first available.
+-- The currently selected smartAction, defaulting to the first available.
 local function selectedRef()
   local state = MM.ui.state
-  if state.dynamicAction and MM.DB:ResolveDynamicAction(state.dynamicAction) then
-    return state.dynamicAction
+  if state.smartAction and MM.DB:ResolveSmartAction(state.smartAction) then
+    return state.smartAction
   end
-  local custom, predefined = dynamicActionList()
+  local custom, predefined = smartActionList()
   local first = custom[1] or predefined[1]
   if first then
-    state.dynamicAction = { source = first.source, id = first.id }
-    return state.dynamicAction
+    state.smartAction = { source = first.source, id = first.id }
+    return state.smartAction
   end
   return nil
 end
 
-local function selectDynamicAction(ref)
-  MM.ui.state.dynamicAction = ref
-  -- Open with no candidate selected, so the rule panel shows the dynamicAction's own
+local function selectSmartAction(ref)
+  MM.ui.state.smartAction = ref
+  -- Open with no candidate selected, so the rule panel shows the smartAction's own
   -- settings (macro mode), mirroring the layers tab's "no slot selected" state.
   MM.ui.state.candidate = nil
   MM.ui.state.condsOpen = false
@@ -79,24 +79,24 @@ local function selectCandidate(index)
   refresh()
 end
 
-local function cloneDynamicAction(ref)
-  local key, reason = MM.DB:CloneDynamicAction(ref)
+local function cloneSmartAction(ref)
+  local key, reason = MM.DB:CloneSmartAction(ref)
   if not key then
-    MM:Warn(L[reason or "could not clone dynamic action"])
+    MM:Warn(L[reason or "could not clone smart action"])
     return
   end
-  selectDynamicAction({ source = "custom", id = key })
+  selectSmartAction({ source = "custom", id = key })
 end
 
 -- Drag a spell/item/macro/mount/equipment set onto the candidate list to add it
--- to the (custom) dynamicAction.
-local function addCandidateFromCursor(dynamicActionId)
+-- to the (custom) smartAction.
+local function addCandidateFromCursor(smartActionId)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
     MM:Warn(L[reason or "could not read cursor"])
     return
   end
-  local ok, err = MM.DB:AddCandidate(dynamicActionId, assignment)
+  local ok, err = MM.DB:AddCandidate(smartActionId, assignment)
   if not ok then
     MM:Warn(L[err or "could not add candidate"])
   end
@@ -106,31 +106,31 @@ local function addCandidateFromCursor(dynamicActionId)
   refresh()
 end
 
-local function newDynamicAction()
+local function newSmartAction()
   MM.ui.Modals.Input(
-    L["New Dynamic Action"],
-    L["Name the new Dynamic Action"],
-    L["New Dynamic Action"],
+    L["New Smart Action"],
+    L["Name the new Smart Action"],
+    L["New Smart Action"],
     L["Create"],
     function(name)
-      local key = MM.DB:CreateDynamicAction(name ~= "" and name or nil)
-      selectDynamicAction({ source = "custom", id = key })
+      local key = MM.DB:CreateSmartAction(name ~= "" and name or nil)
+      selectSmartAction({ source = "custom", id = key })
     end
   )
 end
 
-local function renameDynamicAction(ref)
-  local dynamicAction = MM.DB:ResolveDynamicAction(ref)
+local function renameSmartAction(ref)
+  local smartAction = MM.DB:ResolveSmartAction(ref)
   MM.ui.Modals.Input(
-    L["Rename Dynamic Action"],
-    L["New name for this Dynamic Action"],
-    dynamicAction and dynamicAction.name or "",
+    L["Rename Smart Action"],
+    L["New name for this Smart Action"],
+    smartAction and smartAction.name or "",
     L["Rename"],
     function(name)
       if name == "" then
         return
       end
-      local ok, err = MM.DB:RenameDynamicAction(ref.id, name)
+      local ok, err = MM.DB:RenameSmartAction(ref.id, name)
       if not ok then
         MM:Warn(L[err])
       end
@@ -139,19 +139,19 @@ local function renameDynamicAction(ref)
   )
 end
 
-local function deleteDynamicAction(ref)
-  local dynamicAction = MM.DB:ResolveDynamicAction(ref)
-  local name = dynamicAction and dynamicAction.name or ref.id
+local function deleteSmartAction(ref)
+  local smartAction = MM.DB:ResolveSmartAction(ref)
+  local name = smartAction and smartAction.name or ref.id
   MM.ui.Modals.Confirm(
-    L["Delete Dynamic Action"],
-    string.format(L['Delete custom dynamicAction "%s"? Slots bound to it will fall through on the next apply.'], name),
+    L["Delete Smart Action"],
+    string.format(L['Delete custom Smart Action "%s"? Slots bound to it will fall through on the next apply.'], name),
     L["Delete"],
     function()
-      local ok, err = MM.DB:DeleteDynamicAction(ref.id)
+      local ok, err = MM.DB:DeleteSmartAction(ref.id)
       if not ok then
         MM:Warn(L[err])
       end
-      MM.ui.state.dynamicAction = nil
+      MM.ui.state.smartAction = nil
       refresh()
     end
   )
@@ -202,11 +202,11 @@ end
 
 -- Left rail ------------------------------------------------------------------
 
--- Initializer for a dynamicAction rail row (recycled by Widgets.DataList). A
+-- Initializer for a smartAction rail row (recycled by Widgets.DataList). A
 -- `header` item renders as a plain section title instead — rows are pooled
 -- across both kinds, so each pass shows/hides the other kind's children.
-local function dynamicActionRowInit(row, data)
-  local dynamicAction = data.dynamicAction
+local function smartActionRowInit(row, data)
+  local smartAction = data.smartAction
   if not row.mmInit then
     row.mmInit = true
     Widgets.decorateRow(row)
@@ -235,26 +235,26 @@ local function dynamicActionRowInit(row, data)
     row.sub:SetWordWrap(false)
 
     row:SetScript("OnClick", function(self)
-      local ref = self.data and self.data.dynamicAction
+      local ref = self.data and self.data.smartAction
       if ref then
-        selectDynamicAction({ source = ref.source, id = ref.id })
+        selectSmartAction({ source = ref.source, id = ref.id })
       end
     end)
 
-    -- Tooltip on the icon only; what the dynamicAction resolves to (its spell/item/…),
+    -- Tooltip on the icon only; what the smartAction resolves to (its spell/item/…),
     -- plus a note on the { } macro badge when it applies.
     Widgets.AttachIconTooltip(row.tile, function(r)
-      local ref = r.data and r.data.dynamicAction
+      local ref = r.data and r.data.smartAction
       if not ref then
         return
       end
-      local resolved = resolveDynamicAction(ref)
+      local resolved = resolveSmartAction(ref)
       if resolved then
         Widgets.SetActionTooltip(r.tile, resolved.kind, resolved.id, resolved.label)
       else
         Widgets.SetActionTooltip(r.tile, nil, nil, ref.name)
       end
-      Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = ref.source, id = ref.id }), true)
+      Widgets.AddMacroTooltipLine(MM.DB:ResolveSmartAction({ source = ref.source, id = ref.id }), true)
     end)
   end
 
@@ -275,12 +275,12 @@ local function dynamicActionRowInit(row, data)
   row.tile:Show()
 
   local ref = selectedRef()
-  local active = ref and dynamicAction.source == ref.source and dynamicAction.id == ref.id
+  local active = ref and smartAction.source == ref.source and smartAction.id == ref.id
   row:SetSelected(active)
 
-  local dynamicActionObj = MM.DB:ResolveDynamicAction({ source = dynamicAction.source, id = dynamicAction.id })
-  row.tile:SetMacroBadge(dynamicActionObj ~= nil and MM.Macros.EffectiveMode(dynamicActionObj) == "macro")
-  local resolved = resolveDynamicAction(dynamicAction)
+  local smartActionObj = MM.DB:ResolveSmartAction({ source = smartAction.source, id = smartAction.id })
+  row.tile:SetMacroBadge(smartActionObj ~= nil and MM.Macros.EffectiveMode(smartActionObj) == "macro")
+  local resolved = resolveSmartAction(smartAction)
   if resolved and resolved.icon then
     row.tile:SetTextureImage(resolved.icon)
     row.tile:SetBorder(1, colors.managed)
@@ -290,51 +290,50 @@ local function dynamicActionRowInit(row, data)
   end
 
   row.pill:SetActive(
-    dynamicAction.source == "custom"
-      and MM.Share:IsRecentImport("dynamicActions", MM.DB:GetActiveProfileId(), dynamicAction.id)
+    smartAction.source == "custom" and MM.Share:IsRecentImport("actions", MM.DB:GetActiveProfileId(), smartAction.id)
   )
 
-  row.nameLabel:SetText(dynamicAction.name)
+  row.nameLabel:SetText(smartAction.name)
   if active then
     row.nameLabel:SetTextColor(Widgets.unpackColor(colors.gold))
   else
     row.nameLabel:SetTextColor(1, 1, 1)
   end
 
-  local count = dynamicActionObj and dynamicActionObj.candidates and #dynamicActionObj.candidates or 0
+  local count = smartActionObj and smartActionObj.candidates and #smartActionObj.candidates or 0
   row.sub:SetText(
     resolved and string.format(L["resolves to %s"], resolved.label)
       or L:Plural(count, "no match \194\183 %d candidate", "no match \194\183 %d candidates")
   )
 end
 
-function DynamicActionsTab:BuildRail(parent)
+function SmartActionsTab:BuildRail(parent)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "+ " .. L["New Dynamic Action"], RAIL_WIDTH - 24, newDynamicAction)
+  local newButton = Widgets.Button(inset, "+ " .. L["New Smart Action"], RAIL_WIDTH - 24, newSmartAction)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 8)
 
-  local list = Widgets.DataList(inset, "dynamicActions.rail", {
+  local list = Widgets.DataList(inset, "actions.rail", {
     extent = 44,
     spacing = 3,
-    initializer = dynamicActionRowInit,
+    initializer = smartActionRowInit,
   })
   list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
   list.scrollBox:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -8, 8)
 
-  -- Two sections: the profile's own dynamic actions first, then the predefined
+  -- Two sections: the profile's own smart actions first, then the predefined
   -- ones. The headers make the split obvious, so no per-row lock icon is needed.
-  local custom, predefined = dynamicActionList()
-  local items = { { header = L["Your Dynamic Actions"], extent = 26 } }
-  for _, dynamicAction in ipairs(custom) do
-    items[#items + 1] = { dynamicAction = dynamicAction }
+  local custom, predefined = smartActionList()
+  local items = { { header = L["Your Smart Actions"], extent = 26 } }
+  for _, smartAction in ipairs(custom) do
+    items[#items + 1] = { smartAction = smartAction }
   end
   items[#items + 1] = { header = L["Predefined (read-only)"], extent = 34 }
-  for _, dynamicAction in ipairs(predefined) do
-    items[#items + 1] = { dynamicAction = dynamicAction }
+  for _, smartAction in ipairs(predefined) do
+    items[#items + 1] = { smartAction = smartAction }
   end
   list:SetItems(items)
 end
@@ -382,7 +381,7 @@ local function candidateRowInit(row, data)
         return
       end
       -- Clicking the selected candidate again clears the selection, returning the
-      -- rule panel to the dynamicAction-level (macro) settings.
+      -- rule panel to the smartAction-level (macro) settings.
       selectCandidate(MM.ui.state.candidate == index and nil or index)
     end)
 
@@ -394,18 +393,18 @@ local function candidateRowInit(row, data)
         return
       end
       self:SetAlpha(0.5)
-      DynamicActionsTab._dragCandidate = self.data.index
+      SmartActionsTab._dragCandidate = self.data.index
     end)
     row:SetScript("OnDragStop", function(self)
       self:SetAlpha(1)
-      local from = DynamicActionsTab._dragCandidate
-      DynamicActionsTab._dragCandidate = nil
+      local from = SmartActionsTab._dragCandidate
+      SmartActionsTab._dragCandidate = nil
       local ref = selectedRef()
-      if not from or not ref or not DynamicActionsTab.candidateList then
+      if not from or not ref or not SmartActionsTab.candidateList then
         return
       end
       local target
-      DynamicActionsTab.candidateList:ForEachFrame(function(frame)
+      SmartActionsTab.candidateList:ForEachFrame(function(frame)
         if frame.data and frame:IsMouseOver() then
           target = frame.data.index
         end
@@ -429,7 +428,7 @@ local function candidateRowInit(row, data)
   row.order:SetText(tostring(index))
   row.order:ClearAllPoints()
   if locked then
-    -- Predefined dynamicActions can't be reordered, so there's no drag handle.
+    -- Predefined actions can't be reordered, so there's no drag handle.
     row.handle:Hide()
     row.order:SetPoint("LEFT", row, "LEFT", 12, 0)
   else
@@ -481,45 +480,43 @@ local function candidateRowInit(row, data)
   end
 end
 
-function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
+function SmartActionsTab:BuildCenter(parent, ref, smartAction)
   local center = CreateFrame("Frame", nil, parent)
   center:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 14, -14)
   center:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 14), 10)
 
-  local title = Widgets.Title(center, dynamicAction and dynamicAction.name or "\226\128\148")
+  local title = Widgets.Title(center, smartAction and smartAction.name or "\226\128\148")
   title:SetPoint("TOPLEFT", center, "TOPLEFT", 12, -2)
 
   local pill = Widgets.Pill(center, L["Imported"], Widgets.ICON.import)
   pill:SetPoint("LEFT", title, "RIGHT", 8, 0)
-  pill:SetActive(
-    ref.source == "custom" and MM.Share:IsRecentImport("dynamicActions", MM.DB:GetActiveProfileId(), ref.id)
-  )
+  pill:SetActive(ref.source == "custom" and MM.Share:IsRecentImport("actions", MM.DB:GetActiveProfileId(), ref.id))
 
   local locked = ref.source == "predefined"
   if locked then
     local clone = Widgets.Button(center, L["Clone to edit"], 110, function()
-      cloneDynamicAction(ref)
+      cloneSmartAction(ref)
     end)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
   else
     local clone = Widgets.Button(center, L["Clone"], 60, function()
-      cloneDynamicAction(ref)
+      cloneSmartAction(ref)
     end)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
 
     local del = Widgets.Button(center, L["Delete"], 64, function()
-      deleteDynamicAction(ref)
+      deleteSmartAction(ref)
     end)
     del:SetPoint("RIGHT", clone, "LEFT", -6, 0)
 
     local rename = Widgets.Button(center, L["Rename"], 66, function()
-      renameDynamicAction(ref)
+      renameSmartAction(ref)
     end)
     rename:SetPoint("RIGHT", del, "LEFT", -6, 0)
   end
 
   -- Resolution chip.
-  local resolved = resolveDynamicAction(ref)
+  local resolved = resolveSmartAction(ref)
   local chipText = resolved and string.format(L['On this character resolves to "%s".'], resolved.label)
     or L["No candidate is usable by this character \226\128\148 slots bound here fall through."]
   local chip = Widgets.Label(center, "GameFontHighlightSmall", chipText, resolved and colors.parchment or colors.warn)
@@ -537,13 +534,13 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
 
   -- Candidate rows — a retained DataProvider list, so selecting/removing a
   -- candidate no longer snaps the scroll to the top and the rows aren't leaked.
-  local candidates = dynamicAction and dynamicAction.candidates or {}
-  local list = Widgets.DataList(center, "dynamicActions.candidates", {
+  local candidates = smartAction and smartAction.candidates or {}
+  local list = Widgets.DataList(center, "actions.candidates", {
     extent = 40,
     spacing = 3,
     initializer = candidateRowInit,
   })
-  DynamicActionsTab.candidateList = list
+  SmartActionsTab.candidateList = list
   list.scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -18)
   list.scrollBox:SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", -30, 4)
 
@@ -552,14 +549,14 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
     items[#items + 1] = { index = index, candidate = candidate }
   end
 
-  -- Keep the scroll offset while browsing one dynamicAction; reset to the top when the
-  -- selected dynamicAction changes (its candidate list is unrelated).
-  local dynamicActionKey = ref.source .. ":" .. tostring(ref.id)
-  list:SetItems(items, DynamicActionsTab._candidateKey == dynamicActionKey)
-  DynamicActionsTab._candidateKey = dynamicActionKey
+  -- Keep the scroll offset while browsing one smartAction; reset to the top when the
+  -- selected smartAction changes (its candidate list is unrelated).
+  local smartActionKey = ref.source .. ":" .. tostring(ref.id)
+  list:SetItems(items, SmartActionsTab._candidateKey == smartActionKey)
+  SmartActionsTab._candidateKey = smartActionKey
 
   if #candidates == 0 then
-    local emptyText = locked and L["This dynamic action has no candidates."]
+    local emptyText = locked and L["This smart action has no candidates."]
       or L["No candidates yet \226\128\148 drag a spell, item, macro, mount or equipment set here to add one."]
     local note = Widgets.Hint(center, emptyText)
     note:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -16)
@@ -567,16 +564,16 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
     note:SetJustifyH("LEFT")
   end
 
-  -- Custom dynamicActions accept dropped actions as new candidates.
+  -- Custom actions accept dropped actions as new candidates.
   if locked then
-    if DynamicActionsTab.dropZone then
-      DynamicActionsTab.dropZone:Detach()
+    if SmartActionsTab.dropZone then
+      SmartActionsTab.dropZone:Detach()
     end
   else
-    if not DynamicActionsTab.dropZone then
-      DynamicActionsTab.dropZone = Widgets.DropZone(L["Drop to add a candidate"])
+    if not SmartActionsTab.dropZone then
+      SmartActionsTab.dropZone = Widgets.DropZone(L["Drop to add a candidate"])
     end
-    DynamicActionsTab.dropZone:Attach(center, function()
+    SmartActionsTab.dropZone:Attach(center, function()
       addCandidateFromCursor(ref.id)
     end)
   end
@@ -584,10 +581,10 @@ end
 
 -- Right: condition editor ------------------------------------------------------
 
--- The rule panel when no candidate is selected: how the dynamicAction is executed.
--- Custom dynamicActions can switch to macro mode and edit the template; predefined
--- dynamicActions show a read-only note.
-function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
+-- The rule panel when no candidate is selected: how the smartAction is executed.
+-- Custom actions can switch to macro mode and edit the template; predefined
+-- actions show a read-only note.
+function SmartActionsTab:BuildMacroPanel(inset, smartAction)
   local ref = selectedRef()
   local editable = ref and ref.source == "custom"
 
@@ -595,19 +592,18 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -16)
 
   if not editable then
-    local asMacro = dynamicAction and MM.Macros.EffectiveMode(dynamicAction) == "macro"
+    local asMacro = smartAction and MM.Macros.EffectiveMode(smartAction) == "macro"
     local note = Widgets.Hint(
       inset,
-      asMacro and L["This predefined dynamic action is rendered as a macro. Clone it to change the body."]
-        or L["Predefined dynamic actions place the resolved spell or item directly. Clone this dynamic action to render it as a macro instead."]
+      asMacro and L["This predefined smart action is rendered as a macro. Clone it to change the body."]
+        or L["Predefined smart actions place the resolved spell or item directly. Clone this smart action to render it as a macro instead."]
     )
     note:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
     note:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
     note:SetJustifyH("LEFT")
 
     if asMacro then
-      local body =
-        Widgets.Label(inset, "GameFontDisableSmall", dynamicAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
+      local body = Widgets.Label(inset, "GameFontDisableSmall", smartAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
       body:SetPoint("TOPLEFT", note, "BOTTOMLEFT", 0, -10)
       body:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
       body:SetJustifyH("LEFT")
@@ -615,10 +611,10 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
     return
   end
 
-  local isMacro = dynamicAction and dynamicAction.mode == "macro"
+  local isMacro = smartAction and smartAction.mode == "macro"
 
   local box = Widgets.Checkbox(inset, isMacro, function(button)
-    MM.DB:SetDynamicActionMode(ref.id, button:GetChecked() and "macro" or "normal")
+    MM.DB:SetSmartActionMode(ref.id, button:GetChecked() and "macro" or "normal")
     refresh()
   end)
   box:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -4, -6)
@@ -628,7 +624,7 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
 
   local intro = Widgets.Hint(
     inset,
-    L["Put a generated macro on the bar instead of the raw action, so you can add mouseover, focus and other conditions while the dynamic action still resolves the right spell or item for this character."]
+    L["Put a generated macro on the bar instead of the raw action, so you can add mouseover, focus and other conditions while the smart action still resolves the right spell or item for this character."]
   )
   intro:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 4, -6)
   intro:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
@@ -639,7 +635,7 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   end
 
   local anchor = intro
-  if not MM.Macros.CandidatesCompatible(dynamicAction) then
+  if not MM.Macros.CandidatesCompatible(smartAction) then
     local badge = Widgets.Label(
       inset,
       "GameFontHighlightSmall",
@@ -667,11 +663,11 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
 
   -- Live count of the longest body any candidate would produce (the macro grows
   -- when %name% is filled in). Turns red past the 255 cap, where macro mode goes
-  -- inactive and the dynamicAction falls back to placing the action directly.
+  -- inactive and the smartAction falls back to placing the action directly.
   local count = Widgets.Label(inset, "GameFontHighlightSmall", "", colors.muted)
 
   local function updateCount(template)
-    local worst = MM.Macros.WorstCaseLength(dynamicAction, template)
+    local worst = MM.Macros.WorstCaseLength(smartAction, template)
     local over = worst > MM.MACRO_BODY_LIMIT
     local text = string.format(L["Longest result: %d / %d characters"], worst, MM.MACRO_BODY_LIMIT)
     if over then
@@ -683,10 +679,10 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
 
   local input = Widgets.MultiLineInput(
     inset,
-    dynamicAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT,
+    smartAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT,
     MM.MACRO_TEMPLATE_LIMIT,
     function(text)
-      MM.DB:SetDynamicActionTemplate(ref.id, text)
+      MM.DB:SetSmartActionTemplate(ref.id, text)
       updateCount(text)
     end
   )
@@ -697,20 +693,20 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   count:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 0, -8)
   count:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   count:SetJustifyH("LEFT")
-  updateCount(dynamicAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
+  updateCount(smartAction.macroTemplate or MM.MACRO_TEMPLATE_DEFAULT)
 end
 
-function DynamicActionsTab:BuildRule(parent, dynamicAction)
+function SmartActionsTab:BuildRule(parent, smartAction)
   local inset = CreateFrame("Frame", nil, parent)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   inset:SetWidth(RULE_WIDTH + 2)
 
-  local candidates = dynamicAction and dynamicAction.candidates or {}
+  local candidates = smartAction and smartAction.candidates or {}
   local candidate = MM.ui.state.candidate and candidates[MM.ui.state.candidate]
   if not candidate then
-    -- No candidate selected: the rule panel edits the dynamicAction itself (macro mode).
-    self:BuildMacroPanel(inset, dynamicAction)
+    -- No candidate selected: the rule panel edits the smartAction itself (macro mode).
+    self:BuildMacroPanel(inset, smartAction)
     return
   end
 
@@ -736,7 +732,7 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   local sub = Widgets.Label(inset, "GameFontDisableSmall", L["when to use this candidate"])
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
-  -- Live condition editor: custom dynamicActions are editable, predefined ones show
+  -- Live condition editor: custom actions are editable, predefined ones show
   -- their conditions read-only.
   local ref = selectedRef()
   local editable = ref and ref.source == "custom"
@@ -744,14 +740,14 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   local hint = Widgets.Hint(
     inset,
     editable and L["Leave everything off to use this whenever the character can cast it."]
-      or L["Predefined dynamic action \226\128\148 conditions are read-only."]
+      or L["Predefined smart action \226\128\148 conditions are read-only."]
   )
   hint:SetPoint("TOPLEFT", tile, "BOTTOMLEFT", 0, -14)
   hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   hint:SetJustifyH("LEFT")
 
   -- Scrollable so an all-expanded editor doesn't overflow the panel.
-  local scrollBox, content = Widgets.ScrollList(inset, "dynamicActions.conditions")
+  local scrollBox, content = Widgets.ScrollList(inset, "actions.conditions")
   scrollBox:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
   scrollBox:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -20, 12)
   -- The editor edits a scratch copy; every change is committed through the DB
@@ -768,23 +764,23 @@ end
 
 -- Assembly -------------------------------------------------------------------
 
-function DynamicActionsTab:BuildContent(parent)
+function SmartActionsTab:BuildContent(parent)
   local ref = selectedRef()
   if not ref then
-    local note = Widgets.Label(parent, "GameFontHighlight", L["No dynamic actions available."])
+    local note = Widgets.Label(parent, "GameFontHighlight", L["No smart actions available."])
     note:SetPoint("CENTER")
     return
   end
 
-  local dynamicAction = MM.DB:ResolveDynamicAction(ref)
-  local candidateCount = dynamicAction and dynamicAction.candidates and #dynamicAction.candidates or 0
+  local smartAction = MM.DB:ResolveSmartAction(ref)
+  local candidateCount = smartAction and smartAction.candidates and #smartAction.candidates or 0
   if MM.ui.state.candidate and MM.ui.state.candidate > candidateCount then
     MM.ui.state.candidate = nil
   end
 
   self:BuildRail(parent)
-  self:BuildCenter(parent, ref, dynamicAction)
-  self:BuildRule(parent, dynamicAction)
+  self:BuildCenter(parent, ref, smartAction)
+  self:BuildRule(parent, smartAction)
 
   local leftGroove = Widgets.VGroove(parent)
   leftGroove:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 6, -6)
@@ -795,12 +791,12 @@ function DynamicActionsTab:BuildContent(parent)
   rightGroove:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 6), 6)
 end
 
-function DynamicActionsTab:Build(parent)
+function SmartActionsTab:Build(parent)
   self.parent = parent
   self:Refresh()
 end
 
-function DynamicActionsTab:Refresh()
+function SmartActionsTab:Refresh()
   if not self.parent then
     return
   end

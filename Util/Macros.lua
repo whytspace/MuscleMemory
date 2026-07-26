@@ -199,16 +199,16 @@ function Macros.Pickup(macro)
 end
 
 -- Macro mode -----------------------------------------------------------------
--- A dynamicAction whose every candidate is in this family can render as a generated
+-- A smartAction whose every candidate is in this family can render as a generated
 -- macro: the `/use` verb invokes spell, item (incl. toys) and mount by name, so a
 -- single `%name%` template covers them all. Battle pets (`/summonpet`), equipment
 -- sets (`/equipset`) and flyouts have no place in such a macro and are excluded.
 Macros.FAMILY = { spell = true, item = true, mount = true }
 
--- True only when the dynamicAction has candidates and every one is macro-able. Derived,
+-- True only when the smartAction has candidates and every one is macro-able. Derived,
 -- never stored: the toggle persists as intent, compatibility follows the list.
-function Macros.CandidatesCompatible(dynamicAction)
-  local candidates = dynamicAction and dynamicAction.candidates
+function Macros.CandidatesCompatible(smartAction)
+  local candidates = smartAction and smartAction.candidates
   if not candidates or #candidates == 0 then
     return false
   end
@@ -221,7 +221,7 @@ function Macros.CandidatesCompatible(dynamicAction)
 end
 
 -- The display name a candidate contributes to %name%. Only the macro-able family
--- matters; others can't be in a macro-mode dynamicAction anyway.
+-- matters; others can't be in a macro-mode smartAction anyway.
 local function candidateName(candidate)
   if candidate.type == "spell" then
     local info = MM.Spells.GetInfo(candidate.id)
@@ -247,10 +247,10 @@ end
 -- The longest body any candidate would render to: the candidate whose name pushes
 -- the macro closest to (or past) the 255 cap. Candidates with names not yet known
 -- are skipped; the applier's own render cap is the final guard for those.
-function Macros.WorstCaseLength(dynamicAction, template)
-  template = template or (dynamicAction and dynamicAction.macroTemplate) or MM.MACRO_TEMPLATE_DEFAULT
+function Macros.WorstCaseLength(smartAction, template)
+  template = template or (smartAction and smartAction.macroTemplate) or MM.MACRO_TEMPLATE_DEFAULT
   local worst = Macros.RenderedLength(template, "", "")
-  for _, candidate in ipairs(dynamicAction and dynamicAction.candidates or {}) do
+  for _, candidate in ipairs(smartAction and smartAction.candidates or {}) do
     if Macros.FAMILY[candidate.type] then
       local name = candidateName(candidate)
       if name then
@@ -265,19 +265,19 @@ function Macros.WorstCaseLength(dynamicAction, template)
 end
 
 -- True when every candidate's rendered body fits the 255-char macro cap.
-function Macros.FitsLimit(dynamicAction, template)
-  return Macros.WorstCaseLength(dynamicAction, template) <= MM.MACRO_BODY_LIMIT
+function Macros.FitsLimit(smartAction, template)
+  return Macros.WorstCaseLength(smartAction, template) <= MM.MACRO_BODY_LIMIT
 end
 
--- The mode actually used at apply time: "macro" only when the dynamicAction opted in, its
+-- The mode actually used at apply time: "macro" only when the smartAction opted in, its
 -- candidates are all macro-able, AND the body fits the 255-char cap; else "normal".
 -- Single source of truth shared by the applier, the idempotency check, the editor.
-function Macros.EffectiveMode(dynamicAction)
+function Macros.EffectiveMode(smartAction)
   if
-    dynamicAction
-    and dynamicAction.mode == "macro"
-    and Macros.CandidatesCompatible(dynamicAction)
-    and Macros.FitsLimit(dynamicAction)
+    smartAction
+    and smartAction.mode == "macro"
+    and Macros.CandidatesCompatible(smartAction)
+    and Macros.FitsLimit(smartAction)
   then
     return "macro"
   end
@@ -307,13 +307,13 @@ function Macros.RenderTemplate(template, resolved)
 end
 
 -- The macro body a resolved action should be placed as, or nil if it should go on
--- the bar directly: nil unless its dynamicAction is in (effective) macro mode, the action
+-- the bar directly: nil unless its smartAction is in (effective) macro mode, the action
 -- is in the macro-able family, and the body fits the cap. Single decision point
 -- shared by the applier, the idempotency check, cleanup, and preview.
 function Macros.ResolvedAsMacro(resolved)
-  local dynamicAction = resolved and resolved.dynamicAction
-  if dynamicAction and Macros.EffectiveMode(dynamicAction) == "macro" and Macros.FAMILY[resolved.kind] then
-    return Macros.RenderTemplate(dynamicAction.macroTemplate, resolved)
+  local smartAction = resolved and resolved.smartAction
+  if smartAction and Macros.EffectiveMode(smartAction) == "macro" and Macros.FAMILY[resolved.kind] then
+    return Macros.RenderTemplate(smartAction.macroTemplate, resolved)
   end
   return nil
 end
@@ -337,16 +337,16 @@ function Macros.TruncateBytes(text, maxBytes)
   return text:sub(1, cut)
 end
 
--- A generated macro is named after its dynamicAction, plus an owner marker so we can
+-- A generated macro is named after its smartAction, plus an owner marker so we can
 -- recognise our macros, truncated to fit the 64-byte name cap. The name is cosmetic
 -- (it labels the bar button); tracking keys on the registry, so collisions between
--- two dynamicActions sharing a prefix are harmless.
+-- two actions sharing a prefix are harmless.
 -- Create and the import door both guarantee a name, so a missing one is a broken
 -- entry: fail the slot rather than inventing a name for it.
-function Macros.MacroName(dynamicAction)
-  local name = dynamicAction and dynamicAction.name
+function Macros.MacroName(smartAction)
+  local name = smartAction and smartAction.name
   if not name or name == "" then
-    return nil, "dynamic action has no name"
+    return nil, "smart action has no name"
   end
   local marker = MM.MACRO_NAME_MARKER
   return Macros.TruncateBytes(name, MM.MACRO_NAME_LIMIT - #marker) .. marker
@@ -428,7 +428,7 @@ end
 
 -- Reconcile the macro for a slot to `name` + `body`, reusing where possible:
 --   * a character macro already holding this exact body -> reuse it (renaming it
---     if the desired name changed, e.g. the dynamicAction was renamed),
+--     if the desired name changed, e.g. the smartAction was renamed),
 --   * our previous macro still untouched at its index   -> edit in place,
 --   * otherwise                                         -> create a new one.
 -- Returns (macro, record) or (nil, reason); `record` is what to persist.

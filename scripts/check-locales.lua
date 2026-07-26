@@ -127,7 +127,7 @@ local function usedKeys()
       add(unquote(quote, body))
     end
 
-    -- Anchored: PredefinedDynamicActions.lua also ends in "Actions.lua".
+    -- Anchored: PredefinedSmartActions.lua also ends in "Actions.lua".
     if file == "Util/Actions.lua" or file == "SlashCommands.lua" then
       for field, quote, body in src:gmatch("(%w+)%s*=%s*([\"'])(.-)%2") do
         if field == "label" or field == "name" or field == "desc" then

@@ -2,10 +2,10 @@ local ADDON_NAME, MM = ...
 local L = MM.L
 
 -- A reusable editor for a `conditions` table (the one Conditions.Match reads),
--- used by both dynamicAction candidates and layers. Builds into `parent`, mutates the
+-- used by both smartAction candidates and layers. Builds into `parent`, mutates the
 -- passed `conditions` table in place, and calls `onChange` after each edit. When
 -- `editable` is false it renders the same controls read-only (for predefined
--- dynamicActions). Returns the container frame with its height set.
+-- actions). Returns the container frame with its height set.
 local ConditionsEditor = {}
 MM.ui.ConditionsEditor = ConditionsEditor
 

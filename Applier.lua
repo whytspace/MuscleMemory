@@ -285,12 +285,12 @@ function Applier:ApplyEntry(entry)
     MM.Actions.ClearSlot(slot)
   end
 
-  -- Macro mode: a dynamicAction can render as a generated macro instead of the raw
+  -- Macro mode: a smartAction can render as a generated macro instead of the raw
   -- action. A body that won't render (action outside the family, or too long after
   -- substitution) falls back to placing the action directly rather than failing.
   local body = MM.Macros.ResolvedAsMacro(entry.resolved)
   if body then
-    return self:ApplyMacroEntry(entry, slot, entry.resolved.dynamicAction, body)
+    return self:ApplyMacroEntry(entry, slot, entry.resolved.smartAction, body)
   end
 
   -- A restorable macro doesn't exist on this character yet: recreate it in its
@@ -334,9 +334,9 @@ end
 
 -- Reconcile the macro for `entry`'s slot to the already-rendered `body` (reuse /
 -- edit / create) through the per-character registry, and place it.
-function Applier:ApplyMacroEntry(entry, slot, dynamicAction, body)
+function Applier:ApplyMacroEntry(entry, slot, smartAction, body)
   local record = MM.DB:GetMacroRecord(entry.layerId, slot)
-  local name, nameReason = MM.Macros.MacroName(dynamicAction)
+  local name, nameReason = MM.Macros.MacroName(smartAction)
   if not name then
     return false, nameReason
   end
@@ -356,8 +356,8 @@ function Applier:ApplyMacroEntry(entry, slot, dynamicAction, body)
   return MM.Actions.PlaceCursor(slot)
 end
 
--- Delete generated macros no plan slot wants anymore (dynamicAction switched off macro
--- mode, slot reassigned, layer/dynamicAction deleted). Runs after applying, so a slot
+-- Delete generated macros no plan slot wants anymore (smartAction switched off macro
+-- mode, slot reassigned, layer/smartAction deleted). Runs after applying, so a slot
 -- that still wants its macro has refreshed the registry first.
 function Applier:CleanupMacroOrphans(plan)
   local registry = MM.DB:GetMacroRegistry()

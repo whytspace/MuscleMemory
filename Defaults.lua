@@ -1,10 +1,10 @@
 local ADDON_NAME, MM = ...
 
-MM.SCHEMA_VERSION = 3
+MM.SCHEMA_VERSION = 4
 
 -- Structural defaults: containers merged on every load so they always exist.
 -- Deliberately omits starter content (the Core layer, the Default profile) so
--- deleting those sticks instead of being re-seeded. Layers, dynamic actions and
+-- deleting those sticks instead of being re-seeded. Layers, smart actions and
 -- the fallback setting now live inside each profile (schema v2+).
 MM.defaults = {
   schemaVersion = MM.SCHEMA_VERSION,
@@ -14,7 +14,7 @@ MM.defaults = {
 }
 
 -- Starter content copied once into a brand-new DB. A profile is a complete,
--- self-contained data set: its own layers, dynamicActions and fallback.
+-- self-contained data set: its own layers, actions and fallback.
 MM.seed = {
   profiles = {
     Default = {
@@ -29,7 +29,7 @@ MM.seed = {
           enabled = true,
         },
       },
-      dynamicActions = {},
+      actions = {},
     },
   },
 }

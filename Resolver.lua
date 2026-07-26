@@ -62,7 +62,7 @@ local resolvers = {
     local info = MM.Items.GetInfo(assignment.id)
     local owned = MM.Items.IsOwned(assignment.id)
     local usable = MM.Items.IsUsable(assignment.id) -- ownership-independent
-    -- Dynamic-action candidates need the item in hand; a plain assignment doesn't.
+    -- Smart-action candidates need the item in hand; a plain assignment doesn't.
     if options.requireAvailable and not (owned and usable) then
       return nil, owned and "item not usable" or "item not owned"
     end
@@ -164,8 +164,8 @@ local resolvers = {
     }
   end,
 
-  dynamicaction = function(assignment)
-    return Resolver:ResolveDynamicActionAssignment(assignment)
+  action = function(assignment)
+    return Resolver:ResolveSmartActionAssignment(assignment)
   end,
 }
 
@@ -182,20 +182,20 @@ function Resolver:ResolveAction(assignment, options)
   return resolve(assignment, options or {})
 end
 
--- All dynamic actions (predefined and the active profile's own) that currently
+-- All smart actions (predefined and the active profile's own) that currently
 -- resolve to the given assignment on this character, as sorted `{ source, id,
 -- name }` references. Backs the bind-time suggestion: "this spell is covered by
--- a dynamic action — bind that instead?". A captured macro matches the dynamic
+-- a smart action — bind that instead?". A captured macro matches the smart
 -- action that generated it (same rendered body, or the owner-marked name after
 -- the resolution changed); equipment sets never suggest.
-function Resolver:FindDynamicActionsResolvingTo(assignment)
+function Resolver:FindSmartActionsResolvingTo(assignment)
   if not assignment or not (assignment.id or assignment.type == "macro") then
     return {}
   end
 
   local matches = {}
-  local function check(source, id, dynamicAction)
-    local resolved = self:ResolveAction({ type = "dynamicaction", source = source, id = id })
+  local function check(source, id, smartAction)
+    local resolved = self:ResolveAction({ type = "action", source = source, id = id })
     if not resolved then
       return
     end
@@ -206,7 +206,7 @@ function Resolver:FindDynamicActionsResolvingTo(assignment)
         or (
           body
           and MM.Macros.IsOwned({ name = assignment.nameHint })
-          and MM.Macros.MacroName(dynamicAction) == assignment.nameHint
+          and MM.Macros.MacroName(smartAction) == assignment.nameHint
         )
     else
       -- Spells compare on the base id: resolution normalises overrides there.
@@ -214,15 +214,15 @@ function Resolver:FindDynamicActionsResolvingTo(assignment)
       match = resolved.kind == assignment.type and resolved.id == targetId
     end
     if match then
-      matches[#matches + 1] = { source = source, id = id, name = dynamicAction.name or id }
+      matches[#matches + 1] = { source = source, id = id, name = smartAction.name or id }
     end
   end
 
-  for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
-    check("predefined", id, dynamicAction)
+  for id, smartAction in pairs(MM.PredefinedSmartActions or {}) do
+    check("predefined", id, smartAction)
   end
-  for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
-    check("custom", id, dynamicAction)
+  for id, smartAction in pairs(MM.DB:SmartActions() or {}) do
+    check("custom", id, smartAction)
   end
 
   table.sort(matches, function(left, right)
@@ -234,25 +234,25 @@ function Resolver:FindDynamicActionsResolvingTo(assignment)
   return matches
 end
 
-function Resolver:ResolveDynamicActionAssignment(assignment)
-  local dynamicAction = MM.DB:ResolveDynamicAction({
+function Resolver:ResolveSmartActionAssignment(assignment)
+  local smartAction = MM.DB:ResolveSmartAction({
     source = assignment.source,
     id = assignment.id,
   })
 
-  if not dynamicAction then
-    return nil, "dynamic action not found"
+  if not smartAction then
+    return nil, "smart action not found"
   end
 
-  for _, candidate in ipairs(dynamicAction.candidates or {}) do
+  for _, candidate in ipairs(smartAction.candidates or {}) do
     if matchesRequirements(candidate) then
       local resolved = self:ResolveAction(candidate, { requireAvailable = true })
       if resolved then
-        resolved.dynamicAction = dynamicAction
+        resolved.smartAction = smartAction
         return resolved
       end
     end
   end
 
-  return nil, "dynamic action " .. tostring(dynamicAction.name or assignment.id) .. " had no matching candidate"
+  return nil, "smart action " .. tostring(smartAction.name or assignment.id) .. " had no matching candidate"
 end

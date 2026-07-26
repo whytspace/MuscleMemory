@@ -1,15 +1,15 @@
 local ADDON_NAME, MM = ...
 
--- Import/export: pack profiles, layers and dynamic actions into a copyable
--- string (LibSerialize -> LibDeflate -> printable encoding, "!MM:1!" prefix).
+-- Import/export: pack profiles, layers and smart actions into a copyable
+-- string (LibSerialize -> LibDeflate -> printable encoding, "!MM:2!" prefix).
 -- Importing always creates new entities — never overwrites — so the only fixup
--- is re-keying imported dynamic actions and rewriting the layer slots that
+-- is re-keying imported smart actions and rewriting the layer slots that
 -- reference them.
 local Share = {}
 MM.Share = Share
 MM:RegisterModule("Share", Share)
 
-Share.FORMAT_VERSION = 1
+Share.FORMAT_VERSION = 2
 local PREFIX_PATTERN = "^!MM:(%d+)!"
 
 local function libs()
@@ -26,7 +26,7 @@ end
 
 -- Session-only "imported" markers, keyed by profile id. Never saved: the pills
 -- they drive last until the next reload, which is the intended lifetime.
-Share.recentImports = { profiles = {}, layers = {}, dynamicActions = {} }
+Share.recentImports = { profiles = {}, layers = {}, actions = {} }
 
 local function markImported(kind, profileId, id)
   local bucket = Share.recentImports[kind]
@@ -43,12 +43,12 @@ function Share:IsImportedProfile(profileId)
   return self.recentImports.profiles[profileId] ~= nil
 end
 
--- The custom dynamic actions a layer's slots reference. Predefined references
+-- The custom smart actions a layer's slots reference. Predefined references
 -- resolve from add-on data on the importer's side, so only "custom" counts.
 function Share:LayerDependencies(layer, into)
   local keys = into or {}
   for _, assignment in pairs((layer or {}).slots or {}) do
-    if type(assignment) == "table" and assignment.type == "dynamicaction" and assignment.source == "custom" then
+    if type(assignment) == "table" and assignment.type == "action" and assignment.source == "custom" then
       keys[assignment.id] = true
     end
   end
@@ -56,8 +56,8 @@ function Share:LayerDependencies(layer, into)
 end
 
 -- Build a package from `selection`: { settings = bool, layers = { [layerId] = true },
--- dynamicActions = { [key] = true } }. Nil selects the whole profile including
--- settings. Custom dynamic actions referenced by a selected layer are always
+-- actions = { [key] = true } }. Nil selects the whole profile including
+-- settings. Custom smart actions referenced by a selected layer are always
 -- included, so a package never contains a broken reference.
 function Share:BuildPackage(profileId, selection)
   local profile = MM.DB:GetProfile(profileId)
@@ -66,19 +66,19 @@ function Share:BuildPackage(profileId, selection)
   end
 
   local layers = profile.layers or {}
-  local dynamicActions = profile.dynamicActions or {}
+  local actions = profile.actions or {}
 
   local wantLayers, wantActions, wantSettings
   if selection then
     wantLayers = selection.layers or {}
-    wantActions = selection.dynamicActions or {}
+    wantActions = selection.actions or {}
     wantSettings = selection.settings and true or false
   else
     wantLayers, wantActions, wantSettings = {}, {}, true
     for id in pairs(layers) do
       wantLayers[id] = true
     end
-    for key in pairs(dynamicActions) do
+    for key in pairs(actions) do
       wantActions[key] = true
     end
   end
@@ -88,7 +88,7 @@ function Share:BuildPackage(profileId, selection)
     schemaVersion = MM.SCHEMA_VERSION,
     profileName = profile.name,
     layers = {},
-    dynamicActions = {},
+    actions = {},
   }
 
   -- Layers in profile order, so importing recreates the same stacking.
@@ -105,8 +105,8 @@ function Share:BuildPackage(profileId, selection)
     required[key] = true
   end
   for key in pairs(required) do
-    if dynamicActions[key] then
-      package.dynamicActions[key] = MM.Tables.DeepCopy(dynamicActions[key])
+    if actions[key] then
+      package.actions[key] = MM.Tables.DeepCopy(actions[key])
     end
   end
 
@@ -114,7 +114,7 @@ function Share:BuildPackage(profileId, selection)
     package.settings = { fallback = profile.fallback, response = profile.response }
   end
 
-  if not package.settings and #package.layers == 0 and not next(package.dynamicActions) then
+  if not package.settings and #package.layers == 0 and not next(package.actions) then
     return nil, "nothing selected to export"
   end
   return package
@@ -131,6 +131,22 @@ function Share:Encode(package)
   local serialized = serializer:SerializeEx({ stable = true }, package)
   local compressed = deflate:CompressDeflate(serialized, { level = 9 })
   return "!MM:" .. self.FORMAT_VERSION .. "!" .. deflate:EncodeForPrint(compressed)
+end
+
+-- A v1 package predates the smart-action rename: lift its pool and its slot
+-- discriminator to the current names so older sharing strings still import.
+local function upgradeToV2(package)
+  if package.dynamicActions ~= nil then
+    package.actions = package.dynamicActions
+    package.dynamicActions = nil
+  end
+  for _, entry in ipairs(package.layers or {}) do
+    for _, assignment in pairs((entry.layer or {}).slots or {}) do
+      if type(assignment) == "table" and assignment.type == "dynamicaction" then
+        assignment.type = "action"
+      end
+    end
+  end
 end
 
 function Share:Decode(text)
@@ -165,18 +181,21 @@ function Share:Decode(text)
   if type(package.schemaVersion) ~= "number" or package.schemaVersion > MM.SCHEMA_VERSION then
     return nil, "this export needs a newer Muscle Memory version"
   end
+  if tonumber(version) < 2 then
+    upgradeToV2(package)
+  end
   package.layers = package.layers or {}
-  package.dynamicActions = package.dynamicActions or {}
+  package.actions = package.actions or {}
   return package
 end
 
--- Rewrite re-keyed custom dynamic action references inside one slot/candidate
+-- Rewrite re-keyed custom smart action references inside one slot/candidate
 -- assignment. References to actions that stayed outside the package keep their
--- key and simply may not resolve — same behavior as deleting a dynamic action.
+-- key and simply may not resolve — same behavior as deleting a smart action.
 local function rewriteReference(assignment, keyMap)
   if
     type(assignment) == "table"
-    and assignment.type == "dynamicaction"
+    and assignment.type == "action"
     and assignment.source == "custom"
     and keyMap[assignment.id]
   then
@@ -185,7 +204,7 @@ local function rewriteReference(assignment, keyMap)
 end
 
 -- Import `selection` from a decoded package: { layers = { [packageKey] = true },
--- dynamicActions = { [packageKey] = true } }, nil for everything. `target` is
+-- actions = { [packageKey] = true } }, nil for everything. `target` is
 -- { profileId = id } for an existing profile or { newProfile = name } to create
 -- one (package settings apply only there). Everything imported is created new.
 function Share:Import(package, selection, target)
@@ -201,10 +220,10 @@ function Share:ImportSelection(package, selection, target)
   end
 
   local wantLayers = selection and (selection.layers or {}) or nil
-  local wantActions = selection and (selection.dynamicActions or {}) or nil
+  local wantActions = selection and (selection.actions or {}) or nil
 
   -- Collect the layers to import first: their dependencies are always imported
-  -- with them, regardless of the dynamic action checkboxes.
+  -- with them, regardless of the smart action checkboxes.
   local layerEntries, required = {}, {}
   for _, entry in ipairs(package.layers) do
     if type(entry) == "table" and type(entry.layer) == "table" and (not wantLayers or wantLayers[entry.key]) then
@@ -214,7 +233,7 @@ function Share:ImportSelection(package, selection, target)
   end
 
   local actionKeys = {}
-  for key, action in pairs(package.dynamicActions) do
+  for key, action in pairs(package.actions) do
     if type(action) == "table" and (required[key] or not wantActions or wantActions[key]) then
       actionKeys[#actionKeys + 1] = key
     end
@@ -242,20 +261,20 @@ function Share:ImportSelection(package, selection, target)
     end
   end
 
-  local result = { profileId = profileId, layers = {}, dynamicActions = {} }
+  local result = { profileId = profileId, layers = {}, actions = {} }
 
-  -- Pass 1: allocate a fresh key for every dynamic action up front (against a
+  -- Pass 1: allocate a fresh key for every smart action up front (against a
   -- shadow `taken` set), rewrite cross-references on the copies, and only then
   -- adopt the finished tables into the profile.
   local keyMap = {}
   local adopted = {}
   local taken = {}
-  for key in pairs(MM.DB:DynamicActions(profileId)) do
+  for key in pairs(MM.DB:SmartActions(profileId)) do
     taken[key] = true
   end
   for _, key in ipairs(actionKeys) do
-    local action = MM.Tables.DeepCopy(package.dynamicActions[key])
-    local newKey = MM.DB:UniqueId(action.name, "dynamicaction", taken)
+    local action = MM.Tables.DeepCopy(package.actions[key])
+    local newKey = MM.DB:UniqueId(action.name, "action", taken)
     taken[newKey] = true
     keyMap[key] = newKey
     adopted[#adopted + 1] = { key = newKey, action = action }
@@ -264,9 +283,9 @@ function Share:ImportSelection(package, selection, target)
     for _, candidate in ipairs(entry.action.candidates or {}) do
       rewriteReference(candidate, keyMap)
     end
-    MM.DB:AdoptDynamicAction(profileId, entry.key, entry.action)
-    markImported("dynamicActions", profileId, entry.key)
-    result.dynamicActions[#result.dynamicActions + 1] = entry.key
+    MM.DB:AdoptSmartAction(profileId, entry.key, entry.action)
+    markImported("actions", profileId, entry.key)
+    result.actions[#result.actions + 1] = entry.key
   end
 
   -- Pass 2: layers follow the key map; their slots are rewritten before the

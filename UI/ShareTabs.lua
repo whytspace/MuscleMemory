@@ -3,7 +3,7 @@ local L = MM.L
 
 -- The Export and Import tabs. Both share the same four-panel layout: an intro
 -- column that holds the controls and the sharing string, then one column each
--- for Layers, Dynamic Actions, and the macros that ride along. Export packs a
+-- for Layers, Smart Actions, and the macros that ride along. Export packs a
 -- selection of the active profile; import decodes a pasted string and creates
 -- everything as new entities in the current or a new profile.
 local ExportTab = {}
@@ -24,7 +24,7 @@ local SCROLLBAR_INSET = 20
 local INTRO_GAP = 16
 
 -- Shared row for the three lists (recycled by Widgets.DataList): a checkbox
--- item, or a plain read-only line (macros). Locked items are the custom dynamic
+-- item, or a plain read-only line (macros). Locked items are the custom smart
 -- actions a checked layer references — they travel with it, so they can't be
 -- unchecked. Clicking anywhere on a row toggles it.
 local function rowInit(row, data)
@@ -32,7 +32,7 @@ local function rowInit(row, data)
     row.mmInit = true
 
     -- Relation highlight: lit on rows the hovered row references or is
-    -- referenced by (layer <-> dynamic action / macro).
+    -- referenced by (layer <-> smart action / macro).
     row.relHl = row:CreateTexture(nil, "BACKGROUND")
     row.relHl:SetAllPoints()
     row.relHl:SetColorTexture(Widgets.unpackColor(colors.gold, 0.12))
@@ -149,7 +149,7 @@ local function buildPanels(parent, key)
   panels.intro:SetPoint("BOTTOM", parent, "BOTTOM", 0, 8)
   panels.intro:SetWidth(columnWidth)
 
-  local columns = { { "layers", L["Layers"] }, { "actions", L["Dynamic Actions"] }, { "macros", L["Macros"] } }
+  local columns = { { "layers", L["Layers"] }, { "actions", L["Smart Actions"] }, { "macros", L["Macros"] } }
   local left = PAD + columnWidth
   panels.columnFrames = {}
   for index, column in ipairs(columns) do
@@ -239,9 +239,9 @@ local function macroKey(assignment)
 end
 
 -- Relation maps for the hover cross-highlight, in both directions. A layer
--- relates to the custom dynamic actions it references and to its macros — both
+-- relates to the custom smart actions it references and to its macros — both
 -- the ones bound directly in its slots and, transitively, the macro candidates
--- of its dynamic actions (those travel with the layer too). A dynamic action
+-- of its smart actions (those travel with the layer too). A smart action
 -- relates to its macro candidates. Macros are identified by their body key.
 local function buildRelations(layersByKey, actionsByKey)
   local rel = { layers = {}, actions = {}, macros = {} }
@@ -264,7 +264,7 @@ local function buildRelations(layersByKey, actionsByKey)
     local carried = entry("layers", layerKey)
     for _, assignment in pairs(layer.slots or {}) do
       if type(assignment) == "table" then
-        if assignment.type == "dynamicaction" and assignment.source == "custom" then
+        if assignment.type == "action" and assignment.source == "custom" then
           carried.actions[assignment.id] = true
           entry("actions", assignment.id).layers[layerKey] = true
           for body in pairs(entry("actions", assignment.id).macros) do
@@ -331,7 +331,7 @@ local function setHeader(header, selected, total)
   header:SetText(title)
 end
 
--- The custom dynamic action keys required by the included layers.
+-- The custom smart action keys required by the included layers.
 local function requiredActions(layersByKey, isIncluded)
   local required = {}
   for key, layer in pairs(layersByKey) do
@@ -354,7 +354,7 @@ end
 
 -- The captured macros riding along in the selection (deduped by body): macros
 -- bound in the included layers' slots, plus the macro candidates of every
--- included custom dynamic action. Also reports whether anything references an
+-- included custom smart action. Also reports whether anything references an
 -- equipment set. Each macro carries its scope so character macros are
 -- recognizable.
 local function macroItems(layersByKey, layerIncluded, actionsByKey, actionIncluded)
@@ -455,15 +455,15 @@ local function ensureExportState()
 end
 
 local function exportSelection(profile, state)
-  local selection = { settings = not state.excludeSettings, layers = {}, dynamicActions = {} }
+  local selection = { settings = not state.excludeSettings, layers = {}, actions = {} }
   for id in pairs(profile.layers or {}) do
     if not state.excludedLayers[id] then
       selection.layers[id] = true
     end
   end
-  for key in pairs(profile.dynamicActions or {}) do
+  for key in pairs(profile.actions or {}) do
     if not state.excludedActions[key] then
-      selection.dynamicActions[key] = true
+      selection.actions[key] = true
     end
   end
   return selection
@@ -484,10 +484,10 @@ function ExportTab:Refresh()
   self.settingsCheck:SetChecked(not state.excludeSettings)
 
   -- Nothing to share yet: swap the columns for a pointer to the other tabs.
-  if not next(profile.layers or {}) and not next(profile.dynamicActions or {}) then
+  if not next(profile.layers or {}) and not next(profile.actions or {}) then
     panels.SetEmpty(
       L["Nothing to export yet"],
-      L["This profile has no Layers or Dynamic Actions. Create some first — or import someone else's — then come back to share them."]
+      L["This profile has no Layers or Smart Actions. Create some first — or import someone else's — then come back to share them."]
     )
     self.exportText = ""
     self.output.EditBox:SetText("")
@@ -504,7 +504,7 @@ function ExportTab:Refresh()
     return not state.excludedLayers[id]
   end
   local required = requiredActions(layersByKey, included)
-  local actionsByKey = profile.dynamicActions or {}
+  local actionsByKey = profile.actions or {}
   local actionIncluded = function(key)
     return required[key] or not state.excludedActions[key]
   end
@@ -532,7 +532,7 @@ function ExportTab:Refresh()
   setHeader(panels.layersHeader, selectedLayers, #layerItems)
 
   local actionItems, selectedActions = {}, 0
-  for _, action in ipairs(sortedActions(profile.dynamicActions)) do
+  for _, action in ipairs(sortedActions(profile.actions)) do
     local locked = required[action.key] and true or false
     local checked = locked or not state.excludedActions[action.key]
     if checked then
@@ -597,7 +597,7 @@ function ExportTab:Build(parent)
         local required = requiredActions(profile.layers or {}, function(id)
           return not state.excludedLayers[id]
         end)
-        invertExcluded(state.excludedActions, profile.dynamicActions or {}, required)
+        invertExcluded(state.excludedActions, profile.actions or {}, required)
         ExportTab:Refresh()
       end
     end
@@ -610,7 +610,7 @@ function ExportTab:Build(parent)
     local blurb2 = Widgets.Label(
       intro,
       "GameFontHighlight",
-      L["Custom Dynamic Actions a selected Layer uses come along automatically, as do the macros in its slots."]
+      L["Custom Smart Actions a selected Layer uses come along automatically, as do the macros in its slots."]
     )
     blurb2:SetPoint("TOPLEFT", blurb, "BOTTOMLEFT", 0, -8)
     blurb2:SetPoint("RIGHT", intro, "RIGHT", -INTRO_GAP, 0)
@@ -690,7 +690,7 @@ function ImportTab:Refresh()
     else
       panels.SetEmpty(
         L["Nothing to preview yet"],
-        L["Paste a sharing string on the left to see the Layers, Dynamic Actions and macros it contains."]
+        L["Paste a sharing string on the left to see the Layers, Smart Actions and macros it contains."]
       )
     end
     self.note:SetText("")
@@ -706,7 +706,7 @@ function ImportTab:Refresh()
     layersByKey[entry.key] = entry.layer
   end
   local required = requiredActions(layersByKey, included)
-  local actionsByKey = package.dynamicActions
+  local actionsByKey = package.actions
   local actionIncluded = function(key)
     return required[key] or not importState.excludedActions[key]
   end
@@ -735,7 +735,7 @@ function ImportTab:Refresh()
   setHeader(panels.layersHeader, layerCount, #layerItems)
 
   local actionItems, actionCount = {}, 0
-  for _, action in ipairs(sortedActions(package.dynamicActions)) do
+  for _, action in ipairs(sortedActions(package.actions)) do
     local locked = required[action.key] and true or false
     local checked = locked or not importState.excludedActions[action.key]
     if checked then
@@ -770,14 +770,14 @@ function ImportTab:Refresh()
   -- The summary describes the string's content; the column headers carry the
   -- current selection.
   local totalLayers = #package.layers
-  local totalActions = MM.Tables.Count(package.dynamicActions)
+  local totalActions = MM.Tables.Count(package.actions)
   local from = package.profileName and string.format(L[' from "%s"'], package.profileName) or ""
   self.summary:SetText(
     string.format(
       L["Sharing string%s contains %s, %s and %s."],
       from,
       L:Plural(totalLayers, "%d Layer", "%d Layers"),
-      L:Plural(totalActions, "%d Dynamic Action", "%d Dynamic Actions"),
+      L:Plural(totalActions, "%d Smart Action", "%d Smart Actions"),
       L:Plural(#allMacros, "%d Macro", "%d Macros")
     )
   )
@@ -798,15 +798,15 @@ local function decodeInput(text)
 end
 
 local function importSelection(package)
-  local selection = { layers = {}, dynamicActions = {} }
+  local selection = { layers = {}, actions = {} }
   for _, entry in ipairs(package.layers) do
     if not importState.excludedLayers[entry.key] then
       selection.layers[entry.key] = true
     end
   end
-  for key in pairs(package.dynamicActions) do
+  for key in pairs(package.actions) do
     if not importState.excludedActions[key] then
-      selection.dynamicActions[key] = true
+      selection.actions[key] = true
     end
   end
   return selection
@@ -836,7 +836,7 @@ local function runImport()
     string.format(
       L["imported %s and %s into profile %s."],
       L:Plural(#result.layers, "%d layer", "%d layers"),
-      L:Plural(#result.dynamicActions, "%d dynamic action", "%d dynamic actions"),
+      L:Plural(#result.actions, "%d smart action", "%d smart actions"),
       profile and profile.name or result.profileId
     )
   )
@@ -882,7 +882,7 @@ function ImportTab:Build(parent)
         local required = requiredActions(layersByKey, function(key)
           return not importState.excludedLayers[key]
         end)
-        invertExcluded(importState.excludedActions, package.dynamicActions or {}, required)
+        invertExcluded(importState.excludedActions, package.actions or {}, required)
         ImportTab:Refresh()
       end
     end

@@ -55,7 +55,7 @@ function AboutTab:Build(parent)
   local para2 = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    L["Slots can also point to purpose-based Dynamic Actions such as Interrupt, Taunt, or Bloodlust. Each character gets whatever ability it actually has for that purpose, so one Layer works across many classes."]
+    L["Slots can also point to purpose-based Smart Actions such as Interrupt, Taunt, or Bloodlust. Each character gets whatever ability it actually has for that purpose, so one Layer works across many classes."]
   )
   para2:SetPoint("TOP", para1, "BOTTOM", 0, -12)
   para2:SetWidth(460)

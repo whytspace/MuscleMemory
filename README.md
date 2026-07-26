@@ -10,7 +10,7 @@ Muscle Memory keeps your action bars consistent across every character. Capture 
 reusable **[layers](#layers-not-snapshots)**, then put the right spell, item, macro, mount, or
 equipment set back into each slot on any character — with one click.
 
-A slot can also point to a **[dynamic action](#dynamic-actions)** instead of a fixed spell. Bind a
+A slot can also point to a **[smart action](#smart-actions)** instead of a fixed spell. Bind a
 button to *Interrupt*, *Taunt*, or *Bloodlust*, and every character gets whatever ability it actually
 has for the job. One binding, every class.
 
@@ -23,10 +23,10 @@ has for the job. One binding, every class.
 
 - **Set up your bars once.** Snapshot your live bars into layers and apply them on any character —
   no rebuilding the same layout on every alt.
-- **Slots that follow your class.** Build your own dynamic actions that resolve to whatever ability
+- **Slots that follow your class.** Build your own smart actions that resolve to whatever ability
   each character actually has — plus built-ins for the staples like Bloodlust, Interrupt, and Battle
   Rez.
-- **Real macros when you need them.** Render a dynamic action as a macro for mouseover, focus,
+- **Real macros when you need them.** Render a smart action as a macro for mouseover, focus,
   modifier, and conditional casts (`/use [@mouseover,help][@focus] %name%`); Muscle Memory writes and
   maintains the per-character macro for you.
 - **Your macros travel with you.** A bound character macro is recreated on any character that doesn't
@@ -42,7 +42,7 @@ has for the job. One binding, every class.
 - **Scriptable.** A public API lets macros and other add-ons drive everything in the window 😉
 - **Separate setups.** Profiles keep independent configurations you can switch at once — an
   account-wide default, or a dedicated one per character.
-- **Share your setup.** Export layers, dynamic actions, or whole profiles as a copyable string;
+- **Share your setup.** Export layers, smart actions, or whole profiles as a copyable string;
   imports preview what's inside and always create new entries, never overwrite yours.
 
 ## Layers, not snapshots
@@ -59,18 +59,18 @@ That ordering makes layers composable:
 - Keep a **shared base layer** underneath for the buttons every character has in the same place. Edit
   it once and everyone who doesn't override that slot updates.
 - Scope any layer with **conditions** so it only applies to the characters it's meant for.
-- Drop **dynamic-action slots** into any layer, so one button resolves per character without forking
+- Drop **smart-action slots** into any layer, so one button resolves per character without forking
   the layer.
 
-## Dynamic actions
+## Smart actions
 
-A **dynamic action** is a named stand-in for an ability — *Interrupt*, *Bloodlust*, *Taunt* — rather
+A **smart action** is a named stand-in for an ability — *Interrupt*, *Bloodlust*, *Taunt* — rather
 than a fixed spell. Behind the name is an ordered list of candidates, and each character resolves to
 the **first one it can actually use**, checking class, spec, known spells, owned items, profession,
 and level. One slot becomes Pummel on your Warrior, Mind Freeze on your Death Knight, and
 Counterspell on your Mage.
 
-![Muscle Memory dynamic actions tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png)
+![Muscle Memory smart actions tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/smart-actions.png)
 
 Built-ins cover Bloodlust, Interrupt, Stun, Hard CC, Soft CC, Battle Rez, Taunt, Movement, and the
 racials whose spell differs by class (Blood Elf: Arcane Torrent, Orc: Blood Fury, Draenei: Gift of
@@ -84,7 +84,7 @@ the Naaru) — and you can build your own:
   `%name%` resolves per character. The built-in Interrupt ships this way — it hits your focus, falling
   back to your current target.
 
-Muscle Memory writes and maintains the real per-character macro for you — edit the dynamic action and
+Muscle Memory writes and maintains the real per-character macro for you — edit the smart action and
 the macro follows:
 
 ![Muscle Memory macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png)
@@ -110,7 +110,7 @@ The slash commands cover the daily essentials:
 - `/mm preview` — show what Apply would change, without touching your bars
 - `/mm apply` — restore your bars from the active profile
 
-Everything else — profiles, layers, dynamic actions, settings — is managed in the window, or
+Everything else — profiles, layers, smart actions, settings — is managed in the window, or
 programmatically through the public API: the global `MuscleMemory` exposes it all to macros and
 other add-ons (e.g. `/run MuscleMemory.layers.captureAll("healing")`). Explore it with
 `/dump MuscleMemory`; [API.lua](API.lua) documents every function and the data shapes.
@@ -119,7 +119,7 @@ other add-ons (e.g. `/run MuscleMemory.layers.captureAll("healing")`). Explore i
 
 | | |
 |---|---|
-| ![Layers](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png) | ![Dynamic actions](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/dynamic-actions.png) |
+| ![Layers](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png) | ![Smart actions](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/smart-actions.png) |
 | ![Profiles](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/profiles.png) | ![Macro editor](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-editor.png) |
 | ![Rendered macro](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/macro-window.png) | ![Bind suggestion](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/suggestion.png) |
 
