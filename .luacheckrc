@@ -7,6 +7,7 @@ ignore = {
 }
 
 exclude_files = {
+  ".claude/**",
   ".devcontainer/**",
   "Libs/**"
 }
