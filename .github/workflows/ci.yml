@@ -37,4 +37,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
-          args: --check Applier.lua Capture.lua Core.lua Database.lua Defaults.lua Events.lua Resolver.lua SlashCommands.lua Data UI Util spec
+          args: --check API.lua Applier.lua Capture.lua Core.lua Database.lua Defaults.lua Events.lua Resolver.lua Share.lua SlashCommands.lua Undo.lua Data Locales UI Util scripts spec
