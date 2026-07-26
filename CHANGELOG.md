@@ -7,6 +7,7 @@ All notable player-facing changes are recorded here.
 - **[New]** Muscle Memory now speaks German, the first language beyond English. The window and its chat messages follow your client language, falling back to English anywhere a translation is missing. The predefined Dynamic Action names (Interrupt, Bloodlust, Taunt, ...) deliberately stay English, since that is the shorthand players use.
 - **[Change]** Class, role, faction and race names in the condition editor now come from the game itself, so they always match the wording you see elsewhere in the client.
 - **[Change]** Minor design improvements: section headings are set apart by size instead of capitals, and buttons grow to fit their caption.
+- **[Fix]** Exporting the same profile twice now always produces the same sharing string. It previously changed after a reload, which made two identical exports look different.
 
 ## 0.13.0 - 2026-07-25
 

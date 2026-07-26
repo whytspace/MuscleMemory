@@ -97,6 +97,16 @@ describe("Share", function()
       assert.same(package, decoded)
     end)
 
+    -- The same profile must always encode to the same string. Decoding rebuilds
+    -- the tables with a fresh key order, the way a reload does, so re-encoding
+    -- the result catches serialization that follows Lua's table order.
+    it("encodes the same package to the same string regardless of table order", function()
+      local profileId = seedContent()
+      local text = MM.Share:Encode(MM.Share:BuildPackage(profileId))
+      local reencoded = MM.Share:Encode(MM.Share:Decode(text))
+      assert.equals(text, reencoded)
+    end)
+
     it("tolerates whitespace and line breaks pasted around the string", function()
       local profileId = seedContent()
       local text = MM.Share:Encode(MM.Share:BuildPackage(profileId))

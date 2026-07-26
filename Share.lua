@@ -126,7 +126,9 @@ function Share:Encode(package)
     return nil, "serialization libraries are not loaded"
   end
 
-  local serialized = serializer:Serialize(package)
+  -- `stable` sorts map keys: without it LibSerialize follows Lua's table order,
+  -- so the same profile encodes differently after any reload.
+  local serialized = serializer:SerializeEx({ stable = true }, package)
   local compressed = deflate:CompressDeflate(serialized, { level = 9 })
   return "!MM:" .. self.FORMAT_VERSION .. "!" .. deflate:EncodeForPrint(compressed)
 end
