@@ -9,9 +9,12 @@ devc up
 devc luacheck .
 devc stylua .
 devc busted
+devc lua scripts/check-locales.lua
 ```
 
 Run the checks before committing.
+
+`check-locales.lua` compares every `Locales/*.lua` table against the strings the add-on actually uses, reporting keys that are missing (untranslated — harmless, they fall back to English), redundant (the source string is gone) or whose `%s`/`%d` markers don't match the key. It exits non-zero for the latter two. Pass `--strict` to fail on untranslated keys too.
 
 To load edits in WoW, symlink the repo into the AddOns folder:
 

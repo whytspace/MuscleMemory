@@ -95,6 +95,9 @@ fi
 devc luacheck .
 devc busted
 devc stylua --check .
+# Not --strict: shipping a partly translated locale is fine (it falls back to
+# English), but a dead entry or a broken format marker is not.
+devc lua scripts/check-locales.lua --release
 
 toc_tmp="$(mktemp "$toc.XXXXXX")"
 if ! awk -v version="$version" '
