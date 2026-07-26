@@ -492,28 +492,29 @@ function SmartActionsTab:BuildCenter(parent, ref, smartAction)
   pill:SetPoint("LEFT", title, "RIGHT", 8, 0)
   pill:SetActive(ref.source == "custom" and MM.Share:IsRecentImport("actions", MM.DB:GetActiveProfileId(), ref.id))
 
+  -- Icon buttons: captions in a wordier language crowded the title out of the
+  -- header, and the tooltip carries the wording instead.
   local locked = ref.source == "predefined"
-  if locked then
-    local clone = Widgets.Button(center, L["Clone to edit"], 110, function()
-      cloneSmartAction(ref)
-    end)
-    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
-  else
-    local clone = Widgets.Button(center, L["Clone"], 60, function()
-      cloneSmartAction(ref)
-    end)
-    clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
+  local clone = Widgets.IconButton(center, Widgets.ICON.clone, locked and L["Clone to edit"] or L["Clone"], function()
+    cloneSmartAction(ref)
+  end)
+  Widgets.AnchorHeaderAction(clone, center, title)
 
-    local del = Widgets.Button(center, L["Delete"], 64, function()
+  if not locked then
+    local del = Widgets.IconButton(center, Widgets.ICON.delete, L["Delete"], function()
       deleteSmartAction(ref)
     end)
     del:SetPoint("RIGHT", clone, "LEFT", -6, 0)
 
-    local rename = Widgets.Button(center, L["Rename"], 66, function()
+    local rename = Widgets.IconButton(center, Widgets.ICON.rename, L["Rename"], function()
       renameSmartAction(ref)
     end)
     rename:SetPoint("RIGHT", del, "LEFT", -6, 0)
   end
+
+  -- 12 inset on both sides, the icon cluster, and the pill with its gaps.
+  local actionWidth = locked and 26 or (3 * 26 + 2 * 6)
+  Widgets.TruncateToFit(title, center:GetWidth() - 24 - actionWidth - 8 - pill:GetWidth() - 8)
 
   -- Resolution chip.
   local resolved = resolveSmartAction(ref)

@@ -220,20 +220,19 @@ local function buildRows(self)
       pill:SetPoint("LEFT", name, "RIGHT", 8, 0)
     end
 
-    local delete = Widgets.Button(row, L["Delete"], 74, function()
+    local delete = Widgets.IconButton(row, Widgets.ICON.delete, L["Delete"], function()
       deleteProfile(id)
     end)
     delete:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-    if #list <= 1 then
-      delete:Disable()
-    end
+    delete:SetMotionScriptsWhileDisabled(true)
+    Widgets.SetIconButtonEnabled(delete, #list > 1)
 
-    local rename = Widgets.Button(row, L["Rename"], 74, function()
+    local rename = Widgets.IconButton(row, Widgets.ICON.rename, L["Rename"], function()
       renameProfile(id)
     end)
     rename:SetPoint("RIGHT", delete, "LEFT", -6, 0)
 
-    local clone = Widgets.Button(row, L["Clone"], 74, function()
+    local clone = Widgets.IconButton(row, Widgets.ICON.clone, L["Clone"], function()
       cloneProfile(id)
     end)
     clone:SetPoint("RIGHT", rename, "LEFT", -6, 0)

@@ -606,14 +606,14 @@ function LayersTab:BuildGrid(parent, layerId, layer)
     grid.pill = Widgets.Pill(grid.frame, L["Imported"], Widgets.ICON.import)
     grid.pill:SetPoint("LEFT", grid.title, "RIGHT", 8, 0)
 
-    grid.delete = Widgets.Button(grid.frame, L["Delete"], 60, function()
+    grid.delete = Widgets.IconButton(grid.frame, Widgets.ICON.delete, L["Delete"], function()
       local id = MM.DB:GetSelectedLayerId()
       local m = MM.DB:GetLayer(id)
       deleteLayer(id, m and m.name or id)
     end)
-    grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -12, -2)
+    grid.delete:SetMotionScriptsWhileDisabled(true)
 
-    grid.rename = Widgets.Button(grid.frame, L["Rename"], 66, function()
+    grid.rename = Widgets.IconButton(grid.frame, Widgets.ICON.rename, L["Rename"], function()
       local id = MM.DB:GetSelectedLayerId()
       local m = MM.DB:GetLayer(id)
       renameLayer(id, m and m.name or id)
@@ -651,11 +651,12 @@ function LayersTab:BuildGrid(parent, layerId, layer)
 
   grid.title:SetText(layer and layer.name or layerId)
   grid.pill:SetActive(MM.Share:IsRecentImport("layers", MM.DB:GetActiveProfileId(), layerId))
-  if MM.Tables.Count(MM.DB:Layers() or {}) <= 1 then
-    grid.delete:Disable()
-  else
-    grid.delete:Enable()
-  end
+  -- Anchored here, not at creation: the title is empty until it has a name, and
+  -- an empty line box would place the icons too high.
+  Widgets.AnchorHeaderAction(grid.delete, grid.frame, grid.title)
+  -- 12 inset on both sides, the two icon buttons, and the pill with its gaps.
+  Widgets.TruncateToFit(grid.title, grid.frame:GetWidth() - 24 - (2 * 26 + 6) - 8 - grid.pill:GetWidth() - 8)
+  Widgets.SetIconButtonEnabled(grid.delete, MM.Tables.Count(MM.DB:Layers() or {}) > 1)
 
   -- Bars (real Edit Mode bars and their scattered slot ranges, not 1..120 linear).
   grid.otherLayers = otherLayerSlots(layerId)
@@ -667,6 +668,11 @@ function LayersTab:BuildGrid(parent, layerId, layer)
     local rowLabel = grid.rowLabels[barIndex]
     if not rowLabel then
       rowLabel = Widgets.Label(grid.area, "GameFontHighlightSmall", "", colors.parchment)
+      -- Bar names are translated, so a long one (deDE "Himmelsreiten") would run
+      -- under the first cell. Ellipsize instead of widening the whole grid.
+      rowLabel:SetWidth(LABEL_WIDTH - 6)
+      rowLabel:SetWordWrap(false)
+      rowLabel:SetJustifyH("LEFT")
       grid.rowLabels[barIndex] = rowLabel
     end
     rowLabel:ClearAllPoints()

@@ -298,18 +298,12 @@ end
 
 -- Undo/Redo stay in place; whichever has nothing to do is disabled and faded
 -- rather than hidden, so the row never shifts.
-local function setUndoButtonState(button, enabled)
-  button:SetEnabled(enabled)
-  button.icon:SetDesaturated(not enabled)
-  button.icon:SetAlpha(enabled and 1 or 0.3)
-end
-
 function UI:UpdateUndoButtons()
   if not self.undoButton then
     return
   end
-  setUndoButtonState(self.undoButton, MM.Undo:CanUndo())
-  setUndoButtonState(self.redoButton, MM.Undo:CanRedo())
+  MM.ui.Widgets.SetIconButtonEnabled(self.undoButton, MM.Undo:CanUndo())
+  MM.ui.Widgets.SetIconButtonEnabled(self.redoButton, MM.Undo:CanRedo())
 end
 
 function UI:SelectTab(tab)

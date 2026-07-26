@@ -100,30 +100,13 @@ end
 -- The tab assigns `onInvert`; it flips every non-locked checkbox in the column.
 -- `hint` is an optional extra tooltip line (the actions column's locked note).
 local function invertLink(host, hint)
-  local button = CreateFrame("Button", nil, host)
-  button:SetSize(16, 16)
-  local icon = button:CreateTexture(nil, "ARTWORK")
-  icon:SetSize(13, 13)
-  icon:SetPoint("CENTER")
-  icon:SetTexture(Widgets.ICON.invert)
-  icon:SetAlpha(0.65)
-  button:SetScript("OnEnter", function(self)
-    icon:SetAlpha(1)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText(L["Invert selection"])
-    GameTooltip:AddLine(L["Flips every checkbox in this column."] .. (hint and (" " .. hint) or ""), 1, 1, 1, true)
-    GameTooltip:Show()
-  end)
-  button:SetScript("OnLeave", function()
-    icon:SetAlpha(0.65)
-    GameTooltip:Hide()
-  end)
-  button:SetScript("OnClick", function(self)
+  return Widgets.IconButton(host, Widgets.ICON.invert, function()
+    return L["Invert selection"], L["Flips every checkbox in this column."] .. (hint and (" " .. hint) or "")
+  end, function(self)
     if self.onInvert then
       self.onInvert()
     end
-  end)
-  return button
+  end, true)
 end
 
 -- Build the shared skeleton into `parent`: intro column plus three groove-split

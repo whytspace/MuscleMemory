@@ -50,6 +50,9 @@ Widgets.ICON = {
   invert = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-invert",
   undo = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-undo",
   redo = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-redo",
+  rename = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-rename",
+  clone = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-clone",
+  delete = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-delete",
 }
 
 -- The game's small fonts set their lines tight; wrapped body text needs air.
@@ -130,23 +133,33 @@ function Widgets.Dropdown(parent, width, getData)
   return dropdown
 end
 
--- A compact square icon-glyph button (rename pencil, delete trash, …) built
--- from a Blizzard icon texture so it reads as native chrome.
-function Widgets.IconButton(parent, texture, tooltip, onClick)
-  local button = CreateFrame("Button", nil, parent)
-  button:SetSize(26, 24)
+-- Resting glyph alpha: a tiled button carries its own contrast, a plain one
+-- stays quiet next to text until the pointer finds it.
+local ICON_BUTTON_ALPHA = { tiled = 1, plain = 0.65 }
 
-  local bg = button:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints()
-  bg:SetColorTexture(0, 0, 0, 0.35)
+-- A compact square icon-glyph button (rename pencil, delete trash, …) built
+-- from a Blizzard icon texture so it reads as native chrome. `plain` drops the
+-- tile and highlight for a bare glyph that brightens on hover — for icons that
+-- sit inline beside text, where a tile would shout.
+function Widgets.IconButton(parent, texture, tooltip, onClick, plain)
+  local button = CreateFrame("Button", nil, parent)
+  button:SetSize(plain and 16 or 26, plain and 16 or 24)
+  button.restAlpha = plain and ICON_BUTTON_ALPHA.plain or ICON_BUTTON_ALPHA.tiled
+
+  if not plain then
+    local bg = button:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0, 0, 0, 0.35)
+    button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+  end
 
   local icon = button:CreateTexture(nil, "ARTWORK")
   icon:SetPoint("CENTER")
-  icon:SetSize(14, 14)
+  icon:SetSize(plain and 13 or 14, plain and 13 or 14)
   icon:SetTexture(texture)
+  icon:SetAlpha(button.restAlpha)
   button.icon = icon
 
-  button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
   if onClick then
     button:SetScript("OnClick", function(self, ...)
       onClick(self, ...)
@@ -158,32 +171,62 @@ function Widgets.IconButton(parent, texture, tooltip, onClick)
       end
     end)
   end
-  if tooltip then
-    -- A function tooltip is re-evaluated on every hover; it may return a
-    -- second value for a dimmer detail line under the title.
-    button:SetScript("OnEnter", function(self)
-      local text, detail
-      if type(tooltip) == "function" then
-        text, detail = tooltip()
-      else
-        text = tooltip
-      end
-      if not text then
-        GameTooltip:Hide()
-        return
-      end
-      GameTooltip:SetOwner(self, "ANCHOR_TOP")
-      GameTooltip:SetText(text)
-      if detail then
-        GameTooltip:AddLine(detail, 0.82, 0.78, 0.66, true)
-      end
-      GameTooltip:Show()
-    end)
-    button:SetScript("OnLeave", function()
+
+  -- A function tooltip is re-evaluated on every hover; it may return a second
+  -- value for a dimmer detail line under the title.
+  button:SetScript("OnEnter", function(self)
+    self.icon:SetAlpha(1)
+    local text, detail
+    if type(tooltip) == "function" then
+      text, detail = tooltip()
+    else
+      text = tooltip
+    end
+    if not text then
       GameTooltip:Hide()
-    end)
-  end
+      return
+    end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(text)
+    if detail then
+      GameTooltip:AddLine(detail, 0.82, 0.78, 0.66, true)
+    end
+    GameTooltip:Show()
+  end)
+  button:SetScript("OnLeave", function(self)
+    self.icon:SetAlpha(self:IsEnabled() and self.restAlpha or 0.3)
+    GameTooltip:Hide()
+  end)
   return button
+end
+
+-- Pin a header's icon-button row to the right, centred on the title's middle
+-- line. Top-aligning instead would read as sitting low: a button is 24px tall
+-- against a ~17px line box. Call it once the title carries its real text.
+-- The extra pixel is an optical correction — the title's line box carries a
+-- descender the capitals never reach, so true centring still looks low.
+function Widgets.AnchorHeaderAction(button, parent, title, topInset)
+  button:ClearAllPoints()
+  button:SetPoint("RIGHT", parent, "TOPRIGHT", -12, -(topInset or 2) - title:GetStringHeight() / 2 + 1)
+end
+
+-- Ellipsize a header title that would otherwise grow under the icon buttons
+-- beside it. Only constrained when it doesn't fit, so a short name keeps its
+-- natural width and whatever anchors to its right edge still hugs the text.
+-- A non-positive `available` (the frame isn't laid out yet) leaves it alone.
+function Widgets.TruncateToFit(fontString, available)
+  fontString:SetWordWrap(false)
+  fontString:SetJustifyH("LEFT")
+  local fits = not available or available <= 0 or fontString:GetStringWidth() <= available
+  fontString:SetWidth(fits and 0 or available)
+end
+
+-- Disabled icon buttons stay in place and fade, so the row never reflows and
+-- the tooltip still explains what the action would do.
+function Widgets.SetIconButtonEnabled(button, enabled)
+  button:SetEnabled(enabled)
+  button.icon:SetDesaturated(not enabled)
+  button.icon:SetAlpha(enabled and button.restAlpha or 0.3)
 end
 
 -- A checkbox (used for the per-layer "applied in this profile" toggle).
