@@ -93,7 +93,7 @@ local function assignSuggesting(layerId, slot, assignment)
     message = string.format(
       L["%s is covered by %s. Do you want to bind the Dynamic Action instead? You can disable this behavior in the settings."],
       name,
-      #matches == 1 and L["a Dynamic Action"] or L["multiple Dynamic Actions"]
+      L:Plural(#matches, "a Dynamic Action", "multiple Dynamic Actions")
     ),
     options = matches,
     rowInit = suggestionRowInit,

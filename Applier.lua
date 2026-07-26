@@ -174,7 +174,7 @@ end
 
 -- A "N slot(s)" phrase without the awkward "1 slots".
 local function slotCount(n)
-  return n == 1 and L["1 slot"] or string.format(L["%d slots"], n)
+  return L:Plural(n, "%d slot", "%d slots")
 end
 
 -- Append ", N slot(s) <suffix>" to a summary when the count is non-zero.

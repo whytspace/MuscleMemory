@@ -774,14 +774,11 @@ function ImportTab:Refresh()
   local from = package.profileName and string.format(L[' from "%s"'], package.profileName) or ""
   self.summary:SetText(
     string.format(
-      L["Sharing string%s contains %d %s, %d %s and %d %s."],
+      L["Sharing string%s contains %s, %s and %s."],
       from,
-      totalLayers,
-      totalLayers == 1 and L["Layer"] or L["Layers"],
-      totalActions,
-      totalActions == 1 and L["Dynamic Action"] or L["Dynamic Actions"],
-      #allMacros,
-      #allMacros == 1 and L["Macro"] or L["Macros"]
+      L:Plural(totalLayers, "%d Layer", "%d Layers"),
+      L:Plural(totalActions, "%d Dynamic Action", "%d Dynamic Actions"),
+      L:Plural(#allMacros, "%d Macro", "%d Macros")
     )
   )
 
@@ -837,9 +834,9 @@ local function runImport()
   local profile = MM.DB:GetProfile(result.profileId)
   MM:Print(
     string.format(
-      L["imported %d layers and %d dynamic actions into profile %s."],
-      #result.layers,
-      #result.dynamicActions,
+      L["imported %s and %s into profile %s."],
+      L:Plural(#result.layers, "%d layer", "%d layers"),
+      L:Plural(#result.dynamicActions, "%d dynamic action", "%d dynamic actions"),
       profile and profile.name or result.profileId
     )
   )

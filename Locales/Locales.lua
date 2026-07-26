@@ -19,3 +19,19 @@ MM.L = setmetatable({}, {
     return key
   end,
 })
+
+-- Which plural form a count takes. A locale that needs more than the English
+-- two defines its own `plural` (ruRU: one/few/many, frFR: 0 counts as one).
+local function defaultPlural(n)
+  return n == 1 and "one" or "other"
+end
+
+-- Pluralized text: L:Plural(n, "%d slot", "%d slots"). A locale translates it
+-- under the singular key with the form appended — "%d slot#one", "#other",
+-- "#few", … — and untranslated falls back to the two English forms.
+function MM.L:Plural(n, singular, plural)
+  local locale = MM.Locales[MM.locale]
+  local form = ((locale and locale.plural) or defaultPlural)(n)
+  local text = (locale and locale[singular .. "#" .. form]) or (form == "one" and singular) or plural or singular
+  return string.format(text, n)
+end

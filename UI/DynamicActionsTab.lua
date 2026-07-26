@@ -304,7 +304,7 @@ local function dynamicActionRowInit(row, data)
   local count = dynamicActionObj and dynamicActionObj.candidates and #dynamicActionObj.candidates or 0
   row.sub:SetText(
     resolved and string.format(L["resolves to %s"], resolved.label)
-      or string.format(L["no match \194\183 %d candidates"], count)
+      or L:Plural(count, "no match \194\183 %d candidate", "no match \194\183 %d candidates")
   )
 end
 

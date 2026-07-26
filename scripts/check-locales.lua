@@ -113,6 +113,13 @@ local function usedKeys()
       add(unquote(quote, body))
     end
 
+    for call in src:gmatch("L:Plural%b()") do
+      local quote, body = call:match("([\"'])(.-)%1")
+      if quote then
+        add(unquote(quote, body))
+      end
+    end
+
     for quote, body in src:gmatch("return%s+nil%s*,%s*([\"'])(.-)%1") do
       add(unquote(quote, body))
     end
@@ -212,17 +219,26 @@ for _, code in ipairs(codes) do
 
   local translated, redundant, mismatched = 0, {}, {}
   for key, value in pairs(entries) do
-    translated = translated + 1
-    if not corpus:find(key, 1, true) then
-      redundant[#redundant + 1] = key
-    elseif formatMarkers(key) ~= formatMarkers(value) then
-      mismatched[#mismatched + 1] = key
+    -- A locale's own plural rule is a function, not a translated string.
+    if key ~= "plural" then
+      translated = translated + 1
+      -- Plural entries are "<singular key>#<form>"; the source holds only the base.
+      if not corpus:find((key:gsub("#%a+$", "")), 1, true) then
+        redundant[#redundant + 1] = key
+      elseif formatMarkers(key) ~= formatMarkers(value) then
+        mismatched[#mismatched + 1] = key
+      end
     end
+  end
+
+  local base = {}
+  for key in pairs(entries) do
+    base[(key:gsub("#%a+$", ""))] = true
   end
 
   local missing = {}
   for key in pairs(used) do
-    if entries[key] == nil then
+    if not base[key] then
       missing[#missing + 1] = key
     end
   end
