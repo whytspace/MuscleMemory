@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 local Applier = {}
 MM.Applier = Applier
@@ -129,15 +130,16 @@ end
 function Applier:DescribeTo(entry)
   local resolved = entry.resolved
   if not resolved or resolved.kind == "empty" then
-    return "empty"
+    return L["empty"]
   end
   local label = resolved.label
   local body = MM.Macros.ResolvedAsMacro(resolved)
   if body then
     local record = MM.DB:GetMacroRecord(entry.layerId, entry.slot)
-    label = label .. (MM.Macros.WouldUpdate(record, body) and " (updates the macro)" or " (creates a macro)")
+    local note = MM.Macros.WouldUpdate(record, body) and L["%s (updates the macro)"] or L["%s (creates a macro)"]
+    label = string.format(note, label)
   elseif resolved.kind == "macro" and not resolved.macro then
-    label = label .. " (recreates the macro)"
+    label = string.format(L["%s (recreates the macro)"], label)
   end
   return label
 end
@@ -154,17 +156,25 @@ end
 
 -- Warning line for a resolved action that can't be placed right now.
 function Applier:DescribeUnavailable(entry)
-  return string.format("%s: %s is not available", MM.Actions.GetSlotLabel(entry.slot), entry.resolved.label or "action")
+  return string.format(
+    L["%s: %s is not available"],
+    MM.Actions.GetSlotLabel(entry.slot),
+    entry.resolved.label or L["action"]
+  )
 end
 
 -- Debug line for an unresolved slot that is left unchanged.
 function Applier:DescribeKept(entry)
-  return string.format("%s: %s (left unchanged)", MM.Actions.GetSlotLabel(entry.slot), tostring(entry.unresolvedReason))
+  return string.format(
+    L["%s: %s (left unchanged)"],
+    MM.Actions.GetSlotLabel(entry.slot),
+    L[tostring(entry.unresolvedReason)]
+  )
 end
 
 -- A "N slot(s)" phrase without the awkward "1 slots".
 local function slotCount(n)
-  return n == 1 and "1 slot" or (n .. " slots")
+  return n == 1 and L["1 slot"] or string.format(L["%d slots"], n)
 end
 
 -- Append ", N slot(s) <suffix>" to a summary when the count is non-zero.
@@ -178,7 +188,7 @@ end
 function Applier:PreviewProfile(profileId)
   local plan, reason = self:BuildPlan(profileId)
   if not plan then
-    MM:Warn(reason)
+    MM:Warn(L[reason])
     return nil
   end
 
@@ -187,10 +197,10 @@ function Applier:PreviewProfile(profileId)
   for _, conflict in ipairs(plan.conflicts) do
     MM:Warn(
       string.format(
-        "layer %s contains invalid slot %s (%s).",
+        L["layer %s contains invalid slot %s (%s)."],
         conflict.firstLayer,
         tostring(conflict.slot),
-        conflict.secondLayer
+        L[conflict.secondLayer]
       )
     )
   end
@@ -214,8 +224,8 @@ function Applier:PreviewProfile(profileId)
     end
   end
 
-  local summary = changed == 0 and "no changes" or (slotCount(changed) .. " would change")
-  MM:Print(appendCount(summary, unavailable, "not available"))
+  local summary = changed == 0 and L["no changes"] or string.format(L["%s would change"], slotCount(changed))
+  MM:Print(appendCount(summary, unavailable, L["not available"]))
 
   if debug then
     for _, line in ipairs(issues) do
@@ -265,7 +275,7 @@ function Applier:ApplyEntry(entry)
   end
 
   if entry.resolved.pickupAvailable == false then
-    return false, string.format("%s is not available", entry.resolved.label or "action")
+    return false, string.format(L["%s is not available"], entry.resolved.label or L["action"])
   end
 
   -- The client no-ops dropping the ability the Single Button Assistant currently
@@ -326,7 +336,11 @@ end
 -- edit / create) through the per-character registry, and place it.
 function Applier:ApplyMacroEntry(entry, slot, dynamicAction, body)
   local record = MM.DB:GetMacroRecord(entry.layerId, slot)
-  local macro, result = MM.Macros.EnsureMacro(record, MM.Macros.MacroName(dynamicAction), body)
+  local name, nameReason = MM.Macros.MacroName(dynamicAction)
+  if not name then
+    return false, nameReason
+  end
+  local macro, result = MM.Macros.EnsureMacro(record, name, body)
   if not macro then
     return false, result
   end
@@ -399,18 +413,18 @@ function Applier:ApplyProfile(profileId, options)
 
   local canApply, reason = self:CanApply()
   if not canApply then
-    MM:Warn("cannot apply: " .. reason)
+    MM:Warn(string.format(L["cannot apply: %s"], L[reason]))
     return false
   end
 
   local plan, planReason = self:BuildPlan(profileId)
   if not plan then
-    MM:Warn(planReason)
+    MM:Warn(L[planReason])
     return false
   end
 
   if #plan.conflicts > 0 and not options.allowConflicts then
-    MM:Warn("cannot apply because active layers contain invalid slots. Use /mm preview for details.")
+    MM:Warn(L["cannot apply because active layers contain invalid slots. Use /mm preview for details."])
     return false
   end
 
@@ -434,7 +448,7 @@ function Applier:ApplyProfile(profileId, options)
         MM:Print(line)
       else
         failed = failed + 1
-        MM:Warn(string.format("%s: %s", MM.Actions.GetSlotLabel(slot), applyReason))
+        MM:Warn(string.format("%s: %s", MM.Actions.GetSlotLabel(slot), L[applyReason]))
       end
     elseif action == "keep" then
       issues[#issues + 1] = self:DescribeKept(entry)
@@ -443,9 +457,9 @@ function Applier:ApplyProfile(profileId, options)
 
   self:CleanupMacroOrphans(plan)
 
-  local summary = updated == 0 and "no changes" or (slotCount(updated) .. " updated")
-  summary = appendCount(summary, unavailable, "not available")
-  summary = appendCount(summary, failed, "failed")
+  local summary = updated == 0 and L["no changes"] or string.format(L["%s updated"], slotCount(updated))
+  summary = appendCount(summary, unavailable, L["not available"])
+  summary = appendCount(summary, failed, L["failed"])
   MM:Print(summary)
 
   if MM.DB:GetRoot().debug then

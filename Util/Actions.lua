@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 local Actions = {}
 MM.Actions = Actions
@@ -137,11 +138,11 @@ end
 function Actions.GetSlotLabel(slot)
   for _, bar in ipairs(Actions.BARS) do
     if slot > bar.base and slot <= bar.base + MM.ACTIONS_PER_BAR then
-      return string.format("%s button %d", bar.label, slot - bar.base)
+      return string.format(L["%s button %d"], L[bar.label], slot - bar.base)
     end
   end
   -- Paging / vehicle slots that aren't one of the listed bars.
-  return string.format("slot %d", slot)
+  return string.format(L["slot %d"], slot)
 end
 
 -- Abbreviate a single binding token to WoW's action-bar hotkey style. WoW's
@@ -199,67 +200,70 @@ end
 
 function Actions.GetAssignmentLabel(assignment)
   if not assignment then
-    return "Ignore"
+    return L["Ignore"]
   end
 
   if assignment.type == "ignore" then
-    return "Ignore"
+    return L["Ignore"]
   end
 
   if assignment.type == "empty" then
-    return "Empty"
+    return L["Empty"]
   end
 
   if assignment.type == "dynamicaction" then
     local dynamicAction = MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id })
-    return dynamicAction and dynamicAction.name or ("Dynamic Action: " .. tostring(assignment.id))
+    if dynamicAction then
+      return dynamicAction.name
+    end
+    return string.format(L["Dynamic Action: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "spell" then
     local info = MM.Spells.GetInfo(assignment.id)
     if info and info.name then
-      return string.format("%s (spell %s)", info.name, tostring(assignment.id))
+      return string.format(L["%s (spell %s)"], info.name, tostring(assignment.id))
     end
-    return "Spell ID: " .. tostring(assignment.id)
+    return string.format(L["Spell ID: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "item" then
     local info = MM.Items.GetInfo(assignment.id)
     if info and info.name then
-      return string.format("%s (item %s)", info.name, tostring(assignment.id))
+      return string.format(L["%s (item %s)"], info.name, tostring(assignment.id))
     end
-    return "Item ID: " .. tostring(assignment.id)
+    return string.format(L["Item ID: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "macro" then
-    return "Macro: " .. tostring(assignment.nameHint or assignment.bodyHash)
+    return string.format(L["Macro: %s"], tostring(assignment.nameHint or assignment.bodyHash))
   end
 
   if assignment.type == "mount" then
     local info = MM.Mounts.GetInfo(assignment.id)
-    return info and info.name or ("Mount ID: " .. tostring(assignment.id))
+    return info and info.name or string.format(L["Mount ID: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "battlepet" then
     local info = MM.BattlePets.GetInfo(assignment.id)
-    return info and info.name or ("Battle Pet: " .. tostring(assignment.id))
+    return info and info.name or string.format(L["Battle Pet: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "flyout" then
     local info = MM.Flyouts.GetInfo(assignment.id)
-    return info and info.name or ("Flyout ID: " .. tostring(assignment.id))
+    return info and info.name or string.format(L["Flyout ID: %s"], tostring(assignment.id))
   end
 
   if assignment.type == "equipmentset" then
-    return "Equipment Set: " .. tostring(assignment.name)
+    return string.format(L["Equipment Set: %s"], tostring(assignment.name))
   end
 
   if assignment.type == "outfit" then
     local info = MM.Outfits.GetInfo(assignment.id)
-    return "Outfit: " .. tostring(info and info.name or assignment.nameHint or assignment.id)
+    return string.format(L["Outfit: %s"], tostring(info and info.name or assignment.nameHint or assignment.id))
   end
 
-  return assignment.type or "Unknown"
+  return assignment.type or L["Unknown"]
 end
 
 -- Bare display name (no type prefixes or id suffixes), e.g. as a name prefill;
@@ -298,28 +302,28 @@ function Actions.GetLiveActionLabel(slot)
 
   local info = Actions.GetInfo(slot)
   if not info or not info.actionType then
-    return "empty"
+    return L["empty"]
   end
   local kind, id = info.actionType, info.id
   if kind == "spell" then
     local s = MM.Spells.GetInfo(id)
-    return s and s.name or ("spell " .. tostring(id))
+    return s and s.name or string.format(L["spell %s"], tostring(id))
   elseif kind == "item" then
     local i = MM.Items.GetInfo(id)
-    return i and i.name or ("item " .. tostring(id))
+    return i and i.name or string.format(L["item %s"], tostring(id))
   elseif kind == "macro" then
-    return (GetActionText and GetActionText(slot)) or ("macro " .. tostring(id))
+    return (GetActionText and GetActionText(slot)) or string.format(L["macro %s"], tostring(id))
   elseif kind == "flyout" then
     local f = MM.Flyouts.GetInfo(id)
-    return f and f.name or ("flyout " .. tostring(id))
+    return f and f.name or string.format(L["flyout %s"], tostring(id))
   elseif kind == "mount" or kind == "summonmount" or kind == "companion" then
     local m = MM.Mounts.GetInfo(id)
-    return m and m.name or ("mount " .. tostring(id))
+    return m and m.name or string.format(L["mount %s"], tostring(id))
   elseif kind == "battlepet" or kind == "summonpet" then
     local p = MM.BattlePets.GetInfo(id)
-    return p and p.name or ("pet " .. tostring(id))
+    return p and p.name or string.format(L["pet %s"], tostring(id))
   elseif kind == "equipmentset" then
-    return "equipment set"
+    return L["equipment set"]
   end
   return tostring(kind)
 end

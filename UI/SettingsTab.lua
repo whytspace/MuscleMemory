@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The Settings tab: the active profile's fallback, which decides what happens to
 -- a managed slot whose dynamicAction can't resolve for the current character. The design
@@ -10,6 +11,7 @@ MM.ui.SettingsTab = SettingsTab
 local Widgets = MM.ui.Widgets
 local colors = Widgets.colors
 
+-- Labels/hints stay English at file scope; L[] wraps them at render time.
 local FALLBACK_OPTIONS = {
   { value = "keep", label = "Ignore", hint = "Leave whatever action is already there." },
   { value = "clear", label = "Clear", hint = "Remove the existing action, if any." },
@@ -47,10 +49,10 @@ local function buildRadioGroup(column, anchor, options, onSelect)
     radio:EnableMouse(false)
     radios[option.value] = radio
 
-    local label = Widgets.Label(row, "GameFontHighlight", option.label, colors.parchment)
+    local label = Widgets.Label(row, "GameFontHighlight", L[option.label], colors.parchment)
     label:SetPoint("LEFT", radio, "RIGHT", 6, 0)
 
-    local hint = Widgets.Label(row, "GameFontDisableSmall", "\226\128\148 " .. option.hint)
+    local hint = Widgets.Label(row, "GameFontDisableSmall", "\226\128\148 " .. L[option.hint])
     hint:SetPoint("LEFT", label, "RIGHT", 6, 0)
 
     row:SetScript("OnClick", function()
@@ -68,13 +70,13 @@ function SettingsTab:Build(parent)
   column:SetWidth(540)
   column:SetPoint("BOTTOM", parent, "BOTTOM", 0, 0)
 
-  local subHeading = Widgets.Label(column, "GameFontNormal", "When a slot can't resolve", colors.parchment)
+  local subHeading = Widgets.Label(column, "GameFontNormal", L["When a slot can't resolve"], colors.parchment)
   subHeading:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
 
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."
+    L["If a Dynamic Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."]
   )
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)
@@ -87,13 +89,13 @@ function SettingsTab:Build(parent)
     self:Refresh()
   end)
 
-  local responseHeading = Widgets.Label(column, "GameFontNormal", "When changes are detected", colors.parchment)
+  local responseHeading = Widgets.Label(column, "GameFontNormal", L["When changes are detected"], colors.parchment)
   responseHeading:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -28)
 
   local responseBlurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "An event such as logging in, changing specialization or learning a spell re-scans the active profile. Choose how the add-on reacts when that scan finds changes to apply."
+    L["An event such as logging in, changing specialization or learning a spell re-scans the active profile. Choose how the add-on reacts when that scan finds changes to apply."]
   )
   responseBlurb:SetPoint("TOPLEFT", responseHeading, "BOTTOMLEFT", 0, -6)
   responseBlurb:SetWidth(480)
@@ -105,13 +107,13 @@ function SettingsTab:Build(parent)
     self:Refresh()
   end)
 
-  local suggestHeading = Widgets.Label(column, "GameFontNormal", "When binding an action", colors.parchment)
+  local suggestHeading = Widgets.Label(column, "GameFontNormal", L["When binding an action"], colors.parchment)
   suggestHeading:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -28)
 
   local suggestBlurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    "Some abilities are covered by a Dynamic Action (an interrupt, a per-class racial, ...). Choose what happens when you bind one of those to a slot."
+    L["Some abilities are covered by a Dynamic Action (an interrupt, a per-class racial, ...). Choose what happens when you bind one of those to a slot."]
   )
   suggestBlurb:SetPoint("TOPLEFT", suggestHeading, "BOTTOMLEFT", 0, -6)
   suggestBlurb:SetWidth(480)

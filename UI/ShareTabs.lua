@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The Export and Import tabs. Both share the same four-panel layout: an intro
 -- column that holds the controls and the sharing string, then one column each
@@ -109,8 +110,8 @@ local function invertLink(host, hint)
   button:SetScript("OnEnter", function(self)
     icon:SetAlpha(1)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Invert selection")
-    GameTooltip:AddLine("Flips every checkbox in this column." .. (hint and (" " .. hint) or ""), 1, 1, 1, true)
+    GameTooltip:SetText(L["Invert selection"])
+    GameTooltip:AddLine(L["Flips every checkbox in this column."] .. (hint and (" " .. hint) or ""), 1, 1, 1, true)
     GameTooltip:Show()
   end)
   button:SetScript("OnLeave", function()
@@ -148,7 +149,7 @@ local function buildPanels(parent, key)
   panels.intro:SetPoint("BOTTOM", parent, "BOTTOM", 0, 8)
   panels.intro:SetWidth(columnWidth)
 
-  local columns = { { "layers", "Layers" }, { "actions", "Dynamic Actions" }, { "macros", "Macros" } }
+  local columns = { { "layers", L["Layers"] }, { "actions", L["Dynamic Actions"] }, { "macros", L["Macros"] } }
   local left = PAD + columnWidth
   panels.columnFrames = {}
   for index, column in ipairs(columns) do
@@ -173,7 +174,7 @@ local function buildPanels(parent, key)
 
     -- Macros only ride along; there is no selection to invert there.
     if column[1] ~= "macros" then
-      local hint = column[1] == "actions" and "Items a selected layer needs stay included." or nil
+      local hint = column[1] == "actions" and L["Items a selected layer needs stay included."] or nil
       local link = invertLink(host, hint)
       link:SetPoint("RIGHT", host, "TOPRIGHT", -SCROLLBAR_INSET, -5)
       panels[column[1] .. "Invert"] = link
@@ -327,7 +328,7 @@ local function setHeader(header, selected, total)
   elseif selected then
     title = string.format("%s (%d)", title, selected)
   end
-  header:SetText(string.upper(title))
+  header:SetText(title)
 end
 
 -- The custom dynamic action keys required by the included layers.
@@ -366,7 +367,8 @@ local function macroItems(layersByKey, layerIncluded, actionsByKey, actionInclud
       local body = macroKey(assignment)
       if not seen[body] then
         seen[body] = true
-        macros[#macros + 1] = { name = assignment.nameHint or "Unnamed macro", scope = assignment.scope, body = body }
+        macros[#macros + 1] =
+          { name = assignment.nameHint or L["Unnamed macro"], scope = assignment.scope, body = body }
       end
     elseif assignment.type == "equipmentset" then
       equipmentSets = true
@@ -398,7 +400,7 @@ local function macroItems(layersByKey, layerIncluded, actionsByKey, actionInclud
 
   local items = {}
   for _, macro in ipairs(macros) do
-    local suffix = macro.scope == "character" and "  |cff8a8474(character)|r" or ""
+    local suffix = macro.scope == "character" and ("  |cff8a8474" .. L["(character)"] .. "|r") or ""
     items[#items + 1] = { plain = true, label = macro.name .. suffix, selfKey = macro.body }
   end
   return items, equipmentSets
@@ -484,8 +486,8 @@ function ExportTab:Refresh()
   -- Nothing to share yet: swap the columns for a pointer to the other tabs.
   if not next(profile.layers or {}) and not next(profile.dynamicActions or {}) then
     panels.SetEmpty(
-      "Nothing to export yet",
-      "This profile has no Layers or Dynamic Actions. Create some first — or import someone else's — then come back to share them."
+      L["Nothing to export yet"],
+      L["This profile has no Layers or Dynamic Actions. Create some first — or import someone else's — then come back to share them."]
     )
     self.exportText = ""
     self.output.EditBox:SetText("")
@@ -559,7 +561,7 @@ function ExportTab:Refresh()
     return true
   end
   setHeader(panels.macrosHeader, #macros, #macroItems(layersByKey, everything, actionsByKey, everything))
-  self.note:SetText(equipmentSets and "Equipment sets only resolve for users with same-named sets." or "")
+  self.note:SetText(equipmentSets and L["Equipment sets only resolve for users with same-named sets."] or "")
 
   -- The whole "Share This" block only exists while there is a string to copy;
   -- an empty selection hides it rather than showing an empty box.
@@ -570,7 +572,7 @@ function ExportTab:Refresh()
   self.output:SetShown(text ~= nil)
   self.outputHeader:SetShown(text ~= nil)
   self.outputHint:SetShown(text ~= nil)
-  self.outputHint:SetText("Click the string, then press Ctrl+C.")
+  self.outputHint:SetText(L["Click the string, then press Ctrl+C."])
 end
 
 function ExportTab:Build(parent)
@@ -600,21 +602,19 @@ function ExportTab:Build(parent)
       end
     end
 
-    local blurb = Widgets.Label(intro, "GameFontHighlight", "Choose what to include in your export.")
+    local blurb = Widgets.Label(intro, "GameFontHighlight", L["Choose what to include in your export."])
     blurb:SetPoint("TOPLEFT", intro, "TOPLEFT", 0, 0)
     blurb:SetPoint("RIGHT", intro, "RIGHT", -INTRO_GAP, 0)
     blurb:SetJustifyH("LEFT")
-    blurb:SetSpacing(2)
 
     local blurb2 = Widgets.Label(
       intro,
       "GameFontHighlight",
-      "Custom Dynamic Actions a selected Layer uses come along automatically, as do the macros in its slots."
+      L["Custom Dynamic Actions a selected Layer uses come along automatically, as do the macros in its slots."]
     )
     blurb2:SetPoint("TOPLEFT", blurb, "BOTTOMLEFT", 0, -8)
     blurb2:SetPoint("RIGHT", intro, "RIGHT", -INTRO_GAP, 0)
     blurb2:SetJustifyH("LEFT")
-    blurb2:SetSpacing(2)
 
     self.settingsCheck = Widgets.Checkbox(intro, true, function(check)
       local state = ensureExportState()
@@ -622,7 +622,7 @@ function ExportTab:Build(parent)
       ExportTab:Refresh()
     end)
     self.settingsCheck:SetPoint("TOPLEFT", blurb2, "BOTTOMLEFT", -4, -22)
-    local settingsLabel = Widgets.Label(intro, "GameFontHighlight", "Include profile settings", colors.parchment)
+    local settingsLabel = Widgets.Label(intro, "GameFontHighlight", L["Include profile settings"], colors.parchment)
     settingsLabel:SetPoint("LEFT", self.settingsCheck, "RIGHT", 4, 0)
 
     -- Conditional equipment-set note (they only resolve by name on the other side).
@@ -642,7 +642,7 @@ function ExportTab:Build(parent)
     self.output:SetPoint("BOTTOMRIGHT", self.outputHint, "TOPRIGHT", 0, 8)
     self.output:SetHeight(56)
 
-    self.outputHeader = Widgets.SectionHeader(intro, "Share This")
+    self.outputHeader = Widgets.SectionHeader(intro, L["Share This"])
     self.outputHeader:SetPoint("BOTTOMLEFT", self.output, "TOPLEFT", 0, 8)
 
     -- Output, not input: edits snap back and focusing selects everything so
@@ -684,17 +684,17 @@ function ImportTab:Refresh()
     -- message; the paste box on the left stays the call to action.
     if importState.reason then
       panels.SetEmpty(
-        "Not a valid sharing string",
-        "The pasted text couldn't be read. Copy the whole string, from !MM: to the end, and paste it again."
+        L["Not a valid sharing string"],
+        L["The pasted text couldn't be read. Copy the whole string, from !MM: to the end, and paste it again."]
       )
     else
       panels.SetEmpty(
-        "Nothing to preview yet",
-        "Paste a sharing string on the left to see the Layers, Dynamic Actions and macros it contains."
+        L["Nothing to preview yet"],
+        L["Paste a sharing string on the left to see the Layers, Dynamic Actions and macros it contains."]
       )
     end
     self.note:SetText("")
-    self.summary:SetText(importState.reason and ("|cffd1a05f" .. importState.reason .. "|r") or "")
+    self.summary:SetText(importState.reason and ("|cffd1a05f" .. L[importState.reason] .. "|r") or "")
     self.nameBox:SetShown(self.newProfileCheck:GetChecked())
     self.accept:SetEnabled(false)
     return
@@ -765,23 +765,23 @@ function ImportTab:Refresh()
   end
   local allMacros = macroItems(layersByKey, everything, actionsByKey, everything)
   setHeader(panels.macrosHeader, #macros, #allMacros)
-  self.note:SetText(equipmentSets and "Equipment sets only resolve if you have same-named sets." or "")
+  self.note:SetText(equipmentSets and L["Equipment sets only resolve if you have same-named sets."] or "")
 
   -- The summary describes the string's content; the column headers carry the
   -- current selection.
   local totalLayers = #package.layers
   local totalActions = MM.Tables.Count(package.dynamicActions)
-  local from = package.profileName and (' from "' .. package.profileName .. '"') or ""
+  local from = package.profileName and string.format(L[' from "%s"'], package.profileName) or ""
   self.summary:SetText(
     string.format(
-      "Sharing string%s contains %d %s, %d %s and %d %s.",
+      L["Sharing string%s contains %d %s, %d %s and %d %s."],
       from,
       totalLayers,
-      totalLayers == 1 and "Layer" or "Layers",
+      totalLayers == 1 and L["Layer"] or L["Layers"],
       totalActions,
-      totalActions == 1 and "Dynamic Action" or "Dynamic Actions",
+      totalActions == 1 and L["Dynamic Action"] or L["Dynamic Actions"],
       #allMacros,
-      #allMacros == 1 and "Macro" or "Macros"
+      #allMacros == 1 and L["Macro"] or L["Macros"]
     )
   )
 
@@ -830,14 +830,14 @@ local function runImport()
 
   local result, reason = MM.Share:Import(package, importSelection(package), target)
   if not result then
-    MM:Warn(reason or "import failed")
+    MM:Warn(L[reason or "import failed"])
     return
   end
 
   local profile = MM.DB:GetProfile(result.profileId)
   MM:Print(
     string.format(
-      "imported %d layers and %d dynamic actions into profile %s.",
+      L["imported %d layers and %d dynamic actions into profile %s."],
       #result.layers,
       #result.dynamicActions,
       profile and profile.name or result.profileId
@@ -891,23 +891,21 @@ function ImportTab:Build(parent)
     end
 
     local blurb =
-      Widgets.Label(intro, "GameFontHighlight", "Paste a sharing string, choose what to take, and import it.")
+      Widgets.Label(intro, "GameFontHighlight", L["Paste a sharing string, choose what to take, and import it."])
     blurb:SetPoint("TOPLEFT", intro, "TOPLEFT", 0, 0)
     blurb:SetPoint("RIGHT", intro, "RIGHT", -INTRO_GAP, 0)
     blurb:SetJustifyH("LEFT")
-    blurb:SetSpacing(2)
 
     local blurb2 = Widgets.Label(
       intro,
       "GameFontHighlight",
-      "Everything imported is created new — nothing of yours is overwritten. New entries are highlighted as imported until your next reload."
+      L["Everything imported is created new — nothing of yours is overwritten. New entries are highlighted as imported until your next reload."]
     )
     blurb2:SetPoint("TOPLEFT", blurb, "BOTTOMLEFT", 0, -8)
     blurb2:SetPoint("RIGHT", intro, "RIGHT", -INTRO_GAP, 0)
     blurb2:SetJustifyH("LEFT")
-    blurb2:SetSpacing(2)
 
-    local inputHeader = Widgets.SectionHeader(intro, "Paste Here")
+    local inputHeader = Widgets.SectionHeader(intro, L["Paste Here"])
     inputHeader:SetPoint("TOPLEFT", blurb2, "BOTTOMLEFT", 0, -26)
 
     self.input = Widgets.MultiLineInput(intro, "", 0, decodeInput)
@@ -927,7 +925,7 @@ function ImportTab:Build(parent)
     self.note:SetJustifyH("LEFT")
 
     -- Target controls and the Import button, bottom-up.
-    self.accept = Widgets.Button(intro, "Import", 120, runImport)
+    self.accept = Widgets.Button(intro, L["Import"], 120, runImport)
     self.accept:SetPoint("BOTTOMLEFT", intro, "BOTTOMLEFT", 0, 0)
     addButtonIcon(self.accept, Widgets.ICON.import)
 
@@ -941,7 +939,7 @@ function ImportTab:Build(parent)
       ImportTab:Refresh()
     end)
     self.newProfileCheck:SetPoint("BOTTOMLEFT", self.nameBox, "TOPLEFT", -12, 6)
-    local newProfileLabel = Widgets.Label(intro, "GameFontHighlight", "Import as a new profile", colors.parchment)
+    local newProfileLabel = Widgets.Label(intro, "GameFontHighlight", L["Import as a new profile"], colors.parchment)
     newProfileLabel:SetPoint("LEFT", self.newProfileCheck, "RIGHT", 4, 0)
   end
 

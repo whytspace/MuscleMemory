@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The DynamicActions tab. Browsing is fully live (list, per-character resolution,
 -- candidate display), predefined dynamicActions can be cloned into editable profile
@@ -20,7 +21,7 @@ local function refresh()
 end
 
 -- Custom ("your") dynamic actions first, then the predefined ones, each block
--- sorted by name — mirroring the rail's two sections.
+-- sorted by the name shown — mirroring the rail's two sections.
 local function dynamicActionList()
   local custom = {}
   for id, dynamicAction in pairs(MM.DB:DynamicActions() or {}) do
@@ -30,8 +31,9 @@ local function dynamicActionList()
   for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
     predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
   end
-  -- Duplicate names are legal for custom actions; tie-break on the id so the
-  -- rail order is stable across rebuilds.
+  -- Sort on the displayed name: a predefined `name` is the English translation key.
+  -- Duplicate names are legal for custom actions, so tie-break on the id to keep
+  -- the rail order stable across rebuilds.
   local byName = function(left, right)
     if left.name ~= right.name then
       return left.name < right.name
@@ -80,7 +82,7 @@ end
 local function cloneDynamicAction(ref)
   local key, reason = MM.DB:CloneDynamicAction(ref)
   if not key then
-    MM:Warn(reason or "could not clone dynamic action")
+    MM:Warn(L[reason or "could not clone dynamic action"])
     return
   end
   selectDynamicAction({ source = "custom", id = key })
@@ -91,12 +93,12 @@ end
 local function addCandidateFromCursor(dynamicActionId)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
-    MM:Warn(reason or "could not read cursor")
+    MM:Warn(L[reason or "could not read cursor"])
     return
   end
   local ok, err = MM.DB:AddCandidate(dynamicActionId, assignment)
   if not ok then
-    MM:Warn(err or "could not add candidate")
+    MM:Warn(L[err or "could not add candidate"])
   end
   if ClearCursor then
     ClearCursor()
@@ -105,26 +107,32 @@ local function addCandidateFromCursor(dynamicActionId)
 end
 
 local function newDynamicAction()
-  MM.ui.Modals.Input("New Dynamic Action", "Name the new Dynamic Action", "New Dynamic Action", "Create", function(name)
-    local key = MM.DB:CreateDynamicAction(name ~= "" and name or nil)
-    selectDynamicAction({ source = "custom", id = key })
-  end)
+  MM.ui.Modals.Input(
+    L["New Dynamic Action"],
+    L["Name the new Dynamic Action"],
+    L["New Dynamic Action"],
+    L["Create"],
+    function(name)
+      local key = MM.DB:CreateDynamicAction(name ~= "" and name or nil)
+      selectDynamicAction({ source = "custom", id = key })
+    end
+  )
 end
 
 local function renameDynamicAction(ref)
   local dynamicAction = MM.DB:ResolveDynamicAction(ref)
   MM.ui.Modals.Input(
-    "Rename Dynamic Action",
-    "New name for this Dynamic Action",
+    L["Rename Dynamic Action"],
+    L["New name for this Dynamic Action"],
     dynamicAction and dynamicAction.name or "",
-    "Rename",
+    L["Rename"],
     function(name)
       if name == "" then
         return
       end
       local ok, err = MM.DB:RenameDynamicAction(ref.id, name)
       if not ok then
-        MM:Warn(err)
+        MM:Warn(L[err])
       end
       refresh()
     end
@@ -135,13 +143,13 @@ local function deleteDynamicAction(ref)
   local dynamicAction = MM.DB:ResolveDynamicAction(ref)
   local name = dynamicAction and dynamicAction.name or ref.id
   MM.ui.Modals.Confirm(
-    "Delete Dynamic Action",
-    string.format('Delete custom dynamicAction "%s"? Slots bound to it will fall through on the next apply.', name),
-    "Delete",
+    L["Delete Dynamic Action"],
+    string.format(L['Delete custom dynamicAction "%s"? Slots bound to it will fall through on the next apply.'], name),
+    L["Delete"],
     function()
       local ok, err = MM.DB:DeleteDynamicAction(ref.id)
       if not ok then
-        MM:Warn(err)
+        MM:Warn(L[err])
       end
       MM.ui.state.dynamicAction = nil
       refresh()
@@ -149,19 +157,21 @@ local function deleteDynamicAction(ref)
   )
 end
 
+-- Title-casing the token is the last resort for a class that no longer exists.
 local function prettyClass(token)
   token = tostring(token)
-  return token:sub(1, 1):upper() .. token:sub(2):lower()
+  local localized = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[token]
+  return localized or (token:sub(1, 1):upper() .. token:sub(2):lower())
 end
 
 -- Describe one candidate for the rows + rule panel.
 local function candidateInfo(candidate)
   if candidate.type == "spell" then
     local info = MM.Spells.GetInfo(candidate.id)
-    return info and info.name or ("Spell " .. tostring(candidate.id)), info and info.icon
+    return info and info.name or string.format(L["Spell %s"], tostring(candidate.id)), info and info.icon
   elseif candidate.type == "item" then
     local info = MM.Items.GetInfo(candidate.id)
-    local name = info and info.name or ("Item " .. tostring(candidate.id))
+    local name = info and info.name or string.format(L["Item %s"], tostring(candidate.id))
     -- Crafted items show their quality crystal, lifted from the item link.
     local marker = MM.Items.GetQualityMarkup(candidate.id)
     if marker then
@@ -170,13 +180,13 @@ local function candidateInfo(candidate)
     return name, info and info.icon
   elseif candidate.type == "mount" then
     local info = MM.Mounts.GetInfo(candidate.id)
-    return info and info.name or ("Mount " .. tostring(candidate.id)), info and info.icon
+    return info and info.name or string.format(L["Mount %s"], tostring(candidate.id)), info and info.icon
   elseif candidate.type == "battlepet" then
     local info = MM.BattlePets.GetInfo(candidate.id)
-    return info and info.name or ("Pet " .. tostring(candidate.id)), info and info.icon
+    return info and info.name or string.format(L["Pet %s"], tostring(candidate.id)), info and info.icon
   elseif candidate.type == "flyout" then
     local info = MM.Flyouts.GetInfo(candidate.id)
-    return info and info.name or ("Flyout " .. tostring(candidate.id)), info and info.icon
+    return info and info.name or string.format(L["Flyout %s"], tostring(candidate.id)), info and info.icon
   end
   return MM.Actions.GetAssignmentLabel(candidate), nil
 end
@@ -292,7 +302,10 @@ local function dynamicActionRowInit(row, data)
   end
 
   local count = dynamicActionObj and dynamicActionObj.candidates and #dynamicActionObj.candidates or 0
-  row.sub:SetText(resolved and ("resolves to " .. resolved.label) or ("no match \194\183 " .. count .. " candidates"))
+  row.sub:SetText(
+    resolved and string.format(L["resolves to %s"], resolved.label)
+      or string.format(L["no match \194\183 %d candidates"], count)
+  )
 end
 
 function DynamicActionsTab:BuildRail(parent)
@@ -301,8 +314,8 @@ function DynamicActionsTab:BuildRail(parent)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "+ New Dynamic Action", RAIL_WIDTH - 24, newDynamicAction)
-  newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
+  local newButton = Widgets.Button(inset, "+ " .. L["New Dynamic Action"], RAIL_WIDTH - 24, newDynamicAction)
+  newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 8)
 
   local list = Widgets.DataList(inset, "dynamicActions.rail", {
     extent = 44,
@@ -315,11 +328,11 @@ function DynamicActionsTab:BuildRail(parent)
   -- Two sections: the profile's own dynamic actions first, then the predefined
   -- ones. The headers make the split obvious, so no per-row lock icon is needed.
   local custom, predefined = dynamicActionList()
-  local items = { { header = "Your Dynamic Actions", extent = 26 } }
+  local items = { { header = L["Your Dynamic Actions"], extent = 26 } }
   for _, dynamicAction in ipairs(custom) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end
-  items[#items + 1] = { header = "Predefined (read-only)", extent = 34 }
+  items[#items + 1] = { header = L["Predefined (read-only)"], extent = 34 }
   for _, dynamicAction in ipairs(predefined) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end
@@ -362,7 +375,7 @@ local function candidateRowInit(row, data)
         if ref.source ~= "predefined" then
           local ok, err = MM.DB:RemoveCandidate(ref.id, index)
           if not ok then
-            MM:Warn(err)
+            MM:Warn(L[err])
           end
           refresh()
         end
@@ -476,7 +489,7 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
   local title = Widgets.Title(center, dynamicAction and dynamicAction.name or "\226\128\148")
   title:SetPoint("TOPLEFT", center, "TOPLEFT", 12, -2)
 
-  local pill = Widgets.Pill(center, "Imported", Widgets.ICON.import)
+  local pill = Widgets.Pill(center, L["Imported"], Widgets.ICON.import)
   pill:SetPoint("LEFT", title, "RIGHT", 8, 0)
   pill:SetActive(
     ref.source == "custom" and MM.Share:IsRecentImport("dynamicActions", MM.DB:GetActiveProfileId(), ref.id)
@@ -484,22 +497,22 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
 
   local locked = ref.source == "predefined"
   if locked then
-    local clone = Widgets.Button(center, "Clone to edit", 110, function()
+    local clone = Widgets.Button(center, L["Clone to edit"], 110, function()
       cloneDynamicAction(ref)
     end)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
   else
-    local clone = Widgets.Button(center, "Clone", 60, function()
+    local clone = Widgets.Button(center, L["Clone"], 60, function()
       cloneDynamicAction(ref)
     end)
     clone:SetPoint("TOPRIGHT", center, "TOPRIGHT", -12, -2)
 
-    local del = Widgets.Button(center, "Delete", 64, function()
+    local del = Widgets.Button(center, L["Delete"], 64, function()
       deleteDynamicAction(ref)
     end)
     del:SetPoint("RIGHT", clone, "LEFT", -6, 0)
 
-    local rename = Widgets.Button(center, "Rename", 66, function()
+    local rename = Widgets.Button(center, L["Rename"], 66, function()
       renameDynamicAction(ref)
     end)
     rename:SetPoint("RIGHT", del, "LEFT", -6, 0)
@@ -507,17 +520,20 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
 
   -- Resolution chip.
   local resolved = resolveDynamicAction(ref)
-  local chipText = resolved and ('On this character resolves to "' .. resolved.label .. '".')
-    or "No candidate is usable by this character \226\128\148 slots bound here fall through."
+  local chipText = resolved and string.format(L['On this character resolves to "%s".'], resolved.label)
+    or L["No candidate is usable by this character \226\128\148 slots bound here fall through."]
   local chip = Widgets.Label(center, "GameFontHighlightSmall", chipText, resolved and colors.parchment or colors.warn)
   chip:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -14)
   chip:SetPoint("RIGHT", center, "RIGHT", -12, 0)
   chip:SetJustifyH("LEFT")
 
-  local hintText = locked and "Priority order \194\183 the first usable action wins"
-    or "Drag here to add \194\183 drag a row to reorder \194\183 right-click to remove \194\183 first usable wins"
+  local hintText = locked and L["Priority order"]
+    or L["Drag to add \194\183 drag a row to reorder \194\183 right-click to remove"]
   local hint = Widgets.Hint(center, hintText)
   hint:SetPoint("TOPLEFT", chip, "BOTTOMLEFT", 0, -10)
+  -- Bounded right, so a longer translation wraps instead of running past the panel.
+  hint:SetPoint("RIGHT", center, "RIGHT", -30, 0)
+  hint:SetJustifyH("LEFT")
 
   -- Candidate rows — a retained DataProvider list, so selecting/removing a
   -- candidate no longer snaps the scroll to the top and the rows aren't leaked.
@@ -543,8 +559,8 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
   DynamicActionsTab._candidateKey = dynamicActionKey
 
   if #candidates == 0 then
-    local emptyText = locked and "This dynamic action has no candidates."
-      or "No candidates yet \226\128\148 drag a spell, item, macro, mount or equipment set here to add one."
+    local emptyText = locked and L["This dynamic action has no candidates."]
+      or L["No candidates yet \226\128\148 drag a spell, item, macro, mount or equipment set here to add one."]
     local note = Widgets.Hint(center, emptyText)
     note:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -16)
     note:SetPoint("RIGHT", center, "RIGHT", -12, 0)
@@ -558,7 +574,7 @@ function DynamicActionsTab:BuildCenter(parent, ref, dynamicAction)
     end
   else
     if not DynamicActionsTab.dropZone then
-      DynamicActionsTab.dropZone = Widgets.DropZone("Drop to add a candidate")
+      DynamicActionsTab.dropZone = Widgets.DropZone(L["Drop to add a candidate"])
     end
     DynamicActionsTab.dropZone:Attach(center, function()
       addCandidateFromCursor(ref.id)
@@ -575,15 +591,15 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   local ref = selectedRef()
   local editable = ref and ref.source == "custom"
 
-  local header = Widgets.SectionHeader(inset, "Execution")
+  local header = Widgets.SectionHeader(inset, L["Execution"])
   header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -16)
 
   if not editable then
     local asMacro = dynamicAction and MM.Macros.EffectiveMode(dynamicAction) == "macro"
     local note = Widgets.Hint(
       inset,
-      asMacro and "This predefined dynamic action is rendered as a macro. Clone it to change the body."
-        or "Predefined dynamic actions place the resolved spell or item directly. Clone this dynamic action to render it as a macro instead."
+      asMacro and L["This predefined dynamic action is rendered as a macro. Clone it to change the body."]
+        or L["Predefined dynamic actions place the resolved spell or item directly. Clone this dynamic action to render it as a macro instead."]
     )
     note:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -10)
     note:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
@@ -607,12 +623,12 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   end)
   box:SetPoint("TOPLEFT", header, "BOTTOMLEFT", -4, -6)
 
-  local boxLabel = Widgets.Label(inset, "GameFontHighlight", "Render as a macro")
+  local boxLabel = Widgets.Label(inset, "GameFontHighlight", L["Render as a macro"])
   boxLabel:SetPoint("LEFT", box, "RIGHT", 2, 0)
 
   local intro = Widgets.Hint(
     inset,
-    "Put a generated macro on the bar instead of the raw action, so you can add mouseover, focus and other conditions while the dynamic action still resolves the right spell or item for this character."
+    L["Put a generated macro on the bar instead of the raw action, so you can add mouseover, focus and other conditions while the dynamic action still resolves the right spell or item for this character."]
   )
   intro:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 4, -6)
   intro:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
@@ -627,7 +643,7 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
     local badge = Widgets.Label(
       inset,
       "GameFontHighlightSmall",
-      "Macro mode supports spell, item, toy and mount candidates only.",
+      L["Macro mode supports spell, item, toy and mount candidates only."],
       colors.warn
     )
     badge:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -10)
@@ -636,7 +652,7 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
     anchor = badge
   end
 
-  local example = Widgets.Hint(inset, "Use %name% for the resolved action. Example:")
+  local example = Widgets.Hint(inset, L["Use %name% for the resolved action. Example:"])
   example:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -12)
   example:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   example:SetJustifyH("LEFT")
@@ -646,7 +662,7 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   sample:SetPoint("TOPLEFT", example, "BOTTOMLEFT", 0, -4)
   sample:SetJustifyH("LEFT")
 
-  local bodyHeader = Widgets.SectionHeader(inset, "Macro Body")
+  local bodyHeader = Widgets.SectionHeader(inset, L["Macro Body"])
   bodyHeader:SetPoint("TOPLEFT", sample, "BOTTOMLEFT", 0, -12)
 
   -- Live count of the longest body any candidate would produce (the macro grows
@@ -657,9 +673,9 @@ function DynamicActionsTab:BuildMacroPanel(inset, dynamicAction)
   local function updateCount(template)
     local worst = MM.Macros.WorstCaseLength(dynamicAction, template)
     local over = worst > MM.MACRO_BODY_LIMIT
-    local text = string.format("Longest result: %d / %d characters", worst, MM.MACRO_BODY_LIMIT)
+    local text = string.format(L["Longest result: %d / %d characters"], worst, MM.MACRO_BODY_LIMIT)
     if over then
-      text = text .. " \226\128\148 over the macro limit, macro mode is inactive until it fits."
+      text = string.format(L["%s \226\128\148 over the macro limit, macro mode is inactive until it fits."], text)
     end
     count:SetText(text)
     count:SetTextColor(Widgets.unpackColor(over and colors.danger or colors.muted))
@@ -717,7 +733,7 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
   title:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   title:SetJustifyH("LEFT")
 
-  local sub = Widgets.Label(inset, "GameFontDisableSmall", "when to use this candidate")
+  local sub = Widgets.Label(inset, "GameFontDisableSmall", L["when to use this candidate"])
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
   -- Live condition editor: custom dynamicActions are editable, predefined ones show
@@ -727,8 +743,8 @@ function DynamicActionsTab:BuildRule(parent, dynamicAction)
 
   local hint = Widgets.Hint(
     inset,
-    editable and "Leave everything off to use this whenever the character can cast it."
-      or "Predefined dynamic action \226\128\148 conditions are read-only."
+    editable and L["Leave everything off to use this whenever the character can cast it."]
+      or L["Predefined dynamic action \226\128\148 conditions are read-only."]
   )
   hint:SetPoint("TOPLEFT", tile, "BOTTOMLEFT", 0, -14)
   hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
@@ -755,7 +771,7 @@ end
 function DynamicActionsTab:BuildContent(parent)
   local ref = selectedRef()
   if not ref then
-    local note = Widgets.Label(parent, "GameFontHighlight", "No dynamic actions available.")
+    local note = Widgets.Label(parent, "GameFontHighlight", L["No dynamic actions available."])
     note:SetPoint("CENTER")
     return
   end

@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- Shared, native-styled UI building blocks. Every tab composes its frames from
 -- these so the look stays consistent and the tab files stay about layout.
@@ -51,10 +52,14 @@ Widgets.ICON = {
   redo = "Interface\\AddOns\\MuscleMemory\\Assets\\icon-redo",
 }
 
+-- The game's small fonts set their lines tight; wrapped body text needs air.
+Widgets.LINE_SPACING = 4
+
 -- A FontString on `parent`, optionally coloured. `font` is a Blizzard font
 -- object name (e.g. "GameFontNormal").
 function Widgets.Label(parent, font, text, color)
   local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormal")
+  label:SetSpacing(Widgets.LINE_SPACING)
   label:SetText(text or "")
   if color then
     label:SetTextColor(unpackColor(color))
@@ -66,16 +71,17 @@ end
 -- they all read the same.
 function Widgets.Hint(parent, text)
   local hint = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  hint:SetSpacing(Widgets.LINE_SPACING)
   hint:SetText(text or "")
   hint:SetTextColor(unpackColor(Widgets.colors.muted))
   return hint
 end
 
--- The small gold all-caps section heading used throughout the editor panels
--- ("SLOT EDITOR", "BIND TO A DYNAMIC ACTION", …).
+-- The small gold section heading. Set apart by size, not case: upper() only folds
+-- ASCII, so it would render "Ausführung" as "AUSFüHRUNG".
 function Widgets.SectionHeader(parent, text)
-  local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  label:SetText(string.upper(text or ""))
+  local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  label:SetText(text or "")
   label:SetTextColor(unpackColor(Widgets.colors.goldDim))
   -- Left-justified: an auto-sized FontString centers its glyphs inside a
   -- pixel-rounded rect, which makes changing text (live counters) wobble.
@@ -83,11 +89,14 @@ function Widgets.SectionHeader(parent, text)
   return label
 end
 
--- A standard Blizzard push button.
+-- A standard Blizzard push button. `width` is a minimum: the caption overflows
+-- the art rather than clipping, so a longer translation must widen the button.
 function Widgets.Button(parent, text, width, onClick)
   local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  button:SetSize(width or 90, 22)
   button:SetText(text)
+  local caption = button.GetFontString and button:GetFontString()
+  local needed = caption and (caption:GetStringWidth() + 30) or 0
+  button:SetSize(math.max(width or 90, needed), 22)
   if onClick then
     button:SetScript("OnClick", onClick)
   end
@@ -208,7 +217,7 @@ function Widgets.Pill(parent, text, iconTexture)
   end
 
   local hasText = text ~= nil and text ~= ""
-  local label = Widgets.Label(pill, "GameFontNormalSmall", string.upper(text or ""), Widgets.colors.gold)
+  local label = Widgets.Label(pill, "GameFontNormalSmall", text or "", Widgets.colors.gold)
   if icon and hasText then
     icon:SetPoint("LEFT", pill, "LEFT", 5, 0)
     label:SetPoint("LEFT", icon, "RIGHT", 3, 0)
@@ -438,10 +447,12 @@ end
 -- A multi-line text box for free-form input (macro bodies). Built on Blizzard's
 -- InputScrollFrameTemplate so it scrolls and caps length natively. `onChange`
 -- fires with the current text on every edit. Anchor it and set its height.
-function Widgets.MultiLineInput(parent, text, maxLetters, onChange)
+-- Capped in bytes, matching the client's own macro limit: SetMaxLetters would let
+-- 200 accented or CJK characters through as 400+ bytes.
+function Widgets.MultiLineInput(parent, text, maxBytes, onChange)
   local frame = CreateFrame("ScrollFrame", nil, parent, "InputScrollFrameTemplate")
   local edit = frame.EditBox
-  edit:SetMaxLetters(maxLetters or 0)
+  edit:SetMaxBytes(maxBytes or 0)
   edit:SetFontObject("ChatFontNormal")
   edit:SetMultiLine(true)
   if frame.CharCount then
@@ -745,7 +756,7 @@ end
 
 function Widgets.AddDynamicActionTooltipLine()
   GameTooltip:AddLine(
-    badgeLine(Widgets.ICON.dynamicAction, "This is a dynamic action"),
+    badgeLine(Widgets.ICON.dynamicAction, L["This is a dynamic action"]),
     unpackColor(Widgets.colors.goldDim)
   )
   GameTooltip:Show()
@@ -758,7 +769,7 @@ function Widgets.AddMacroTooltipLine(dynamicAction, leadingBlank)
     if leadingBlank then
       Widgets.AddBadgeTooltipSeparator()
     end
-    GameTooltip:AddLine(badgeLine(Widgets.ICON.macro, "Rendered as a macro"), unpackColor(Widgets.colors.goldDim))
+    GameTooltip:AddLine(badgeLine(Widgets.ICON.macro, L["Rendered as a macro"]), unpackColor(Widgets.colors.goldDim))
     GameTooltip:Show()
   end
 end

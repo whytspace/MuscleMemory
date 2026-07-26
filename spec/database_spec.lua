@@ -491,6 +491,17 @@ describe("DB", function()
       assert.equals("dynamic action already exists", reason)
     end)
 
+    -- A sharing string is untrusted, and everything downstream (the macro namer,
+    -- the rail) relies on every dynamic action having a name.
+    it("names an imported dynamic action that arrives without one", function()
+      local missing = MM.DB:AdoptDynamicAction(nil, "nameless", { candidates = {} })
+      assert.is_string(MM.DB:DynamicActions()[missing].name)
+      assert.not_equals("", MM.DB:DynamicActions()[missing].name)
+
+      local blank = MM.DB:AdoptDynamicAction(nil, "blank", { name = "", candidates = {} })
+      assert.not_equals("", MM.DB:DynamicActions()[blank].name)
+    end)
+
     it("adopts a layer under a fresh key and appends it to the order", function()
       local key = MM.DB:AdoptLayer(nil, { name = "Imported", slots = {}, enabled = true })
       assert.is_string(key)

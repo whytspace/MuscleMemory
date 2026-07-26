@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- A reusable editor for a `conditions` table (the one Conditions.Match reads),
 -- used by both dynamicAction candidates and layers. Builds into `parent`, mutates the
@@ -80,7 +81,7 @@ local function playerSpecs()
   for index = 1, GetNumSpecializations() do
     local id, name = GetSpecializationInfo(index)
     if id then
-      specs[#specs + 1] = { token = id, name = name or ("Spec " .. index) }
+      specs[#specs + 1] = { token = id, name = name or string.format(L["Spec %s"], index) }
     end
   end
   return specs
@@ -95,7 +96,7 @@ local function classSpecs(classId)
   for index = 1, GetNumSpecializationsForClassID(classId) or 0 do
     local id, name = GetSpecializationInfoForClassID(classId, index)
     if id then
-      specs[#specs + 1] = { token = id, name = name or ("Spec " .. index) }
+      specs[#specs + 1] = { token = id, name = name or string.format(L["Spec %s"], index) }
     end
   end
   return specs
@@ -117,6 +118,49 @@ local function raceOptions()
     end
   end
   return options
+end
+
+-- The client knows these names in every locale, so no translation file carries them.
+-- Each `name` above is a last-resort label (stale token), not a translation key.
+local ROLE_GLOBAL = { TANK = "TANK", HEALER = "HEALER", DAMAGER = "DAMAGER" }
+local FACTION_GLOBAL = { Alliance = "FACTION_ALLIANCE", Horde = "FACTION_HORDE" }
+
+-- C_CreatureInfo is keyed by id, our conditions by token, so index one by the other.
+local MAX_RACE_ID = 100
+local raceNames
+
+local function raceNameByToken(token)
+  if not raceNames then
+    raceNames = {}
+    if C_CreatureInfo and C_CreatureInfo.GetRaceInfo then
+      for raceId = 1, MAX_RACE_ID do
+        local info = C_CreatureInfo.GetRaceInfo(raceId)
+        if info and info.clientFileString and info.raceName then
+          raceNames[string.lower(info.clientFileString)] = info.raceName
+        end
+      end
+    end
+  end
+  return raceNames[string.lower(token or "")]
+end
+
+local function className(class)
+  return (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class.token]) or class.name
+end
+
+-- Spec names arrive localized from GetSpecializationInfo*, so they need no lookup.
+local function optionName(field, option)
+  local client
+  if field == "classes" then
+    client = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[option.token]
+  elseif field == "roles" then
+    client = _G[ROLE_GLOBAL[option.token] or ""]
+  elseif field == "factions" then
+    client = _G[FACTION_GLOBAL[option.token] or ""]
+  elseif field == "races" then
+    client = raceNameByToken(option.token)
+  end
+  return client or option.name
 end
 
 local function listHas(list, value)
@@ -150,7 +194,7 @@ local function specOptions(conditions)
     for _, class in ipairs(selected) do
       for _, spec in ipairs(classSpecs(class.id)) do
         if #selected > 1 then
-          spec.name = spec.name .. " (" .. class.name .. ")"
+          spec.name = string.format("%s (%s)", spec.name, className(class))
         end
         options[#options + 1] = spec
       end
@@ -168,7 +212,7 @@ local function specOptions(conditions)
       if GetSpecializationInfoByID then
         name = select(2, GetSpecializationInfoByID(token))
       end
-      options[#options + 1] = { token = token, name = name or ("Spec " .. tostring(token)) }
+      options[#options + 1] = { token = token, name = name or string.format(L["Spec %s"], tostring(token)) }
     end
   end
   return options
@@ -226,7 +270,7 @@ local function chipGroup(parent, top, conditions, field, options, editable, onCh
   local x, y, rowHeight = 0, 0, 22
   for _, option in ipairs(options) do
     local active = listHas(conditions[field], option.token)
-    local chip = makeChip(parent, option.name, active, editable, function()
+    local chip = makeChip(parent, optionName(field, option), active, editable, function()
       toggle(conditions, field, option.token)
       onChange()
     end)
@@ -293,7 +337,7 @@ local function sectionHeader(parent, top, title, count, active, expanded, onTogg
     glyph:SetTexture(CHEVRON[expanded])
   end
 
-  local label = Widgets.SectionHeader(button, count > 0 and (title .. " (" .. count .. ")") or title)
+  local label = Widgets.SectionHeader(button, count > 0 and string.format("%s (%d)", L[title], count) or L[title])
   label:SetPoint("LEFT", button, "LEFT", 0, 0)
   if active then
     label:SetTextColor(Widgets.unpackColor(colors.gold))
@@ -382,7 +426,7 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange, width)
     end
     local minBox = levelBox("levelMin")
     minBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, y - 2)
-    local dash = Widgets.Label(frame, "GameFontDisableSmall", "to")
+    local dash = Widgets.Label(frame, "GameFontDisableSmall", L["to"])
     dash:SetPoint("LEFT", minBox, "RIGHT", 8, 0)
     local maxBox = levelBox("levelMax")
     maxBox:SetPoint("LEFT", dash, "RIGHT", 8, 0)

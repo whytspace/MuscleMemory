@@ -84,6 +84,10 @@ function Stubs.new()
     UnitName = function(unit)
       return unit == "player" and world.playerName or nil
     end,
+    GetLocale = function()
+      return "enUS"
+    end,
+
     GetRealmName = function()
       return world.realm
     end,

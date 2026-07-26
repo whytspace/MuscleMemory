@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The Profiles tab. A profile is a complete, self-contained data set (its own
 -- layers, dynamicActions and fallback). This tab picks which profile applies — the
@@ -24,7 +25,7 @@ end
 -- Mutations ------------------------------------------------------------------
 
 local function newProfile()
-  MM.ui.Modals.Input("New Profile", "Name the new (empty) profile", "New Profile", "Create", function(name)
+  MM.ui.Modals.Input(L["New Profile"], L["Name the new (empty) profile"], L["New Profile"], L["Create"], function(name)
     local id = MM.DB:CreateProfile(name ~= "" and name or nil)
     MM.DB:SetActiveProfile(id)
     switched()
@@ -33,11 +34,11 @@ end
 
 local function cloneProfile(id)
   local profile = MM.DB:GetProfile(id)
-  local suggested = (profile and profile.name or "Profile") .. " Copy"
-  MM.ui.Modals.Input("Clone Profile", "Name for the cloned profile", suggested, "Clone", function(name)
+  local suggested = string.format(L["%s Copy"], profile and profile.name or L["Profile"])
+  MM.ui.Modals.Input(L["Clone Profile"], L["Name for the cloned profile"], suggested, L["Clone"], function(name)
     local newId, reason = MM.DB:CloneProfile(id, name ~= "" and name or nil)
     if not newId then
-      MM:Warn(reason)
+      MM:Warn(L[reason])
       return
     end
     MM.DB:SetActiveProfile(newId)
@@ -48,17 +49,17 @@ end
 local function renameProfile(id)
   local profile = MM.DB:GetProfile(id)
   MM.ui.Modals.Input(
-    "Rename Profile",
-    "New name for this profile",
+    L["Rename Profile"],
+    L["New name for this profile"],
     profile and profile.name or "",
-    "Rename",
+    L["Rename"],
     function(name)
       if name == "" then
         return
       end
       local ok, reason = MM.DB:RenameProfile(id, name)
       if not ok then
-        MM:Warn(reason)
+        MM:Warn(L[reason])
       end
       refresh()
     end
@@ -69,13 +70,13 @@ local function deleteProfile(id)
   local profile = MM.DB:GetProfile(id)
   local name = profile and profile.name or id
   MM.ui.Modals.Confirm(
-    "Delete Profile",
-    string.format('Delete profile "%s"? Its layers and dynamicActions are gone for good.', name),
-    "Delete",
+    L["Delete Profile"],
+    string.format(L['Delete profile "%s"? Its layers and dynamicActions are gone for good.'], name),
+    L["Delete"],
     function()
       local ok, reason = MM.DB:DeleteProfile(id)
       if not ok then
-        MM:Warn(reason)
+        MM:Warn(L[reason])
       end
       switched()
     end
@@ -105,7 +106,7 @@ local function playerData()
   local override = MM.DB:GetCharacterState().profile
   local items = {
     {
-      label = "Use global default",
+      label = L["Use global default"],
       selected = override == nil,
       onClick = function()
         MM.DB:SetActiveProfile(nil)
@@ -129,7 +130,7 @@ local function playerData()
     label = MM.DB:GetProfile(override).name
   else
     local global = MM.DB:GetProfile(MM.DB:GetGlobalProfileId())
-    label = "Use global default" .. (global and (" (" .. global.name .. ")") or "")
+    label = global and string.format(L["Use global default (%s)"], global.name) or L["Use global default"]
   end
   return { current = label, items = items }
 end
@@ -143,16 +144,16 @@ function ProfilesTab:Build(parent)
 
   -- Selectors sit side by side: the account default (left) and this character's
   -- override (right).
-  local globalHeader = Widgets.SectionHeader(column, "Global profile")
+  local globalHeader = Widgets.SectionHeader(column, L["Global profile"])
   globalHeader:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
-  local globalHint = Widgets.Label(column, "GameFontDisableSmall", "The default every character uses.")
+  local globalHint = Widgets.Label(column, "GameFontDisableSmall", L["The default every character uses."])
   globalHint:SetPoint("TOPLEFT", globalHeader, "BOTTOMLEFT", 0, -4)
   self.globalDropdown = Widgets.Dropdown(column, 260, globalData)
   self.globalDropdown:SetPoint("TOPLEFT", globalHint, "BOTTOMLEFT", 0, -8)
 
-  local playerHeader = Widgets.SectionHeader(column, "This character")
+  local playerHeader = Widgets.SectionHeader(column, L["This character"])
   playerHeader:SetPoint("TOPLEFT", globalHeader, "TOPLEFT", 300, 0)
-  local playerHint = Widgets.Label(column, "GameFontDisableSmall", "Override the default for this character only.")
+  local playerHint = Widgets.Label(column, "GameFontDisableSmall", L["Override the default for this character only."])
   playerHint:SetPoint("TOPLEFT", playerHeader, "BOTTOMLEFT", 0, -4)
   self.playerDropdown = Widgets.Dropdown(column, 260, playerData)
   self.playerDropdown:SetPoint("TOPLEFT", playerHint, "BOTTOMLEFT", 0, -8)
@@ -174,7 +175,7 @@ function ProfilesTab:Build(parent)
   rule:SetPoint("TOPRIGHT", selectorRow, "BOTTOMRIGHT", 51, -38)
 
   -- Manage list. Anchored back at the column's left edge, not the full-bleed rule.
-  local manageHeader = Widgets.SectionHeader(column, "Manage profiles")
+  local manageHeader = Widgets.SectionHeader(column, L["Manage profiles"])
   manageHeader:SetPoint("TOPLEFT", selectorRow, "BOTTOMLEFT", 0, -72)
 
   self.manageHost = CreateFrame("Frame", nil, column)
@@ -183,7 +184,7 @@ function ProfilesTab:Build(parent)
   self.manageHost:SetHeight(400)
 
   -- New profile button, pushed to the far right of the manage-header row.
-  self.newButton = Widgets.Button(column, "+ New profile", 130, newProfile)
+  self.newButton = Widgets.Button(column, L["+ New profile"], 130, newProfile)
   self.newButton:SetPoint("BOTTOMRIGHT", self.manageHost, "TOPRIGHT", 0, 8)
 
   self:Refresh()
@@ -215,11 +216,11 @@ local function buildRows(self)
     name:SetPoint("LEFT", row, "LEFT", 8, 0)
 
     if MM.Share:IsImportedProfile(id) then
-      local pill = Widgets.Pill(row, "Imported")
+      local pill = Widgets.Pill(row, L["Imported"])
       pill:SetPoint("LEFT", name, "RIGHT", 8, 0)
     end
 
-    local delete = Widgets.Button(row, "Delete", 74, function()
+    local delete = Widgets.Button(row, L["Delete"], 74, function()
       deleteProfile(id)
     end)
     delete:SetPoint("RIGHT", row, "RIGHT", 0, 0)
@@ -227,12 +228,12 @@ local function buildRows(self)
       delete:Disable()
     end
 
-    local rename = Widgets.Button(row, "Rename", 74, function()
+    local rename = Widgets.Button(row, L["Rename"], 74, function()
       renameProfile(id)
     end)
     rename:SetPoint("RIGHT", delete, "LEFT", -6, 0)
 
-    local clone = Widgets.Button(row, "Clone", 74, function()
+    local clone = Widgets.Button(row, L["Clone"], 74, function()
       cloneProfile(id)
     end)
     clone:SetPoint("RIGHT", rename, "LEFT", -6, 0)

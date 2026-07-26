@@ -284,11 +284,12 @@ function Capture:HealMacroSnapshots()
 end
 
 function Capture:PrintFailures(failures)
+  local L = MM.L
   for index, failure in ipairs(failures or {}) do
     if index > 5 then
-      MM:Warn(string.format("%d more capture failures omitted.", #failures - 5))
+      MM:Warn(string.format(L["%d more capture failures omitted."], #failures - 5))
       return
     end
-    MM:Warn(string.format("%s capture failed: %s.", MM.Actions.GetSlotLabel(failure.slot), failure.reason))
+    MM:Warn(string.format(L["%s capture failed: %s."], MM.Actions.GetSlotLabel(failure.slot), L[failure.reason]))
   end
 end

@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The Layers tab: left rail of layers in the active profile, the centre grid
 -- mirroring the player's live bars (each slot managed / pinned / dynamicAction-driven /
@@ -63,7 +64,7 @@ local function suggestionRowInit(row, match)
   end
 
   row.nameLabel:SetText(match.name)
-  row.sourceLabel:SetText(match.source)
+  row.sourceLabel:SetText(L[match.source])
 end
 
 -- Bind a captured assignment, honoring the suggestion mode when dynamic actions
@@ -88,18 +89,18 @@ local function assignSuggesting(layerId, slot, assignment)
   local resolved = MM.Resolver:ResolveAction(assignment)
   local name = (resolved and resolved.label) or MM.Actions.GetAssignmentLabel(assignment)
   MM.ui.Modals.Choose({
-    title = "Bind a Dynamic Action instead?",
+    title = L["Bind a Dynamic Action instead?"],
     message = string.format(
-      "%s is covered by %s. Do you want to bind the Dynamic Action instead? You can disable this behavior in the settings.",
+      L["%s is covered by %s. Do you want to bind the Dynamic Action instead? You can disable this behavior in the settings."],
       name,
-      #matches == 1 and "a Dynamic Action" or "multiple Dynamic Actions"
+      #matches == 1 and L["a Dynamic Action"] or L["multiple Dynamic Actions"]
     ),
     options = matches,
     rowInit = suggestionRowInit,
     onSelect = function(match)
       assignSlot(layerId, slot, { type = "dynamicaction", source = match.source, id = match.id })
     end,
-    cancelLabel = string.format("Keep %s", name),
+    cancelLabel = string.format(L["Keep %s"], name),
     onCancel = function()
       assignSlot(layerId, slot, assignment)
     end,
@@ -114,7 +115,7 @@ end
 local function assignFromCursor(layerId, slot)
   local assignment, reason = MM.Capture:FromCursor()
   if not assignment then
-    MM:Warn(reason or "could not read cursor")
+    MM:Warn(L[reason or "could not read cursor"])
     return
   end
   if ClearCursor then
@@ -130,7 +131,7 @@ local function manageSlot(layerId, slot)
   if not assignment then
     MM.DB:SetSlot(layerId, slot, { type = "empty" })
     if reason ~= "slot has no capturable action" then
-      MM:Warn(reason or "could not capture slot")
+      MM:Warn(L[reason or "could not capture slot"])
     end
     MM.DB:SetSelectedSlot(slot)
     refresh()
@@ -143,14 +144,20 @@ end
 -- action as its only candidate, then rebind the slot to it.
 local function convertToDynamicAction(layerId, slot, assignment)
   local prefill = MM.Actions.GetAssignmentName(assignment)
-  MM.ui.Modals.Input("Convert to Dynamic Action", "Name the new Dynamic Action", prefill, "Convert", function(name)
-    -- One undo step for the whole conversion.
-    MM.Undo:Batch(function()
-      local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
-      MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
-      assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
-    end, "convert " .. prefill .. " to a Dynamic Action")
-  end)
+  MM.ui.Modals.Input(
+    L["Convert to Dynamic Action"],
+    L["Name the new Dynamic Action"],
+    prefill,
+    L["Convert"],
+    function(name)
+      -- One undo step for the whole conversion.
+      MM.Undo:Batch(function()
+        local key = MM.DB:CreateDynamicAction(name ~= "" and name or prefill)
+        MM.DB:AddCandidate(key, MM.Tables.DeepCopy(assignment))
+        assignSlot(layerId, slot, { type = "dynamicaction", source = "custom", id = key })
+      end, string.format(L["convert %s to a Dynamic Action"], prefill))
+    end
+  )
 end
 
 local function unmanageSlot(layerId, slot)
@@ -174,8 +181,8 @@ local function dynamicActionList()
   for id, dynamicAction in pairs(MM.PredefinedDynamicActions or {}) do
     predefined[#predefined + 1] = { source = "predefined", id = id, name = dynamicAction.name or id }
   end
-  -- Duplicate names are legal for custom actions; tie-break on the id so the
-  -- bind list order is stable across rebuilds.
+  -- Sort on the displayed name; tie-break on the id since duplicate names are
+  -- legal for custom actions, so the bind list order stays stable across rebuilds.
   local byName = function(left, right)
     if left.name ~= right.name then
       return left.name < right.name
@@ -190,7 +197,7 @@ end
 -- Layer CRUD ----------------------------------------------------------------
 
 local function newLayer()
-  MM.ui.Modals.Input("New Layer", "Name the new Layer", "New Layer", "Create", function(name)
+  MM.ui.Modals.Input(L["New Layer"], L["Name the new Layer"], L["New Layer"], L["Create"], function(name)
     local id = MM.DB:CreateLayer(name ~= "" and name or nil)
     MM.DB:SetSelectedLayerId(id)
     MM.DB:SetSelectedSlot(nil)
@@ -199,13 +206,13 @@ local function newLayer()
 end
 
 local function renameLayer(layerId, currentName)
-  MM.ui.Modals.Input("Rename Layer", "New name for this Layer", currentName, "Rename", function(name)
+  MM.ui.Modals.Input(L["Rename Layer"], L["New name for this Layer"], currentName, L["Rename"], function(name)
     if name == "" then
       return
     end
     local ok, reason = MM.DB:RenameLayer(layerId, name)
     if not ok then
-      MM:Warn(reason)
+      MM:Warn(L[reason])
     end
     refresh()
   end)
@@ -213,16 +220,16 @@ end
 
 local function deleteLayer(layerId, currentName)
   MM.ui.Modals.Confirm(
-    "Delete Layer",
+    L["Delete Layer"],
     string.format(
-      'Delete Layer "%s"? Slots it managed will fall through to lower Layers on the next apply.',
+      L['Delete Layer "%s"? Slots it managed will fall through to lower Layers on the next apply.'],
       currentName
     ),
-    "Delete",
+    L["Delete"],
     function()
       local ok, reason = MM.DB:DeleteLayer(layerId)
       if not ok then
-        MM:Warn(reason)
+        MM:Warn(L[reason])
       end
       refresh()
     end
@@ -337,15 +344,8 @@ function LayersTab:BuildRail(parent)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
-  local newButton = Widgets.Button(inset, "+ New Layer", RAIL_WIDTH - 24, newLayer)
-  newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 10)
-
-  local footer = Widgets.Label(inset, "GameFontDisableSmall", "")
-  footer:SetPoint("BOTTOMLEFT", newButton, "TOPLEFT", 2, 8)
-  footer:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -2, 8)
-  footer:SetJustifyH("LEFT")
-  local profile = MM.DB:GetProfile()
-  footer:SetText("checked = applied in profile " .. (profile and profile.name or ""))
+  local newButton = Widgets.Button(inset, L["+ New Layer"], RAIL_WIDTH - 24, newLayer)
+  newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 8)
 
   local list = Widgets.DataList(inset, "layers.rail", {
     extent = 32,
@@ -354,7 +354,7 @@ function LayersTab:BuildRail(parent)
   })
   LayersTab.railList = list
   list.scrollBox:SetPoint("TOPLEFT", inset, "TOPLEFT", 8, -8)
-  list.scrollBox:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -6, 6)
+  list.scrollBox:SetPoint("BOTTOMRIGHT", newButton, "TOPRIGHT", -6, 8)
 
   local layers = MM.DB:GetProfileLayers()
   local items = {}
@@ -364,7 +364,7 @@ function LayersTab:BuildRail(parent)
   list:SetItems(items)
 
   if #layers == 0 then
-    local note = Widgets.Label(inset, "GameFontDisableSmall", "No Layers in this profile yet.")
+    local note = Widgets.Label(inset, "GameFontDisableSmall", L["No Layers in this profile yet."])
     note:SetPoint("TOPLEFT", inset, "TOPLEFT", 12, -16)
     note:SetPoint("TOPRIGHT", inset, "TOPRIGHT", -12, -16)
     note:SetJustifyH("LEFT")
@@ -518,21 +518,21 @@ function LayersTab:BuildSlotCell(parent, slot)
       if assignment.type == "dynamicaction" then
         local resolved = MM.Resolver:ResolveAction(assignment)
         if resolved then
-          GameTooltip:AddLine("Resolves to: " .. resolved.label, Widgets.unpackColor(colors.goldDim))
+          GameTooltip:AddLine(string.format(L["Resolves to: %s"], resolved.label), Widgets.unpackColor(colors.goldDim))
         else
-          GameTooltip:AddLine("No usable candidate", 0.9, 0.4, 0.4)
+          GameTooltip:AddLine(L["No usable candidate"], 0.9, 0.4, 0.4)
         end
         Widgets.AddBadgeTooltipSeparator()
         Widgets.AddDynamicActionTooltipLine()
         Widgets.AddMacroTooltipLine(MM.DB:ResolveDynamicAction({ source = assignment.source, id = assignment.id }))
       end
     else
-      GameTooltip:AddLine("Not managed \226\128\148 click to manage", 0.7, 0.7, 0.7)
+      GameTooltip:AddLine(L["Not managed \226\128\148 click to manage"], 0.7, 0.7, 0.7)
     end
     local others = LayersTab.grid and LayersTab.grid.otherLayers and LayersTab.grid.otherLayers[slot]
     if others then
       GameTooltip:AddLine(
-        (assignment and "Also managed by: " or "Managed by: ") .. table.concat(others, ", "),
+        string.format(assignment and L["Also managed by: %s"] or L["Managed by: %s"], table.concat(others, ", ")),
         Widgets.unpackColor(colors.otherLayer)
       )
     end
@@ -552,11 +552,11 @@ function LayersTab:BuildLegend(parent)
   -- show the badge tile itself (as it appears on a cell) rather than a
   -- bordered swatch.
   local entries = {
-    { icon = Widgets.ICON.dynamicAction, label = "Dynamic Action" },
-    { icon = Widgets.ICON.macro, label = "Macro" },
-    { label = "Managed (pinned)", newRow = true },
-    { label = "Managed by another Layer", color = colors.otherLayer, alpha = 0.55 },
-    { symbol = Widgets.TEX.empty, label = "Empty (clears)" },
+    { icon = Widgets.ICON.dynamicAction, label = L["Dynamic Action"] },
+    { icon = Widgets.ICON.macro, label = L["Macro"] },
+    { label = L["Managed by this Layer"], newRow = true },
+    { label = L["Managed by another Layer"], color = colors.otherLayer, alpha = 0.55 },
+    { symbol = Widgets.TEX.empty, label = L["Empty (clears)"] },
   }
 
   -- Wrap-flow within the grid's width so the legend never runs into the
@@ -609,28 +609,28 @@ function LayersTab:BuildGrid(parent, layerId, layer)
     grid.title = Widgets.Title(grid.frame, "")
     grid.title:SetPoint("TOPLEFT", grid.frame, "TOPLEFT", 12, -2)
 
-    grid.pill = Widgets.Pill(grid.frame, "Imported", Widgets.ICON.import)
+    grid.pill = Widgets.Pill(grid.frame, L["Imported"], Widgets.ICON.import)
     grid.pill:SetPoint("LEFT", grid.title, "RIGHT", 8, 0)
 
-    grid.delete = Widgets.Button(grid.frame, "Delete", 60, function()
+    grid.delete = Widgets.Button(grid.frame, L["Delete"], 60, function()
       local id = MM.DB:GetSelectedLayerId()
       local m = MM.DB:GetLayer(id)
       deleteLayer(id, m and m.name or id)
     end)
     grid.delete:SetPoint("TOPRIGHT", grid.frame, "TOPRIGHT", -12, -2)
 
-    grid.rename = Widgets.Button(grid.frame, "Rename", 66, function()
+    grid.rename = Widgets.Button(grid.frame, L["Rename"], 66, function()
       local id = MM.DB:GetSelectedLayerId()
       local m = MM.DB:GetLayer(id)
       renameLayer(id, m and m.name or id)
     end)
     grid.rename:SetPoint("RIGHT", grid.delete, "LEFT", -6, 0)
 
-    local hint = Widgets.Hint(
-      grid.frame,
-      "Click a slot to manage it \194\183 right-click to stop \194\183 click a managed slot to edit"
-    )
+    local hint = Widgets.Hint(grid.frame, L["Click a slot to manage it \194\183 right-click to stop managing it"])
     hint:SetPoint("TOPLEFT", grid.title, "BOTTOMLEFT", 0, -14)
+    -- Bounded right, so a longer translation wraps instead of running past the grid.
+    hint:SetPoint("RIGHT", grid.frame, "RIGHT", -12, 0)
+    hint:SetJustifyH("LEFT")
 
     -- Column headers.
     grid.headerRow = CreateFrame("Frame", nil, grid.frame)
@@ -677,7 +677,7 @@ function LayersTab:BuildGrid(parent, layerId, layer)
     end
     rowLabel:ClearAllPoints()
     rowLabel:SetPoint("TOPLEFT", grid.area, "TOPLEFT", 0, y - (CELL - 12) / 2)
-    rowLabel:SetText(bar.label)
+    rowLabel:SetText(L[bar.label])
     rowLabel:Show()
 
     for button = 1, MM.ACTIONS_PER_BAR do
@@ -738,20 +738,20 @@ function LayersTab:BuildEmptyGrid(parent)
   box:SetPoint("CENTER")
   box:SetSize(360, 160)
 
-  local heading = Widgets.Label(box, "GameFontNormalLarge", "No Layers yet", colors.parchment)
+  local heading = Widgets.Label(box, "GameFontNormalLarge", L["No Layers yet"], colors.parchment)
   heading:SetPoint("TOP", box, "TOP", 0, 0)
 
   local body = Widgets.Label(
     box,
     "GameFontHighlightSmall",
-    "Layers stack to decide what each action-bar slot becomes. Create your first one to start managing slots."
+    L["Layers stack to decide what each action-bar slot becomes. Create your first one to start managing slots."]
   )
   body:SetPoint("TOP", heading, "BOTTOM", 0, -10)
   body:SetWidth(340)
   body:SetJustifyH("CENTER")
   body:SetTextColor(Widgets.unpackColor(colors.faint))
 
-  local button = Widgets.Button(box, "+ New Layer", 140, newLayer)
+  local button = Widgets.Button(box, L["+ New Layer"], 140, newLayer)
   button:SetPoint("TOP", body, "BOTTOM", 0, -16)
 end
 
@@ -761,7 +761,7 @@ end
 -- to pin it to the selected slot.
 local function dropZone()
   if not LayersTab.dropZone then
-    LayersTab.dropZone = Widgets.DropZone("Drop to pin this action")
+    LayersTab.dropZone = Widgets.DropZone(L["Drop to pin this action"])
   end
   return LayersTab.dropZone
 end
@@ -843,7 +843,7 @@ local function dynamicActionBindRowInit(row, data)
   end
 
   row.nameLabel:SetText(dynamicAction.name)
-  row.resolution:SetText(resolved and resolved.label or "no match")
+  row.resolution:SetText(resolved and resolved.label or L["no match"])
   row.resolution:SetTextColor(Widgets.unpackColor(resolved and colors.goldDim or colors.danger))
 end
 
@@ -860,10 +860,10 @@ function LayersTab:BuildEditor(parent, layerId, layer)
       LayersTab.dropZone:Detach()
     end
 
-    local header = Widgets.SectionHeader(inset, "Layer Conditions")
+    local header = Widgets.SectionHeader(inset, L["Layer Conditions"])
     header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -14)
 
-    local hint = Widgets.Hint(inset, "When should this Layer apply? Leave everything off to always apply it.")
+    local hint = Widgets.Hint(inset, L["When should this Layer apply? Leave everything off to always apply it."])
     hint:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -8)
     hint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
     hint:SetJustifyH("LEFT")
@@ -890,7 +890,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
 
   local assignment = layer and layer.slots and layer.slots[slot]
 
-  local header = Widgets.SectionHeader(inset, "Slot Editor")
+  local header = Widgets.SectionHeader(inset, L["Slot Editor"])
   header:SetPoint("TOPLEFT", inset, "TOPLEFT", 16, -14)
 
   local icon = Widgets.Icon(inset, 36)
@@ -924,24 +924,22 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   local loc = Widgets.Label(inset, "GameFontDisableSmall", MM.Actions.GetSlotLabel(slot))
   loc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
-  -- Empty / Stop managing live at the foot of the sidebar and split the inset
-  -- width evenly: each anchors to one outer edge and they meet in the middle.
-  local emptyButton = Widgets.Button(inset, "Empty", 90, function()
+  -- One outer edge each: anchoring both would pin them to half the inset and
+  -- override the width Button sized to the caption.
+  local emptyButton = Widgets.Button(inset, L["Empty"], 70, function()
     assignSlot(layerId, slot, { type = "empty" })
   end)
   emptyButton:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", 16, 12)
-  emptyButton:SetPoint("RIGHT", inset, "CENTER", -4, 0)
 
-  local stopButton = Widgets.Button(inset, "Stop managing", 120, function()
+  local stopButton = Widgets.Button(inset, L["Stop managing"], 120, function()
     unmanageSlot(layerId, slot)
   end)
   stopButton:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -14, 12)
-  stopButton:SetPoint("LEFT", inset, "CENTER", 4, 0)
 
   -- The whole panel is a drop target (see the overlay); the hint sits just under
   -- the assigned-action icon.
   local dropHint =
-    Widgets.Hint(inset, "Drag a spell, item, macro, mount or equipment set onto this panel to pin it to the slot.")
+    Widgets.Hint(inset, L["Drag a spell, item, macro, mount or equipment set onto this panel to pin it to the slot."])
   dropHint:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -12)
   dropHint:SetPoint("RIGHT", inset, "RIGHT", -14, 0)
   dropHint:SetJustifyH("LEFT")
@@ -949,7 +947,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   -- Regular assignments can be promoted into a new Dynamic Action in one step.
   local sectionAnchor = dropHint
   if assignment and assignment.type ~= "empty" and assignment.type ~= "dynamicaction" then
-    local convert = Widgets.Button(inset, "Convert to Dynamic Action", 180, function()
+    local convert = Widgets.Button(inset, L["Convert to Dynamic Action"], 180, function()
       convertToDynamicAction(layerId, slot, assignment)
     end)
     convert:SetPoint("TOPLEFT", dropHint, "BOTTOMLEFT", 0, -12)
@@ -957,7 +955,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   end
 
   -- "Bind to a Dynamic Action"
-  local dynamicActionHeader = Widgets.SectionHeader(inset, "Bind to a Dynamic Action")
+  local dynamicActionHeader = Widgets.SectionHeader(inset, L["Bind to a Dynamic Action"])
   dynamicActionHeader:SetPoint("TOPLEFT", sectionAnchor, "BOTTOMLEFT", 0, -16)
 
   local list = Widgets.DataList(inset, "layers.dynamicActionbind", {
@@ -971,11 +969,11 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   -- Two sections mirroring the Dynamic Actions rail, so two dynamic actions
   -- sharing a name are still distinguishable here.
   local custom, predefined = dynamicActionList()
-  local items = { { header = "Your Dynamic Actions", extent = 22 } }
+  local items = { { header = L["Your Dynamic Actions"], extent = 22 } }
   for _, dynamicAction in ipairs(custom) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end
-  items[#items + 1] = { header = "Predefined", extent = 30 }
+  items[#items + 1] = { header = L["Predefined"], extent = 30 }
   for _, dynamicAction in ipairs(predefined) do
     items[#items + 1] = { dynamicAction = dynamicAction }
   end

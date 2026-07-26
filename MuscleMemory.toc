@@ -1,6 +1,7 @@
 ## Interface: 120007
 ## Title: Muscle Memory
 ## Notes: Bind buttons by purpose, not just spells.
+## Notes-deDE: Belege Knöpfe nach Zweck, nicht nur nach Zauber.
 ## Author: whytspace
 ## Version: 0.13.0
 ## IconTexture: Interface\AddOns\MuscleMemory\Assets\logo
@@ -11,6 +12,9 @@
 Libs/LibStub/LibStub.lua
 Libs/LibDeflate/LibDeflate.lua
 Libs/LibSerialize/LibSerialize.lua
+
+Locales/Locales.lua
+Locales/deDE.lua
 
 Core.lua
 Defaults.lua

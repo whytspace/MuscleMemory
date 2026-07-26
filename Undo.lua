@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- Session-only, snapshot-based undo for configuration changes. Every DB config
 -- mutator is wrapped to push a deep copy of the config subtree (profiles, the
@@ -195,105 +196,109 @@ end
 local function candidateName(actionId, index)
   local action = MM.DB:DynamicActions()[actionId]
   local candidate = action and action.candidates and action.candidates[tonumber(index) or -1]
-  return candidate and MM.Actions.GetAssignmentName(candidate) or ("candidate " .. tostring(index))
+  return candidate and MM.Actions.GetAssignmentName(candidate) or string.format(L["candidate %s"], tostring(index))
 end
 
 local DESCRIBE = {
   SetGlobalProfile = function(profileId)
-    return "set the default profile to " .. profileName(profileId)
+    return string.format(L["set the default profile to %s"], profileName(profileId))
   end,
   CreateProfile = function(name)
-    return name and ("create profile " .. name) or "create a profile"
+    return name and string.format(L["create profile %s"], name) or L["create a profile"]
   end,
   CloneProfile = function(sourceId)
-    return "copy profile " .. profileName(sourceId)
+    return string.format(L["copy profile %s"], profileName(sourceId))
   end,
   RenameProfile = function(profileId)
-    return "rename profile " .. profileName(profileId)
+    return string.format(L["rename profile %s"], profileName(profileId))
   end,
   DeleteProfile = function(profileId)
-    return "delete profile " .. profileName(profileId)
+    return string.format(L["delete profile %s"], profileName(profileId))
   end,
   SetActiveProfile = function(profileId)
-    return profileId and ("switch to profile " .. profileName(profileId)) or "inherit the default profile"
+    return profileId and string.format(L["switch to profile %s"], profileName(profileId))
+      or L["inherit the default profile"]
   end,
   CreateLayer = function(name)
-    return name and ("create layer " .. name) or "create a layer"
+    return name and string.format(L["create layer %s"], name) or L["create a layer"]
   end,
   RenameLayer = function(layerId)
-    return "rename layer " .. layerName(layerId)
+    return string.format(L["rename layer %s"], layerName(layerId))
   end,
   DeleteLayer = function(layerId)
-    return "delete layer " .. layerName(layerId)
+    return string.format(L["delete layer %s"], layerName(layerId))
   end,
   MoveLayer = function(layerId)
-    return "move layer " .. layerName(layerId)
+    return string.format(L["move layer %s"], layerName(layerId))
   end,
   SetLayerEnabled = function(layerId, enabled)
-    return (enabled and "enable layer " or "disable layer ") .. layerName(layerId)
+    return string.format(enabled and L["enable layer %s"] or L["disable layer %s"], layerName(layerId))
   end,
   SetLayerConditions = function(layerId)
-    return "edit conditions of layer " .. layerName(layerId)
+    return string.format(L["edit conditions of layer %s"], layerName(layerId))
   end,
   SetSlot = function(_, slot, assignment)
     local where = MM.Actions.GetSlotLabel(tonumber(slot) or slot)
     if not assignment then
-      return "stop managing " .. where
+      return string.format(L["stop managing %s"], where)
     end
-    return "assign " .. MM.Actions.GetAssignmentName(assignment) .. " to " .. where
+    return string.format(L["assign %s to %s"], MM.Actions.GetAssignmentName(assignment), where)
   end,
   SetAllLayerSlots = function(layerId, enabled)
     local name = layerName(layerId)
-    return enabled and ("manage every slot of layer " .. name) or ("clear all slots of layer " .. name)
+    return string.format(enabled and L["manage every slot of layer %s"] or L["clear all slots of layer %s"], name)
   end,
   AdoptLayer = function(_, layer)
-    return "import layer " .. tostring(layer and layer.name)
+    return string.format(L["import layer %s"], tostring(layer and layer.name))
   end,
   SetFallback = function(value)
-    return "set fallback to " .. tostring(value)
+    return string.format(L["set fallback to %s"], tostring(value))
   end,
   SetResponse = function(value)
-    return "set response to " .. tostring(value)
+    return string.format(L["set response to %s"], tostring(value))
   end,
   SetSuggestMode = function(value)
-    return "set suggestions to " .. tostring(value)
+    return string.format(L["set suggestions to %s"], tostring(value))
   end,
   CreateDynamicAction = function(name)
-    return name and ("create Dynamic Action " .. name) or "create a Dynamic Action"
+    return name and string.format(L["create Dynamic Action %s"], name) or L["create a Dynamic Action"]
   end,
   CopyPredefinedDynamicAction = function(actionId)
-    return "copy predefined Dynamic Action " .. tostring(actionId)
+    return string.format(L["copy predefined Dynamic Action %s"], tostring(actionId))
   end,
   CloneDynamicAction = function(reference)
     local source = MM.DB:ResolveDynamicAction(reference)
-    return "copy Dynamic Action " .. tostring(source and source.name)
+    return string.format(L["copy Dynamic Action %s"], tostring(source and source.name))
   end,
   RenameDynamicAction = function(actionId)
-    return "rename Dynamic Action " .. actionName(actionId)
+    return string.format(L["rename Dynamic Action %s"], actionName(actionId))
   end,
   DeleteDynamicAction = function(actionId)
-    return "delete Dynamic Action " .. actionName(actionId)
+    return string.format(L["delete Dynamic Action %s"], actionName(actionId))
   end,
   SetDynamicActionMode = function(actionId, mode)
-    return (mode == "macro" and "enable macro mode for " or "disable macro mode for ") .. actionName(actionId)
+    return string.format(
+      mode == "macro" and L["enable macro mode for %s"] or L["disable macro mode for %s"],
+      actionName(actionId)
+    )
   end,
   SetDynamicActionTemplate = function(actionId)
-    return "edit the macro template of " .. actionName(actionId)
+    return string.format(L["edit the macro template of %s"], actionName(actionId))
   end,
   AdoptDynamicAction = function(_, _, action)
-    return "import Dynamic Action " .. tostring(action and action.name)
+    return string.format(L["import Dynamic Action %s"], tostring(action and action.name))
   end,
   AddCandidate = function(actionId, assignment)
-    return "add " .. MM.Actions.GetAssignmentName(assignment) .. " to " .. actionName(actionId)
+    return string.format(L["add %s to %s"], MM.Actions.GetAssignmentName(assignment), actionName(actionId))
   end,
   RemoveCandidate = function(actionId, index)
-    return "remove " .. candidateName(actionId, index) .. " from " .. actionName(actionId)
+    return string.format(L["remove %s from %s"], candidateName(actionId, index), actionName(actionId))
   end,
   MoveCandidate = function(actionId)
-    return "reorder the candidates of " .. actionName(actionId)
+    return string.format(L["reorder the candidates of %s"], actionName(actionId))
   end,
   SetCandidateConditions = function(actionId, index)
-    return "edit conditions of " .. candidateName(actionId, index) .. " in " .. actionName(actionId)
+    return string.format(L["edit conditions of %s in %s"], candidateName(actionId, index), actionName(actionId))
   end,
 }
 

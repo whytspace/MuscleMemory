@@ -27,6 +27,7 @@ local function Item(itemId, conditions)
   }
 end
 
+-- Names stay English in every locale: they are raid shorthand players use as-is.
 MM.PredefinedDynamicActions = {
   lust = {
     name = "Bloodlust",

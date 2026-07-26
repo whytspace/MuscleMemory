@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- A single reusable modal dialog reconfigured per call: an input prompt (new /
 -- rename) or a confirmation (delete). Built from stock dialog art so it reads as
@@ -42,7 +43,7 @@ local function build()
   box.message:SetPoint("TOPLEFT", 24, -52)
   box.message:SetPoint("TOPRIGHT", -24, -52)
   box.message:SetJustifyH("LEFT")
-  box.message:SetSpacing(3)
+  box.message:SetSpacing(MM.ui.Widgets.LINE_SPACING)
 
   box.editBox = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
   box.editBox:SetSize(330, 22)
@@ -56,7 +57,7 @@ local function build()
   box.cancel = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
   box.cancel:SetSize(120, 24)
   box.cancel:SetPoint("BOTTOMLEFT", box, "BOTTOM", 6, 18)
-  box.cancel:SetText(CANCEL or "Cancel")
+  box.cancel:SetText(CANCEL or L["Cancel"])
 
   -- Closing via Escape on the input mirrors Cancel.
   box.editBox:SetScript("OnEscapePressed", function()
@@ -91,7 +92,7 @@ local function resetLayout(box)
   box.cancel:ClearAllPoints()
   box.cancel:SetPoint("BOTTOMLEFT", box, "BOTTOM", 6, 18)
   box.cancel:SetSize(120, 24)
-  box.cancel:SetText(CANCEL or "Cancel")
+  box.cancel:SetText(CANCEL or L["Cancel"])
   box.cancel:SetScript("OnClick", function()
     Modals.Hide()
   end)
@@ -109,7 +110,7 @@ local function show(opts)
   local isInput = opts.kind == "input"
 
   box.title:SetText(opts.title or "")
-  box.accept:SetText(opts.acceptLabel or (isInput and (DONE or "Done")) or (DELETE or "Delete"))
+  box.accept:SetText(opts.acceptLabel or (isInput and (DONE or L["Done"])) or (DELETE or L["Delete"]))
 
   if isInput then
     box.message:SetText(opts.label or "")
@@ -185,7 +186,7 @@ function Modals.Choose(opts)
   box.accept:Hide()
   box.cancel:ClearAllPoints()
   box.cancel:SetPoint("BOTTOM", box, "BOTTOM", 0, 18)
-  box.cancel:SetText(opts.cancelLabel or (CANCEL or "Cancel"))
+  box.cancel:SetText(opts.cancelLabel or (CANCEL or L["Cancel"]))
   -- Size to the label: "Keep <spell name>" easily overflows the stock 120px.
   local cancelText = box.cancel:GetFontString()
   box.cancel:SetWidth(math.max(120, (cancelText and cancelText:GetStringWidth() or 0) + 40))

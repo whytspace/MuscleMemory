@@ -49,7 +49,7 @@ function MM:Initialize()
   self.DB:Initialize()
   self:CallModules("OnInitialize")
   self.ready = true
-  self:Print("loaded. Use /mm to open Muscle Memory.")
+  self:Print(MM.L["loaded. Use /mm to open Muscle Memory."])
 end
 
 function MM:Open()

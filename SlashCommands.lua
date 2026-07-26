@@ -26,7 +26,7 @@ end
 local function toggleDebug()
   local root = MM.DB:GetRoot()
   root.debug = not root.debug
-  MM:Print("debug " .. (root.debug and "enabled" or "disabled") .. ".")
+  MM:Print(root.debug and MM.L["debug enabled."] or MM.L["debug disabled."])
 end
 
 -- A node is either a branch (has `commands`) or a leaf (has `run`). `help` and
@@ -60,9 +60,10 @@ local tree = {
   },
 }
 
+-- Descs are stored in English and localized here, at print time.
 local function printHelp(node, path)
   local prefix = "/mm" .. (path ~= "" and (" " .. path) or "")
-  MM:Print(prefix .. " — " .. node.desc)
+  MM:Print(prefix .. " — " .. MM.L[node.desc])
 
   local names = {}
   for name, child in pairs(node.commands) do
@@ -83,7 +84,7 @@ local function printHelp(node, path)
   for _, name in ipairs(names) do
     local child = node.commands[name]
     local tail = child.commands and " ..." or (child.args and (" " .. child.args) or "")
-    MM:Print(string.format("  %s %s%s — %s", prefix, name, tail, child.desc))
+    MM:Print(string.format("  %s %s%s — %s", prefix, name, tail, MM.L[child.desc]))
   end
 end
 
@@ -101,7 +102,7 @@ local function dispatch(node, tokens, path)
 
   local child = node.commands[key]
   if not child then
-    MM:Warn(string.format("unknown command '%s'. Try /mm %shelp.", key, path == "" and "" or (path .. " ")))
+    MM:Warn(string.format(MM.L["unknown command '%s'. Try /mm %shelp."], key, path == "" and "" or (path .. " ")))
     return
   end
 

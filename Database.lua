@@ -630,7 +630,7 @@ function DB:CopyPredefinedDynamicAction(dynamicActionId, newId, newName)
   end
 
   local dynamicActions = self:DynamicActions()
-  local name = newName or (source.name .. " Copy")
+  local name = newName or string.format(MM.L["%s Copy"], source.name)
   local key = newId or uniqueId(name, dynamicActionId .. "_copy", dynamicActions)
   if dynamicActions[key] then
     return nil, "dynamic action already exists"
@@ -650,7 +650,7 @@ function DB:CloneDynamicAction(reference)
   end
 
   local dynamicActions = self:DynamicActions()
-  local name = (source.name or "Dynamic Action") .. " Copy"
+  local name = string.format(MM.L["%s Copy"], source.name or MM.L["Dynamic Action"])
   local key = uniqueId(name, "dynamicaction_copy", dynamicActions)
   local copy = MM.Tables.DeepCopy(source)
   copy.name = name
@@ -664,6 +664,12 @@ end
 -- Adoption: the import door. Insert a fully-formed table under a key the caller
 -- has already uniqued (imports allocate all keys up front so cross-references
 -- can be rewritten before anything is stored).
+-- Every dynamic action is named, so anything downstream (the macro namer, the
+-- rail) can rely on it. Stored once, so switching language never renames one.
+local function defaultDynamicActionName(dynamicActions)
+  return string.format(MM.L["Dynamic Action %d"], MM.Tables.Count(dynamicActions) + 1)
+end
+
 function DB:AdoptDynamicAction(profileId, key, action)
   local dynamicActions = self:DynamicActions(profileId)
   if not self:GetProfile(profileId) then
@@ -671,6 +677,11 @@ function DB:AdoptDynamicAction(profileId, key, action)
   end
   if dynamicActions[key] then
     return nil, "dynamic action already exists"
+  end
+  -- A sharing string is untrusted: name an unnamed action here rather than
+  -- letting a nameless one reach the macro namer.
+  if type(action.name) ~= "string" or action.name == "" then
+    action.name = defaultDynamicActionName(dynamicActions)
   end
   dynamicActions[key] = action
   return key
@@ -695,7 +706,7 @@ function DB:CreateDynamicAction(name)
   local dynamicActions = self:DynamicActions()
   local key = uniqueId(name, "dynamicaction", dynamicActions)
   dynamicActions[key] = {
-    name = name and name ~= "" and name or ("Dynamic Action " .. tostring(MM.Tables.Count(dynamicActions) + 1)),
+    name = name and name ~= "" and name or defaultDynamicActionName(dynamicActions),
     candidates = {},
   }
   return key, dynamicActions[key]
@@ -746,10 +757,9 @@ function DB:SetDynamicActionTemplate(dynamicActionId, template)
     return false, "only profile dynamic actions can be edited"
   end
 
-  template = tostring(template or "")
-  if #template > MM.MACRO_TEMPLATE_LIMIT then
-    template = template:sub(1, MM.MACRO_TEMPLATE_LIMIT)
-  end
+  -- The limit is bytes, so cut on a character boundary — a raw sub would leave
+  -- half a multi-byte character behind.
+  template = MM.Macros.TruncateBytes(tostring(template or ""), MM.MACRO_TEMPLATE_LIMIT)
   dynamicAction.macroTemplate = template
   return true
 end

@@ -1,4 +1,5 @@
 local ADDON_NAME, MM = ...
+local L = MM.L
 
 -- The window: native frame chrome, the tab strip, the profile / Preview / Apply
 -- header, and the content host that swaps in one tab module at a time. Public
@@ -25,8 +26,8 @@ local TABS = {
 }
 
 local TAB_DESCRIPTIONS = {
-  layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; slots they don't touch show the Layer beneath.",
-  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to whichever ability the current character actually has.",
+  layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; unmanaged slots show the Layer beneath.",
+  dynamicActions = "Dynamic Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to the first ability the current character actually has.",
   settings = "Settings tune how the active profile behaves \226\128\148 each profile keeps its own.",
   profiles = "Profiles are self-contained setups, each with its own Layers and Dynamic Actions. Choose the account-wide default and an optional per-character override.",
   export = "Bundle Layers, Dynamic Actions and settings from the active profile into a copyable string other players can import.",
@@ -176,7 +177,7 @@ function UI:CreateFrame()
   self.tabButtons = {}
   local previousTab
   for _, tab in ipairs(TABS) do
-    local button = makeTabButton(frame, tab.label, function()
+    local button = makeTabButton(frame, L[tab.label], function()
       self:SelectTab(tab.id)
     end, tab.icon)
     if previousTab then
@@ -190,13 +191,13 @@ function UI:CreateFrame()
     self.tabButtons[tab.id] = button
   end
 
-  local apply = MM.ui.Widgets.Button(frame, "Apply Now", 96, function()
+  local apply = MM.ui.Widgets.Button(frame, L["Apply Now"], 96, function()
     MM.Applier:ApplyProfile()
     self:Refresh()
   end)
   apply:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -34)
 
-  local preview = MM.ui.Widgets.Button(frame, "Preview\226\128\166", 86, function()
+  local preview = MM.ui.Widgets.Button(frame, L["Preview\226\128\166"], 86, function()
     MM.Applier:PreviewProfile()
   end)
   preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
@@ -206,7 +207,7 @@ function UI:CreateFrame()
   -- on the disabled state so the buttons remain discoverable.
   self.redoButton = MM.ui.Widgets.IconButton(frame, MM.ui.Widgets.ICON.redo, function()
     local label = MM.Undo:NextRedoLabel()
-    return "Redo", label or "Nothing to redo"
+    return L["Redo"], label or L["Nothing to redo"]
   end, function()
     MM.Undo:Redo()
   end)
@@ -215,7 +216,7 @@ function UI:CreateFrame()
 
   self.undoButton = MM.ui.Widgets.IconButton(frame, MM.ui.Widgets.ICON.undo, function()
     local label = MM.Undo:NextUndoLabel()
-    return "Undo", label or "Nothing to undo"
+    return L["Undo"], label or L["Nothing to undo"]
   end, function()
     MM.Undo:Undo()
   end)
@@ -264,7 +265,7 @@ function UI:ShowContent()
   end
 
   local description = TAB_DESCRIPTIONS[tab]
-  self.description:SetText(description or "")
+  self.description:SetText(description and L[description] or "")
   self.description:SetShown(description ~= nil)
   self.divider:SetShown(description ~= nil)
 
@@ -357,9 +358,9 @@ function UI:PromptApply()
   -- recycle/displace path (which routes through OnCancel) can never apply.
   StaticPopupDialogs[APPLY_DIALOG] = StaticPopupDialogs[APPLY_DIALOG]
     or {
-      text = "Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window.",
-      button1 = "Apply",
-      button2 = "Cancel",
+      text = L["Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window."],
+      button1 = L["Apply"],
+      button2 = L["Cancel"],
       OnAccept = function()
         MM.Applier:ApplyProfile()
       end,

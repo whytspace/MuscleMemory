@@ -320,7 +320,7 @@ end
 
 -- Trim `text` to at most `maxBytes`, without splitting a UTF-8 sequence (so a
 -- localized macro name never ends in a broken half-character).
-local function truncateBytes(text, maxBytes)
+function Macros.TruncateBytes(text, maxBytes)
   if #text <= maxBytes then
     return text
   end
@@ -341,13 +341,15 @@ end
 -- recognise our macros, truncated to fit the 64-byte name cap. The name is cosmetic
 -- (it labels the bar button); tracking keys on the registry, so collisions between
 -- two dynamicActions sharing a prefix are harmless.
+-- Create and the import door both guarantee a name, so a missing one is a broken
+-- entry: fail the slot rather than inventing a name for it.
 function Macros.MacroName(dynamicAction)
-  local name = dynamicAction and dynamicAction.name or "Dynamic Action"
-  if name == "" then
-    name = "Dynamic Action"
+  local name = dynamicAction and dynamicAction.name
+  if not name or name == "" then
+    return nil, "dynamic action has no name"
   end
   local marker = MM.MACRO_NAME_MARKER
-  return truncateBytes(name, MM.MACRO_NAME_LIMIT - #marker) .. marker
+  return Macros.TruncateBytes(name, MM.MACRO_NAME_LIMIT - #marker) .. marker
 end
 
 -- True for a macro we generated — recognised by the owner marker on its name.
