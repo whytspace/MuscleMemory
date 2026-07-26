@@ -306,6 +306,24 @@ describe("DB", function()
       assert.equals("cannot delete the last layer", reason)
     end)
 
+    it("creates a layer at a given position, appending without one", function()
+      local top = MM.DB:CreateLayer("Top", 1)
+      local appended = MM.DB:CreateLayer("Appended")
+      assert.same({ top, "Core", appended }, MM.DB:GetProfile().layerOrder)
+      -- Out of range appends rather than erroring, like MoveLayer clamps.
+      local far = MM.DB:CreateLayer("Far", 99)
+      assert.equals(far, MM.DB:GetProfile().layerOrder[4])
+    end)
+
+    it("heals a stale selection to the top of the stack", function()
+      local top = MM.DB:CreateLayer("Top", 1)
+      MM.DB:SetSelectedLayerId("Core")
+      assert.equals("Core", MM.DB:GetSelectedLayerId())
+
+      assert.is_true(MM.DB:DeleteLayer("Core"))
+      assert.equals(top, MM.DB:GetSelectedLayerId())
+    end)
+
     describe("MoveLayer", function()
       local a, b, c
       before_each(function()

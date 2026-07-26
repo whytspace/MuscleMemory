@@ -59,3 +59,15 @@ function Tables.Count(map)
   end
   return count
 end
+
+-- The entry a selection should move to when the one identified by `id` is
+-- removed from an ordered list: the one below it, else the one above, else nil.
+-- Call it before the removal, on the list as displayed.
+function Tables.NeighbourById(list, id)
+  for index, entry in ipairs(list or {}) do
+    if entry.id == id then
+      return list[index + 1] or list[index - 1]
+    end
+  end
+  return nil
+end

@@ -6,6 +6,7 @@ All notable player-facing changes are recorded here.
 
 - **[New]** Muscle Memory now speaks German and French, the first languages beyond English. The window and its chat messages follow your client language, falling back to English anywhere a translation is missing. The predefined Smart Action names (Interrupt, Bloodlust, Taunt, ...) deliberately stay English, since that is the shorthand players use.
 - **[Change]** Dynamic Actions are now called **Smart Actions**. Only the wording changes — your existing setups, slots and sharing selections carry over untouched. Sharing strings you export from now on need this version to import; strings you received earlier still import fine.
+- **[Change]** Layers and smart actions stay where you are working: a new layer is created directly above the selected one instead of at the bottom of the stack, and deleting one selects its neighbour instead of an unrelated entry.
 - **[Change]** Rename, clone and delete are now icon buttons with tooltips, giving the name beside them room to breathe.
 - **[Change]** Class, role, faction and race names in the condition editor now come from the game itself, so they always match the wording you see elsewhere in the client.
 - **[Change]** Minor design improvements: section headings are set apart by size instead of capitals, and buttons grow to fit their caption.

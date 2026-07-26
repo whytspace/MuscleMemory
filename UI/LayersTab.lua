@@ -192,7 +192,18 @@ end
 
 local function newLayer()
   MM.ui.Modals.Input(L["New Layer"], L["Name the new Layer"], L["New Layer"], L["Create"], function(name)
-    local id = MM.DB:CreateLayer(name ~= "" and name or nil)
+    -- Directly above the selected layer: a new layer is nearly always meant to
+    -- override what you were looking at, and it is empty until you fill it.
+    local selected = MM.DB:GetSelectedLayerId()
+    local position = 1
+    for index, entry in ipairs(MM.DB:GetProfileLayers()) do
+      if entry.id == selected then
+        position = index
+        break
+      end
+    end
+
+    local id = MM.DB:CreateLayer(name ~= "" and name or nil, position)
     MM.DB:SetSelectedLayerId(id)
     MM.DB:SetSelectedSlot(nil)
     refresh()
@@ -221,9 +232,15 @@ local function deleteLayer(layerId, currentName)
     ),
     L["Delete"],
     function()
+      -- Read the neighbour before the delete, so the selection lands next to
+      -- what went away instead of healing to the top of the stack.
+      local neighbour = MM.Tables.NeighbourById(MM.DB:GetProfileLayers(), layerId)
       local ok, reason = MM.DB:DeleteLayer(layerId)
       if not ok then
         MM:Warn(L[reason])
+      elseif neighbour then
+        MM.DB:SetSelectedLayerId(neighbour.id)
+        MM.DB:SetSelectedSlot(nil)
       end
       refresh()
     end

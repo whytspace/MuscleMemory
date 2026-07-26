@@ -147,11 +147,14 @@ local function deleteSmartAction(ref)
     string.format(L['Delete custom Smart Action "%s"? Slots bound to it will fall through on the next apply.'], name),
     L["Delete"],
     function()
+      -- Read the neighbour before the delete: nil selection would fall back to
+      -- the top of the rail rather than to what sat beside this one.
+      local neighbour = MM.Tables.NeighbourById(smartActionList(), ref.id)
       local ok, err = MM.DB:DeleteSmartAction(ref.id)
       if not ok then
         MM:Warn(L[err])
       end
-      MM.ui.state.smartAction = nil
+      MM.ui.state.smartAction = neighbour and { source = "custom", id = neighbour.id } or nil
       refresh()
     end
   )

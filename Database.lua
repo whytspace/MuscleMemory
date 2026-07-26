@@ -401,7 +401,10 @@ function DB:GetLayer(layerId, profileId)
   return self:Layers(profileId)[layerId]
 end
 
-function DB:CreateLayer(name)
+-- `index` places the layer at that position in the stack (1 is the top, which
+-- wins at apply time); out-of-range and nil append, so callers that don't care
+-- about position keep the old behaviour.
+function DB:CreateLayer(name, index)
   local layers = self:Layers()
   local layerId = uniqueId(name, "layer", layers)
 
@@ -414,7 +417,8 @@ function DB:CreateLayer(name)
   local profile = self:GetProfile()
   if profile then
     profile.layerOrder = profile.layerOrder or {}
-    profile.layerOrder[#profile.layerOrder + 1] = layerId
+    local last = #profile.layerOrder + 1
+    table.insert(profile.layerOrder, math.min(math.max(tonumber(index) or last, 1), last), layerId)
   end
 
   return layerId, layers[layerId]
@@ -540,7 +544,10 @@ function DB:GetSelectedLayerId()
   if session.layer and layers[session.layer] then
     return session.layer
   end
-  session.layer = next(layers)
+  -- Heal to the top of the stack, not to whatever `pairs` yields first: a stale
+  -- selection otherwise lands on a layer unrelated to what the player sees.
+  local ordered = self:GetProfileLayers()
+  session.layer = ordered[1] and ordered[1].id or next(layers)
   return session.layer
 end
 

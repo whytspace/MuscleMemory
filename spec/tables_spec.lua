@@ -83,4 +83,20 @@ describe("Tables.DeepEquals", function()
     assert.is_true(Tables.DeepEquals(nil, nil))
     assert.is_false(Tables.DeepEquals({}, nil))
   end)
+
+  describe("NeighbourById", function()
+    local list = { { id = "a" }, { id = "b" }, { id = "c" } }
+
+    it("takes the entry below, and the one above at the end", function()
+      assert.equals("b", Tables.NeighbourById(list, "a").id)
+      assert.equals("c", Tables.NeighbourById(list, "b").id)
+      assert.equals("b", Tables.NeighbourById(list, "c").id)
+    end)
+
+    it("returns nil for a lone entry, an unknown id or no list", function()
+      assert.is_nil(Tables.NeighbourById({ { id = "only" } }, "only"))
+      assert.is_nil(Tables.NeighbourById(list, "nope"))
+      assert.is_nil(Tables.NeighbourById(nil, "a"))
+    end)
+  end)
 end)
