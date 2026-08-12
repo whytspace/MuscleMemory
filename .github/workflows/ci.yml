@@ -20,6 +20,8 @@ jobs:
         uses: leafo/gh-actions-luarocks@v6
 
       - name: Install Luacheck and Busted
+        # busted pulls lua-term from a GitHub tarball that can flake; if it does
+        # again, install lua-term 0.3-1 (luarocks-hosted .src.rock) first.
         run: |
           luarocks install luacheck
           luarocks install busted

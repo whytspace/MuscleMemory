@@ -86,11 +86,13 @@ A language is a file plus a `.toc` line — no code changes.
 
 Not translated, deliberately: class, spec, role, faction and race names (read from the client), the predefined Smart Action names (raid shorthand), macro syntax, debug output, and `API.lua` / `Util/Validate.lua`, which are developer-facing.
 
+Translations are maintainer-written. Don't enable CurseForge's localization system, and keep player-facing copy (CHANGELOG, README) free of anything that reads as an invitation to submit translations — state which languages ship, nothing more.
+
 To preview a translation on a client of another language, swap the two lines at the top of `Locales/Locales.lua` and `/reload`. Restore them before releasing — `scripts/check-locales.lua --release` fails if you forget.
 
 ## Public API
 
-`API.lua` exposes the global `MuscleMemory` (versioned with `apiVersion`) and is the developer-facing reference: conventions and data shapes in the header, one signature comment per function. Behavior contract: invalid inputs are rejected with a reason, and returned tables are snapshots — editing them changes nothing. Slash commands adapt onto the API. Published signatures are a compatibility contract; breaking them needs a release note.
+`API.lua` exposes the global `MuscleMemory` (versioned with `apiVersion`) and is the developer-facing reference: conventions and data shapes in the header, one signature comment per function. Behavior contract: invalid inputs are rejected with a reason, and returned tables are snapshots — editing them changes nothing. Slash commands adapt onto the API. Published signatures are a compatibility contract; breaking them needs a release note. Share strings (`Share.lua`) deliberately stay out of the API until a concrete consumer appears.
 
 ## Tests
 
@@ -110,6 +112,10 @@ stubs:setSpell(1766, { name = "Kick", known = true })
 ```
 
 Pure logic and WoW API boundaries need unit tests. Test real frames and command wiring in-game.
+
+### Debug reports
+
+`!MMDBG:1!` strings (About tab, or `MuscleMemory.debug.report()`) capture live client state next to the profile. Decode with `devc lua scripts/dump-report.lua <file>`. `require("spec.helpers.report").load(text)` returns a hydrated `MM` whose captured client answers replay verbatim, so a client-specific bug becomes an offline regression test against `Applier:BuildPlan()`.
 
 ## Assets
 
@@ -149,3 +155,5 @@ git push origin vX.Y.Z
 ```
 
 Pushing the tag builds the zip and publishes the GitHub release. CurseForge also needs its project ID in `MuscleMemory.toc` and the `CF_API_TOKEN` repository secret.
+
+Before cutting: new screenshot-tour views need `process-shots.sh`'s `views` list (order-sensitive), the `/mm shot view` usage string, and the README gallery updated together; and diff features since the last tag — README bullets go stale silently. Never hand-take README screenshots; the tour produces them.
