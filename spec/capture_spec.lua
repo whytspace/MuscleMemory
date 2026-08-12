@@ -228,6 +228,45 @@ describe("Capture", function()
       assert.equals(111, snapshot.restoreIcon)
     end)
 
+    it("keeps colliding auto-updated macros bound to their names", function()
+      -- Regression: two EnhanceQoL-style macros whose bodies are rewritten by
+      -- another addon. An alt emptied both to the same body, and the heal
+      -- there synced both references to the shared hash. Back on the main the
+      -- Health macro refills first; its reference must heal back to Health by
+      -- name, not cross onto the still-empty Drink via the stale body hash.
+      local emptyHash = MM.Macros.HashBody("#showtooltip")
+      stubs:addGlobalMacro({ name = "Drink", icon = 1, body = "#showtooltip" })
+      stubs:addGlobalMacro({ name = "Health", icon = 2, body = "#showtooltip" })
+      MM.DB:SetSlot("Core", 1, {
+        type = "macro",
+        bodyHash = emptyHash,
+        body = "#showtooltip",
+        nameHint = "Drink",
+        scope = "global",
+        indexHint = 1,
+      })
+      MM.DB:SetSlot("Core", 2, {
+        type = "macro",
+        bodyHash = emptyHash,
+        body = "#showtooltip",
+        nameHint = "Health",
+        scope = "global",
+        indexHint = 2,
+      })
+
+      stubs.world.globalMacros[2].body = "#showtooltip\n/use item:241305"
+      MM.Capture:HealMacroSnapshots()
+
+      local health = MM.DB:GetLayer("Core").slots[2]
+      assert.equals("Health", health.nameHint)
+      assert.equals(2, health.indexHint)
+      assert.equals(MM.Macros.HashBody("#showtooltip\n/use item:241305"), health.bodyHash)
+      local drink = MM.DB:GetLayer("Core").slots[1]
+      assert.equals("Drink", drink.nameHint)
+      assert.equals(1, drink.indexHint)
+      assert.equals(emptyHash, drink.bodyHash)
+    end)
+
     it("does not touch an assignment whose macro no longer exists", function()
       MM.DB:SetSlot("Core", 1, {
         type = "macro",

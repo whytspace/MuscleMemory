@@ -119,6 +119,31 @@ describe("Macros", function()
       assert.equals(1, macro.index)
     end)
 
+    it("yields a body match to the uniquely-named macro when bodies collide", function()
+      -- Auto-updated inventory macros: Drink was emptied to the shared stub
+      -- body an alt's sync left in Health's reference; the body match on Drink
+      -- must not steal the reference while a macro named Health still exists.
+      stubs:addGlobalMacro({ name = "Drink", body = "#showtooltip" })
+      stubs:addGlobalMacro({ name = "Health", body = "#showtooltip\n/use item:241305" })
+      local macro = MM.Macros.Resolve({
+        indexHint = 4,
+        bodyHash = MM.Macros.HashBody("#showtooltip"),
+        nameHint = "Health",
+        scope = "global",
+      })
+      assert.equals("Health", macro.name)
+    end)
+
+    it("still follows a body match when the captured name is gone (rename)", function()
+      local macro = MM.Macros.Resolve({
+        indexHint = 1,
+        bodyHash = MM.Macros.HashBody("/cast A"),
+        nameHint = "OldName",
+        scope = "global",
+      })
+      assert.equals("A", macro.name)
+    end)
+
     it("reports a miss when no body hash matches", function()
       local macro, reason, state = MM.Macros.Resolve({ bodyHash = "deadbeef" })
       assert.is_nil(macro)

@@ -138,45 +138,57 @@ function Macros.Resolve(reference, macros)
   end
 
   macros = macros or Macros.Scan()
+
+  -- Macros carrying exactly the captured name, same scope preferred. Doubles as
+  -- the fallback when no body matches and as a guard on the body matches: an
+  -- external addon rewriting bodies (auto-updated inventory macros) makes two
+  -- macros' bodies collide, and a body match may then cross to a differently
+  -- named macro — while exactly one macro still carries the captured name,
+  -- that name is the stronger identity and the crossing match must yield.
+  local name = reference.nameHint or reference.name
+  local inScope, anywhere = {}, {}
   for _, macro in ipairs(macros) do
-    if macro.index == reference.indexHint and macro.bodyHash == reference.bodyHash then
+    if name and macro.name == name then
+      anywhere[#anywhere + 1] = macro
+      if macro.scope == reference.scope then
+        inScope[#inScope + 1] = macro
+      end
+    end
+  end
+  local named = #inScope > 0 and inScope or anywhere
+
+  -- EnsureMacro passes no name, so generated macros always reuse by body.
+  local function acceptable(macro)
+    return not name or macro.name == name or #named ~= 1
+  end
+
+  for _, macro in ipairs(macros) do
+    if macro.index == reference.indexHint and macro.bodyHash == reference.bodyHash and acceptable(macro) then
       return macro
     end
   end
 
   for _, macro in ipairs(macros) do
-    if macro.scope == reference.scope and macro.bodyHash == reference.bodyHash then
+    if macro.scope == reference.scope and macro.bodyHash == reference.bodyHash and acceptable(macro) then
       return macro
     end
   end
 
   for _, macro in ipairs(macros) do
-    if macro.bodyHash == reference.bodyHash then
+    if macro.bodyHash == reference.bodyHash and acceptable(macro) then
       return macro
     end
   end
 
   -- Name fallback: the body changed (edited, or another character's copy of an
   -- addon-generated macro), but a macro of the captured name still exists —
-  -- bind that; the exact hash matches above always win. Same scope preferred;
-  -- an ambiguous name is a real error the user must resolve, not a guess.
-  -- EnsureMacro passes no name, so generated macros never reuse by name.
-  local name = reference.nameHint or reference.name
+  -- bind that; acceptable hash matches above win (they track renames). An
+  -- ambiguous name is a real error the user must resolve, not a guess.
   if name then
-    local inScope, anywhere = {}, {}
-    for _, macro in ipairs(macros) do
-      if macro.name == name then
-        anywhere[#anywhere + 1] = macro
-        if macro.scope == reference.scope then
-          inScope[#inScope + 1] = macro
-        end
-      end
+    if #named == 1 then
+      return named[1]
     end
-    local pool = #inScope > 0 and inScope or anywhere
-    if #pool == 1 then
-      return pool[1]
-    end
-    if #pool > 1 then
+    if #named > 1 then
       return nil, string.format("macro name %q is ambiguous", name)
     end
     return nil, string.format("macro %q not found", name), "missing"
