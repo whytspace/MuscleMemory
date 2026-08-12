@@ -306,6 +306,24 @@ describe("Applier", function()
       assert.is_true(printedMatches(stubs.world, "no changes"))
     end)
 
+    it("recreates the same missing macro once when it sits on two slots", function()
+      local body = "/cast Mine"
+      local assignment = {
+        type = "macro",
+        nameHint = "Mine",
+        body = body,
+        bodyHash = MM.Macros.HashBody(body),
+        scope = "character",
+      }
+      MM.DB:SetSlot("Core", 10, assignment)
+      MM.DB:SetSlot("Core", 11, assignment)
+
+      assert.is_true(MM.Applier:ApplyProfile())
+      assert.equals(1, #stubs.world.charMacros)
+      assert.equals("macro", stubs.world.slots[10].actionType)
+      assert.equals("macro", stubs.world.slots[11].actionType)
+    end)
+
     it("renders a macro for a macro-mode smart action and stays idempotent", function()
       local key = MM.DB:CreateSmartAction("Kick")
       MM.DB:AddCandidate(key, { type = "spell", id = 1766 })

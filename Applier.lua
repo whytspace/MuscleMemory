@@ -344,13 +344,18 @@ function Applier:ApplyEntry(entry)
   end
 
   -- A restorable macro doesn't exist on this character yet: recreate it in its
-  -- captured scope first, then place it like any other macro.
+  -- captured scope first, then place it like any other macro. An earlier slot in
+  -- this run may have just restored the same macro, so re-resolve before
+  -- creating another copy.
   if entry.resolved.kind == "macro" and not entry.resolved.macro then
-    local restored, restoreReason = MM.Macros.RestoreUserMacro(entry.resolved.restore)
-    if not restored then
-      return false, restoreReason
+    entry.resolved.macro = MM.Macros.Resolve(entry.assignment)
+    if not entry.resolved.macro then
+      local restored, restoreReason = MM.Macros.RestoreUserMacro(entry.resolved.restore)
+      if not restored then
+        return false, restoreReason
+      end
+      entry.resolved.macro = restored
     end
-    entry.resolved.macro = restored
   end
 
   local pickedUp

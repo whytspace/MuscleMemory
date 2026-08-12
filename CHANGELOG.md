@@ -5,6 +5,7 @@ All notable player-facing changes are recorded here.
 ## Unreleased
 
 - **[New]** Preview and apply warn upfront when recreating your captured macros would not fit the free macro slots, e.g. "Applying needs 8 new global macros; 5 slots free."
+- **[Fix]** A captured macro sitting on several buttons is no longer recreated once per button when applying.
 
 ## 0.15.0 - 2026-08-12
 
