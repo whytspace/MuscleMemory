@@ -27,9 +27,9 @@ The Git setting is local to this clone and prevents WoW's permission updates fro
 
 ## Changelog
 
-Update `CHANGELOG.md` for player-facing changes. Skip internal cleanup, tests, formatting, and development chores.
+Update `CHANGELOG.md` for player-facing changes. Skip internal cleanup, tests, formatting, and development chores. Fold cosmetic layout tweaks into a single trailing "minor design improvements" entry.
 
-Keep entries short and to the point — one or two sentences per entry, describing the visible behavior change, not the mechanism behind it. One flat list; start each entry with **[New]**, **[Change]**, or **[Fix]**, ordered New, Change, Fix.
+Keep entries short and to the point — one or two sentences per entry, describing the visible behavior change, not the mechanism behind it. One flat list; start each entry with **[New]**, **[Change]**, or **[Fix]**, ordered New, Change, Fix. Phrase **[Fix]** entries as the misbehavior that stopped ("…no longer…"), not as present-tense descriptions of the corrected behavior.
 
 ```md
 - **[New]** See slots bound by other layers.
