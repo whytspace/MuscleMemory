@@ -188,6 +188,49 @@ local function appendCount(summary, n, suffix)
   return summary .. ", " .. slotCount(n) .. " " .. suffix
 end
 
+-- Captured macros the plan would recreate, deduped (the same macro on several
+-- slots is one creation) and counted per scope against the free slots
+-- GetNumMacros reports. Returns one warning line per scope that runs short;
+-- empty when everything fits. A heads-up only — apply still proceeds and the
+-- restores that don't fit fail per-slot.
+function Applier:DescribeMacroShortfall(plan)
+  local lines = {}
+  if not GetNumMacros then
+    return lines
+  end
+
+  local needed = { global = 0, character = 0 }
+  local seen = {}
+  for slot = 1, MM.MAX_ACTION_SLOT do
+    local entry = plan.slots[slot]
+    if entry and self:ClassifyEntry(entry) == "place" then
+      local resolved = entry.resolved
+      if resolved.kind == "macro" and not resolved.macro and resolved.restore then
+        local scope = resolved.restore.scope == "global" and "global" or "character"
+        local key = scope .. "\0" .. MM.Macros.HashBody(resolved.restore.body)
+        if not seen[key] then
+          seen[key] = true
+          needed[scope] = needed[scope] + 1
+        end
+      end
+    end
+  end
+
+  local globalCount, characterCount = GetNumMacros()
+  local free = {
+    global = math.max(0, (MAX_ACCOUNT_MACROS or 120) - (globalCount or 0)),
+    character = math.max(0, (MAX_CHARACTER_MACROS or 30) - (characterCount or 0)),
+  }
+  for _, scope in ipairs({ "global", "character" }) do
+    if needed[scope] > free[scope] then
+      local neededText = scope == "global" and L:Plural(needed[scope], "%d new global macro", "%d new global macros")
+        or L:Plural(needed[scope], "%d new character macro", "%d new character macros")
+      lines[#lines + 1] = string.format(L["Applying needs %s; %s free."], neededText, slotCount(free[scope]))
+    end
+  end
+  return lines
+end
+
 function Applier:PreviewProfile(profileId)
   local plan, reason = self:BuildPlan(profileId)
   if not plan then
@@ -206,6 +249,10 @@ function Applier:PreviewProfile(profileId)
         L[conflict.secondLayer]
       )
     )
+  end
+
+  for _, line in ipairs(self:DescribeMacroShortfall(plan)) do
+    MM:Warn(line)
   end
 
   -- Body: one "slot: from → to" line per change. Failures are always warned;
@@ -429,6 +476,10 @@ function Applier:ApplyProfile(profileId, options)
   if #plan.conflicts > 0 and not options.allowConflicts then
     MM:Warn(L["cannot apply because active layers contain invalid slots. Use /mm preview for details."])
     return false
+  end
+
+  for _, line in ipairs(self:DescribeMacroShortfall(plan)) do
+    MM:Warn(line)
   end
 
   local updated = 0

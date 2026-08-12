@@ -37,6 +37,11 @@ MM.Locales.deDE = {
   ["cannot apply because active layers contain invalid slots. Use /mm preview for details."] = "Anwenden nicht möglich: aktive Ebenen enthalten ungültige Slots. Details mit /mm preview.",
   ["layer %s contains invalid slot %s (%s)."] = "Ebene %s enthält den ungültigen Slot %s (%s).",
   ["invalid slot"] = "ungültiger Slot",
+  ["Applying needs %s; %s free."] = "Das Anwenden benötigt %s; %s frei.",
+  ["%d new global macro#one"] = "%d neues accountweites Makro",
+  ["%d new global macro#other"] = "%d neue accountweite Makros",
+  ["%d new character macro#one"] = "%d neues Charakter-Makro",
+  ["%d new character macro#other"] = "%d neue Charakter-Makros",
 
   -- Capture --------------------------------------------------------------------
   ["%d more capture failure omitted.#one"] = "%d weiterer Erfassungsfehler ausgelassen.",

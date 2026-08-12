@@ -505,4 +505,78 @@ describe("Applier", function()
       assert.is_true(printedMatches(stubs.world, "Kick %(updates the macro%)"))
     end)
   end)
+
+  describe("macro cap warning", function()
+    local function printedMatches(world, pattern)
+      for _, line in ipairs(world.printed) do
+        if line:match(pattern) then
+          return true
+        end
+      end
+      return false
+    end
+
+    local function setRestorableMacro(slot, name, body, scope)
+      MM.DB:SetSlot("Core", slot, {
+        type = "macro",
+        nameHint = name,
+        body = body,
+        bodyHash = MM.Macros.HashBody(body),
+        scope = scope,
+      })
+    end
+
+    local function fillCharacterMacros(count)
+      for index = 1, count do
+        stubs:addCharacterMacro({ name = "M" .. index, body = "/cast " .. index })
+      end
+    end
+
+    it("warns in preview when character slots run short", function()
+      fillCharacterMacros(29)
+      setRestorableMacro(10, "Mine", "/cast Mine", "character")
+      setRestorableMacro(11, "Yours", "/cast Yours", "character")
+
+      MM.Applier:PreviewProfile()
+      assert.is_true(printedMatches(stubs.world, "Applying needs 2 new character macros; 1 slot free%."))
+    end)
+
+    it("counts the same macro on two slots once", function()
+      fillCharacterMacros(29)
+      setRestorableMacro(10, "Mine", "/cast Mine", "character")
+      setRestorableMacro(11, "Mine", "/cast Mine", "character")
+
+      MM.Applier:PreviewProfile()
+      assert.is_false(printedMatches(stubs.world, "Applying needs"))
+    end)
+
+    it("counts global and character scopes separately", function()
+      for index = 1, 120 do
+        stubs:addGlobalMacro({ name = "G" .. index, body = "/cast g" .. index })
+      end
+      setRestorableMacro(10, "Mine", "/cast Mine", "global")
+      setRestorableMacro(11, "Yours", "/cast Yours", "character")
+
+      MM.Applier:PreviewProfile()
+      assert.is_true(printedMatches(stubs.world, "Applying needs 1 new global macro; 0 slots free%."))
+      assert.is_false(printedMatches(stubs.world, "new character macro"))
+    end)
+
+    it("stays silent when free slots suffice", function()
+      setRestorableMacro(10, "Mine", "/cast Mine", "character")
+
+      MM.Applier:PreviewProfile()
+      assert.is_false(printedMatches(stubs.world, "Applying needs"))
+    end)
+
+    it("warns on apply too, then continues applying what fits", function()
+      fillCharacterMacros(30)
+      setRestorableMacro(10, "Mine", "/cast Mine", "character")
+      MM.DB:SetSlot("Core", 11, { type = "spell", id = 1766 })
+
+      assert.is_false(MM.Applier:ApplyProfile()) -- the doomed restore still fails per-slot
+      assert.is_true(printedMatches(stubs.world, "Applying needs 1 new character macro; 0 slots free%."))
+      assert.equals(1766, stubs.world.slots[11].id)
+    end)
+  end)
 end)

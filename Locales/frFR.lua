@@ -41,6 +41,11 @@ MM.Locales.frFR = {
   ["cannot apply because active layers contain invalid slots. Use /mm preview for details."] = "application impossible : des calques actifs contiennent des emplacements invalides. Détails avec /mm preview.",
   ["layer %s contains invalid slot %s (%s)."] = "le calque %s contient l'emplacement invalide %s (%s).",
   ["invalid slot"] = "emplacement invalide",
+  ["Applying needs %s; %s free."] = "L'application nécessite %s ; %s libre(s).",
+  ["%d new global macro#one"] = "%d nouvelle macro de compte",
+  ["%d new global macro#other"] = "%d nouvelles macros de compte",
+  ["%d new character macro#one"] = "%d nouvelle macro de personnage",
+  ["%d new character macro#other"] = "%d nouvelles macros de personnage",
 
   -- Capture --------------------------------------------------------------------
   ["%d more capture failure omitted.#one"] = "%d autre échec de capture omis.",
