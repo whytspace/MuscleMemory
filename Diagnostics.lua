@@ -85,20 +85,24 @@ local function captureItem(report, id)
   }
 end
 
+-- Keyed by the journal id GetInfo normalises to, never the queried id: a bar
+-- references a mount by its summon spell, and a replay journal holding that
+-- spell id as a first-class entry would skip the spell->mount normalisation
+-- the real client performs, making the mount mismatch its own slot.
 local function captureMount(report, id)
-  if type(id) ~= "number" or report.mounts[id] then
+  if type(id) ~= "number" then
     return
   end
 
   local info = MM.Mounts.GetInfo(id)
-  if not info then
+  if not info or report.mounts[info.id] then
     return
   end
-  report.mounts[id] = {
+  report.mounts[info.id] = {
     name = info.name,
     spellId = info.spellId,
     icon = info.icon,
-    collected = MM.Mounts.IsKnown(id),
+    collected = info.isCollected ~= false,
   }
   captureSpell(report, info.spellId)
 end

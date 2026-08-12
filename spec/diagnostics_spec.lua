@@ -153,6 +153,24 @@ describe("Diagnostics", function()
       assert.equals("place", replayed.Applier:ClassifyEntry(replayed.Applier:BuildPlan().slots[1]))
     end)
 
+    it("normalises a mount captured through its summon spell", function()
+      seedWorld()
+      -- A companion/MOUNT slot reports the summon spell id, not the journal id.
+      stubs:setSpell(417888, { name = "Swift Wolf", known = true })
+      stubs.world.mounts[1792].spellId = 417888
+      stubs:setSlot(9, { actionType = "companion", id = 417888, subType = "MOUNT" })
+      MM.DB:GetProfile(MM.DB:GetActiveProfileId()).layers.Core.slots[9] = { type = "mount", id = 1792 }
+
+      local built = MM.Diagnostics:BuildReport()
+      assert.is_table(built.mounts[1792])
+      -- No first-class journal entry under the spell id, or the replay would
+      -- skip the spell->mount normalisation and the mount would mismatch itself.
+      assert.is_nil(built.mounts[417888])
+
+      local replayed = report.load(built)
+      assert.is_nil(replayed.Applier:ClassifyEntry(replayed.Applier:BuildPlan().slots[9]))
+    end)
+
     it("replays macros and the registry so macro matching reproduces", function()
       seedWorld()
       local replayed = report.load(MM.Diagnostics:Report())
