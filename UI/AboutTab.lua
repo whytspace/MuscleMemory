@@ -83,6 +83,55 @@ function AboutTab:Build(parent)
   link:SetScript("OnEditFocusGained", function(editBox)
     editBox:HighlightText()
   end)
+
+  -- Debug report: one click packs the live bars, the client's answers for
+  -- everything the profile references, and the profile itself into a copyable
+  -- string, so a bug report carries the state needed to reproduce it.
+  local reportHint = Widgets.Hint(
+    column,
+    L["Found a bug? Generate a debug report and attach it. It includes your action bars, macros, known spells and items, and the active profile."]
+  )
+  reportHint:SetPoint("TOP", link, "BOTTOM", 0, -24)
+  reportHint:SetWidth(460)
+  reportHint:SetJustifyH("CENTER")
+
+  local reportButton = Widgets.Button(column, L["Generate debug report"], 180, function()
+    local text, reason = MM.Diagnostics:Report()
+    self.reportText = text or ""
+    local edit = self.reportOutput.EditBox
+    edit:SetText(text or L[tostring(reason)])
+    self.reportOutput:Show()
+    self.reportOutputHint:SetShown(text ~= nil)
+    if text then
+      edit:SetFocus()
+      edit:HighlightText()
+    end
+  end)
+  reportButton:SetPoint("TOP", reportHint, "BOTTOM", 0, -10)
+
+  self.reportOutput = Widgets.MultiLineInput(column, "", 0, nil)
+  self.reportOutput:SetPoint("TOP", reportButton, "BOTTOM", 0, -10)
+  self.reportOutput:SetPoint("LEFT", column, "LEFT", 30, 0)
+  self.reportOutput:SetPoint("RIGHT", column, "RIGHT", -30, 0)
+  self.reportOutput:SetHeight(56)
+  self.reportOutput:Hide()
+
+  self.reportOutputHint = Widgets.Hint(column, L["Click the string, then press Ctrl+C."])
+  self.reportOutputHint:SetPoint("TOP", self.reportOutput, "BOTTOM", 0, -6)
+  self.reportOutputHint:Hide()
+
+  -- Output, not input: edits snap back and focusing selects everything so
+  -- Ctrl+C is the only step left (same pattern as the Export tab).
+  local edit = self.reportOutput.EditBox
+  edit:HookScript("OnTextChanged", function(editBox, userInput)
+    if userInput then
+      editBox:SetText(AboutTab.reportText or "")
+      editBox:HighlightText()
+    end
+  end)
+  edit:HookScript("OnEditFocusGained", function(editBox)
+    editBox:HighlightText()
+  end)
 end
 
 -- Static content — built once, nothing to update on refresh.

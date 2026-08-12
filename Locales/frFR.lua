@@ -116,6 +116,9 @@ MM.Locales.frFR = {
   ["not a Muscle Memory sharing string"] = "ce n'est pas une chaîne de partage Muscle Memory",
   ["this export needs a newer Muscle Memory version"] = "cet export nécessite une version plus récente de Muscle Memory",
   ["the string is damaged or incomplete"] = "la chaîne est endommagée ou incomplète",
+  ["not a Muscle Memory debug report"] = "ce n'est pas un rapport de débogage Muscle Memory",
+  ["this report needs a newer Muscle Memory version"] = "ce rapport nécessite une version plus récente de Muscle Memory",
+  ["the report is damaged or incomplete"] = "le rapport est endommagé ou incomplet",
   ["nothing to import"] = "rien à importer",
   ["nothing selected to import"] = "rien de sélectionné à importer",
   ["nothing selected to export"] = "rien de sélectionné à exporter",
@@ -426,4 +429,6 @@ MM.Locales.frFR = {
   ["Muscle Memory keeps your action bars consistent across characters. Capture how your bars are set up into reusable Layers, and restore them on any character — putting the right spell, item, macro, mount, or equipment set back into each slot."] = "Muscle Memory garde vos barres d'action cohérentes d'un personnage à l'autre. Capturez la configuration de vos barres dans des calques réutilisables et restaurez-les sur n'importe quel personnage — en remettant le bon sort, objet, macro, monture ou ensemble d'équipement dans chaque emplacement.",
   ["Slots can also point to purpose-based Smart Actions such as Interrupt, Taunt, or Bloodlust. Each character gets whatever ability it actually has for that purpose, so one Layer works across many classes."] = "Les emplacements peuvent aussi pointer vers des actions intelligentes basées sur l'usage, comme Interrupt, Taunt ou Bloodlust. Chaque personnage obtient la capacité qu'il possède vraiment pour cet usage — un seul calque fonctionne donc pour de nombreuses classes.",
   ["Project page (copy the link):"] = "Page du projet (copiez le lien) :",
+  ["Found a bug? Generate a debug report and attach it. It includes your action bars, macros, known spells and items, and the active profile."] = "Un bug ? Générez un rapport de débogage et joignez-le. Il contient vos barres d'action, macros, sorts et objets connus, ainsi que le profil actif.",
+  ["Generate debug report"] = "Générer un rapport de débogage",
 }

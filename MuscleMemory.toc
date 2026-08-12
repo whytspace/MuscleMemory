@@ -42,6 +42,7 @@ Data/PredefinedSmartActions.lua
 Database.lua
 Undo.lua
 Share.lua
+Diagnostics.lua
 Resolver.lua
 Capture.lua
 Applier.lua

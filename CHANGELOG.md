@@ -4,6 +4,7 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[New]** The About tab can generate a **debug report**: one copyable string with your action bars, macros, known spells and items, and the active profile. Attach it when reporting a bug so the problem can be reproduced without back-and-forth. Also available as `MuscleMemory.debug.report()`. Note: the report includes your macro texts.
 - **[Fix]** Zoning no longer pops up an apply prompt listing every button as changed.
 
 ## 0.14.0 - 2026-07-26

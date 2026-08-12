@@ -66,6 +66,8 @@ read_globals = {
   "GetActionTexture",
   "GetBindingKey",
   "GetBindingText",
+  "GetBuildInfo",
+  "date",
   "GetCVar",
   "SetCVar",
   "Screenshot",

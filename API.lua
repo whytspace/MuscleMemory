@@ -471,6 +471,18 @@ function api.apply()
   return false, "not everything could be applied (see chat output)"
 end
 
+-- Diagnostics --------------------------------------------------------------------
+
+api.debug = {
+  -- report() -> string
+  -- One copyable debug report: the live action bars, the client's answers for
+  -- every spell/item/macro the active profile references, and the profile
+  -- itself. Attach it to a bug report; the About tab has a button for the same.
+  report = function()
+    return MM.Diagnostics:Report()
+  end,
+}
+
 -- Internals --------------------------------------------------------------------
 
 refresh = function()

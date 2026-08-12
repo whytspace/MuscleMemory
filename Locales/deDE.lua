@@ -112,6 +112,9 @@ MM.Locales.deDE = {
   ["not a Muscle Memory sharing string"] = "kein Muscle-Memory-Teilen-String",
   ["this export needs a newer Muscle Memory version"] = "dieser Export benötigt eine neuere Muscle-Memory-Version",
   ["the string is damaged or incomplete"] = "der String ist beschädigt oder unvollständig",
+  ["not a Muscle Memory debug report"] = "kein Muscle-Memory-Debug-Bericht",
+  ["this report needs a newer Muscle Memory version"] = "dieser Bericht benötigt eine neuere Muscle-Memory-Version",
+  ["the report is damaged or incomplete"] = "der Bericht ist beschädigt oder unvollständig",
   ["nothing to import"] = "nichts zu importieren",
   ["nothing selected to import"] = "nichts zum Importieren ausgewählt",
   ["nothing selected to export"] = "nichts zum Exportieren ausgewählt",
@@ -422,4 +425,6 @@ MM.Locales.deDE = {
   ["Muscle Memory keeps your action bars consistent across characters. Capture how your bars are set up into reusable Layers, and restore them on any character — putting the right spell, item, macro, mount, or equipment set back into each slot."] = "Muscle Memory hält deine Aktionsleisten über Charaktere hinweg konsistent. Erfasse deine Leistenbelegung in wiederverwendbaren Ebenen und stelle sie auf jedem Charakter wieder her — mit dem richtigen Zauber, Gegenstand, Makro, Reittier oder Ausrüstungsset in jedem Slot.",
   ["Slots can also point to purpose-based Smart Actions such as Interrupt, Taunt, or Bloodlust. Each character gets whatever ability it actually has for that purpose, so one Layer works across many classes."] = "Slots können auch auf zweckbasierte smarte Aktionen wie Interrupt, Taunt oder Bloodlust zeigen. Jeder Charakter erhält die Fähigkeit, die er für diesen Zweck tatsächlich hat — so funktioniert eine Ebene über viele Klassen hinweg.",
   ["Project page (copy the link):"] = "Projektseite (Link kopieren):",
+  ["Found a bug? Generate a debug report and attach it. It includes your action bars, macros, known spells and items, and the active profile."] = "Fehler gefunden? Erzeuge einen Debug-Bericht und häng ihn an. Er enthält deine Aktionsleisten, Makros, bekannte Zauber und Gegenstände sowie das aktive Profil.",
+  ["Generate debug report"] = "Debug-Bericht erzeugen",
 }

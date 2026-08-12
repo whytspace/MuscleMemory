@@ -12,7 +12,9 @@ MM:RegisterModule("Share", Share)
 Share.FORMAT_VERSION = 2
 local PREFIX_PATTERN = "^!MM:(%d+)!"
 
-local function libs()
+-- Shared with Diagnostics, which encodes its debug reports through the same
+-- LibSerialize -> LibDeflate pipeline.
+function Share.Libs()
   if not LibStub then
     return nil
   end
@@ -23,6 +25,7 @@ local function libs()
   end
   return serializer, deflate
 end
+local libs = Share.Libs
 
 -- Session-only "imported" markers, keyed by profile id. Never saved: the pills
 -- they drive last until the next reload, which is the intended lifetime.
