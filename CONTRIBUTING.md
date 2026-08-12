@@ -29,7 +29,7 @@ The Git setting is local to this clone and prevents WoW's permission updates fro
 
 Update `CHANGELOG.md` for player-facing changes. Skip internal cleanup, tests, formatting, and development chores.
 
-Keep entries short and player-focused, in one flat list. Start each with **[New]**, **[Change]**, or **[Fix]**, ordered New, Change, Fix.
+Keep entries short and to the point — one or two sentences per entry, describing the visible behavior change, not the mechanism behind it. One flat list; start each entry with **[New]**, **[Change]**, or **[Fix]**, ordered New, Change, Fix.
 
 ```md
 - **[New]** See slots bound by other layers.
