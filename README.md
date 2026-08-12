@@ -15,7 +15,8 @@ button to *Interrupt*, *Taunt*, or *Bloodlust*, and every character gets whateve
 has for the job. One binding, every class.
 
 > ⚠️ **Early development:** things mostly work, but bugs can occur. Please report issues on
-> [GitHub](https://github.com/whytspace/MuscleMemory/issues).
+> [GitHub](https://github.com/whytspace/MuscleMemory/issues) — attaching a debug report (About
+> tab) makes them reproducible.
 
 ![Muscle Memory layers tab](https://raw.githubusercontent.com/whytspace/MuscleMemory/main/docs/images/layers.png)
 
