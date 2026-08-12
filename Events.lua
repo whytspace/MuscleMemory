@@ -45,11 +45,14 @@ function Events:PromptApplyIfChanged()
   end
 end
 
--- Login and spec swaps stream spell/item/bar data in a burst; an early read can
--- misjudge a slot before item tooltips load. Trailing-debounce a few seconds so
--- we evaluate once it settles.
-local REEVALUATE_DELAY = 3.0
+-- Login, zoning and spec swaps stream data in a burst; an early read misjudges
+-- slots, or sees empty bars. Trailing-debounce until it settles.
+local REEVALUATE_DELAY = 5.0
 local reevaluateGen = 0
+-- Timers keep ticking through a loading screen, so the delay can expire
+-- mid-load, when the bars read as empty. Skip that read;
+-- LOADING_SCREEN_DISABLED schedules a fresh one.
+local loadingScreen = false
 
 local function reevaluateProfile()
   if not C_Timer then
@@ -59,13 +62,24 @@ local function reevaluateProfile()
   reevaluateGen = reevaluateGen + 1
   local gen = reevaluateGen
   C_Timer.After(REEVALUATE_DELAY, function()
-    if gen == reevaluateGen then
+    if gen == reevaluateGen and not loadingScreen then
       Events:PromptApplyIfChanged()
     end
   end)
 end
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
 handlers.SPELLS_CHANGED = reevaluateProfile
+-- SPELLS_CHANGED fires mid-load, starting the delay too early; restart it here.
+handlers.PLAYER_ENTERING_WORLD = reevaluateProfile
+
+function handlers.LOADING_SCREEN_ENABLED()
+  loadingScreen = true
+end
+
+function handlers.LOADING_SCREEN_DISABLED()
+  loadingScreen = false
+  reevaluateProfile()
+end
 
 -- Fires at login when macro data loads, on every macro change — and on mere
 -- selection in the macro frame, in bursts. Trailing-debounce so clicking

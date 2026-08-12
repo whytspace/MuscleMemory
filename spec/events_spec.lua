@@ -99,6 +99,9 @@ describe("Events", function()
     MM.Events:OnInitialize()
     assert.is_true(MM.eventFrame._events["ACTIVE_PLAYER_SPECIALIZATION_CHANGED"])
     assert.is_true(MM.eventFrame._events["SPELLS_CHANGED"])
+    assert.is_true(MM.eventFrame._events["PLAYER_ENTERING_WORLD"])
+    assert.is_true(MM.eventFrame._events["LOADING_SCREEN_ENABLED"])
+    assert.is_true(MM.eventFrame._events["LOADING_SCREEN_DISABLED"])
     assert.is_true(MM.eventFrame._events["ACTIONBAR_SLOT_CHANGED"])
     assert.is_true(MM.eventFrame._events["UPDATE_MACROS"])
   end)
@@ -140,6 +143,39 @@ describe("Events", function()
       -- Nothing yet: the read is scheduled, not run inline.
       assert.equals(0, prompts)
 
+      stubs:flushTimers()
+      assert.equals(1, prompts)
+    end)
+
+    -- Zoning fires SPELLS_CHANGED mid-load, so the wait restarts on world entry.
+    it("restarts the wait when the player enters the world", function()
+      MM.Events:OnEvent("SPELLS_CHANGED")
+      MM.Events:OnEvent("PLAYER_ENTERING_WORLD")
+
+      stubs:flushTimers()
+      assert.equals(1, prompts)
+    end)
+
+    -- Timers keep ticking through a loading screen: on a long load the delay
+    -- expires mid-load, when the bars read as empty.
+    it("skips a read that lands while the loading screen is still up", function()
+      MM.Events:OnEvent("LOADING_SCREEN_ENABLED")
+      MM.Events:OnEvent("PLAYER_ENTERING_WORLD")
+      stubs:flushTimers()
+      assert.equals(0, prompts)
+
+      -- The bars stream in after the load; the read scheduled by the loading
+      -- screen ending sees them settled.
+      MM.Events:OnEvent("LOADING_SCREEN_DISABLED")
+      stubs:setSlot(10, { actionType = "spell", id = 1766 })
+      stubs:flushTimers()
+      assert.equals(0, prompts)
+    end)
+
+    it("still prompts after the load when the bars genuinely differ", function()
+      MM.Events:OnEvent("LOADING_SCREEN_ENABLED")
+      MM.Events:OnEvent("PLAYER_ENTERING_WORLD")
+      MM.Events:OnEvent("LOADING_SCREEN_DISABLED")
       stubs:flushTimers()
       assert.equals(1, prompts)
     end)

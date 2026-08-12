@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** Zoning no longer pops up an apply prompt listing every button as changed.
+
 ## 0.14.0 - 2026-07-26
 
 - **[New]** Muscle Memory now speaks German and French, the first languages beyond English. The window and its chat messages follow your client language, falling back to English anywhere a translation is missing. The predefined Smart Action names (Interrupt, Bloodlust, Taunt, ...) deliberately stay English, since that is the shorthand players use.
