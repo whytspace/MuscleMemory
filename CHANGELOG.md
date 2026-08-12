@@ -5,6 +5,7 @@ All notable player-facing changes are recorded here.
 ## Unreleased
 
 - **[New]** The About tab can generate a **debug report**: one copyable string with your action bars, macros, known spells and items, and the active profile. Attach it when reporting a bug so the problem can be reproduced without back-and-forth. Also available as `MuscleMemory.debug.report()`. Note: the report includes your macro texts.
+- **[Change]** Updated for patch 12.1.
 - **[Fix]** Zoning no longer pops up an apply prompt listing every button as changed.
 - **[Fix]** Auto-updated macros (e.g. EnhanceQoL's) no longer swap identities after visiting an alt — a stored macro stays with its name. Already-affected slots need a one-time re-capture.
 
