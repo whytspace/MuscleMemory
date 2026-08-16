@@ -180,6 +180,33 @@ describe("Events", function()
       assert.equals(1, prompts)
     end)
 
+    -- C_ToyBox.IsToyUsable computes its verdict on the first ask and answers nil
+    -- until then, so the read that asks first judges the toy on a blank. Warming
+    -- the profile's queries on world entry means the deciding read isn't that one.
+    it("does not prompt for a toy whose usability answers nil on the first ask", function()
+      stubs:setSlot(10, { actionType = "spell", id = 1766 })
+      stubs:setItem(60854, { name = "Loot-A-Rang", isToy = true, toyUsable = false })
+      local asked = false
+      local answer = stubs.globals.C_ToyBox.IsToyUsable
+      stubs.globals.C_ToyBox.IsToyUsable = function(id)
+        if not asked then
+          asked = true
+          return nil
+        end
+        return answer(id)
+      end
+
+      local key = MM.DB:CreateSmartAction("Remote Loot")
+      MM.DB:AddCandidate(key, { type = "item", id = 60854 })
+      MM.DB:SetSlot("Core", 11, { type = "action", source = "custom", id = key })
+
+      MM.Events:OnEvent("PLAYER_ENTERING_WORLD")
+      stubs:flushTimers()
+
+      -- The toy is unusable, so the empty slot 11 stays empty: no change to prompt for.
+      assert.equals(0, prompts)
+    end)
+
     it("collapses a burst of events into a single evaluation", function()
       -- The generation counter means only the last scheduled callback acts; the
       -- earlier ones from the same burst are stale and do nothing.

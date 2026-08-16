@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Fix]** Logging in no longer pops up an apply prompt for a toy you can't use, e.g. an engineering toy on a non-engineer.
+
 ## 0.16.0 - 2026-08-12
 
 - **[New]** Preview and apply warn upfront when recreating your captured macros would not fit the free macro slots, e.g. "Applying needs 8 new global macros; 5 slots free."

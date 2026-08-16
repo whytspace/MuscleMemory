@@ -67,10 +67,17 @@ local function reevaluateProfile()
     end
   end)
 end
-handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = reevaluateProfile
+-- Warm the client's lazily-computed answers before the delay runs, so the read
+-- that decides isn't the one asking first. Only on the two events that open a
+-- burst: SPELLS_CHANGED repeats too often to warm on.
+local function warmAndReevaluate()
+  MM.Resolver:WarmClientData()
+  reevaluateProfile()
+end
+handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = warmAndReevaluate
 handlers.SPELLS_CHANGED = reevaluateProfile
 -- SPELLS_CHANGED fires mid-load, starting the delay too early; restart it here.
-handlers.PLAYER_ENTERING_WORLD = reevaluateProfile
+handlers.PLAYER_ENTERING_WORLD = warmAndReevaluate
 
 function handlers.LOADING_SCREEN_ENABLED()
   loadingScreen = true

@@ -256,3 +256,30 @@ function Resolver:ResolveSmartActionAssignment(assignment)
 
   return nil, "smart action " .. tostring(smartAction.name or assignment.id) .. " had no matching candidate"
 end
+
+-- Ask the client, once and early, everything the profile will later be judged
+-- against. Some answers are computed on first ask rather than streamed in --
+-- C_ToyBox.IsToyUsable returns nil until something requests it, then the real
+-- verdict -- so whoever asks first reads a blank and, at login, that is the
+-- change scan: it sees an unusable toy as usable and raises a phantom change.
+-- Answers are discarded; the asking is the point.
+--
+-- Deliberately ignores layer enablement and conditions: at login the spec isn't
+-- readable yet, so the matching subset isn't known, and a layer the player
+-- enables or swaps spec into later has to be warm too.
+function Resolver:WarmClientData(profileId)
+  for _, entry in ipairs(MM.DB:GetProfileLayers(profileId)) do
+    for _, assignment in pairs(entry.layer.slots or {}) do
+      if assignment.type == "action" then
+        local smartAction = MM.DB:ResolveSmartAction({ source = assignment.source, id = assignment.id })
+        -- Every candidate, not just the one that would win: resolution stops at
+        -- the first hit, which leaves the rest cold for the read that decides.
+        for _, candidate in ipairs(smartAction and smartAction.candidates or {}) do
+          self:ResolveAction(candidate, { requireAvailable = true })
+        end
+      else
+        self:ResolveAction(assignment)
+      end
+    end
+  end
+end
