@@ -1,6 +1,6 @@
 local ADDON_NAME, MM = ...
 
-MM.SCHEMA_VERSION = 4
+MM.SCHEMA_VERSION = 5
 
 -- Structural defaults: containers merged on every load so they always exist.
 -- Deliberately omits starter content (the Core layer, the Default profile) so

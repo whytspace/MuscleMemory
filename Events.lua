@@ -76,6 +76,10 @@ local function warmAndReevaluate()
 end
 handlers.ACTIVE_PLAYER_SPECIALIZATION_CHANGED = warmAndReevaluate
 handlers.SPELLS_CHANGED = reevaluateProfile
+-- Professions stream in like spells do, and an empty GetProfessions reads the
+-- same whether they haven't arrived or the character has none — so there is
+-- nothing to wait for, only this event to restart the delay on.
+handlers.SKILL_LINES_CHANGED = reevaluateProfile
 -- SPELLS_CHANGED fires mid-load, starting the delay too early; restart it here.
 handlers.PLAYER_ENTERING_WORLD = warmAndReevaluate
 

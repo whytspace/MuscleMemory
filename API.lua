@@ -23,7 +23,7 @@ local ADDON_NAME, MM = ...
 --              | { type = "action", source = "custom"|"predefined", id = actionId }
 --   candidate  = an assignment (except action/empty/ignore),
 --                plus optional `conditions`
---   conditions = { classes|specs|roles|factions|races = { ... },
+--   conditions = { classes|specs|roles|factions|races|professions = { ... },
 --                  levelMin = n, levelMax = n }
 --------------------------------------------------------------------------------
 

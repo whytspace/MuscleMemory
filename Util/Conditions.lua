@@ -1,10 +1,10 @@
 local ADDON_NAME, MM = ...
 
 -- Shared condition evaluation for smartAction candidates and layers. A `conditions`
--- table carries optional dimensions — classes / specs / roles / factions / races
--- (lists) and levelMin / levelMax — and every present, non-empty dimension must
--- match the current character. Absent dimensions don't restrict, so an empty (or
--- nil) table always matches.
+-- table carries optional dimensions — classes / specs / roles / factions / races /
+-- professions (lists) and levelMin / levelMax — and every present, non-empty
+-- dimension must match the current character. Absent dimensions don't restrict, so
+-- an empty (or nil) table always matches.
 local Conditions = {}
 MM.Conditions = Conditions
 
@@ -40,6 +40,47 @@ end
 
 local function currentFaction()
   return UnitFactionGroup and UnitFactionGroup("player") or nil
+end
+
+-- GetProfessions answers in five fixed positions (two primaries, archaeology,
+-- fishing, cooking) and leaves the unlearned ones nil, so read it by position:
+-- ipairs over the packed results would stop at the first empty slot and hide
+-- everything after it.
+local PROFESSION_SLOTS = 5
+
+-- The parent skill line ("Engineering"), not the per-expansion child line
+-- ("Midnight Engineering") — GetProfessionInfo's 7th return.
+local PROFESSION_SKILL_LINE = 7
+
+local function knownProfessions()
+  local known = {}
+  if not (GetProfessions and GetProfessionInfo) then
+    return known
+  end
+  local slots = { GetProfessions() }
+  for slot = 1, PROFESSION_SLOTS do
+    local index = slots[slot]
+    local skillLine = index and select(PROFESSION_SKILL_LINE, GetProfessionInfo(index))
+    if skillLine then
+      known[skillLine] = true
+    end
+  end
+  return known
+end
+
+-- Unlike the other dimensions a character holds several values at once, so the
+-- condition matches when any listed profession is one of them.
+local function professionsOk(list)
+  if not (list and #list > 0) then
+    return true
+  end
+  local known = knownProfessions()
+  for _, skillLine in ipairs(list) do
+    if known[skillLine] then
+      return true
+    end
+  end
+  return false
 end
 
 local function inList(list, value)
@@ -79,6 +120,9 @@ function Conditions.Match(conditions)
   if not dimensionOk(conditions.races, currentRace()) then
     return false
   end
+  if not professionsOk(conditions.professions) then
+    return false
+  end
 
   local level = UnitLevel and UnitLevel("player")
   if level then
@@ -99,7 +143,7 @@ function Conditions.Any(conditions)
   if not conditions then
     return false
   end
-  for _, key in ipairs({ "classes", "specs", "roles", "factions", "races" }) do
+  for _, key in ipairs({ "classes", "specs", "roles", "factions", "races", "professions" }) do
     local list = conditions[key]
     if list and #list > 0 then
       return true

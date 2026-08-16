@@ -253,10 +253,11 @@ MM.Locales.frFR = {
   ["Role"] = "Rôle",
   ["Faction"] = "Faction",
   ["Race"] = "Race",
+  ["Profession"] = "Métier",
   ["Level range"] = "Plage de niveaux",
   ["Spec %s"] = "Spécialisation %s",
   ["to"] = "à",
-  -- Class, spec, role, faction and race names come from the client, not from here.
+  -- Class, spec, role, faction, race and profession names come from the client, not from here.
   -- Layers tab -----------------------------------------------------------------------
   ["Bind a Smart Action instead?"] = "Placer une action à la place ?",
   ["%s is covered by %s. Do you want to bind the Smart Action instead? You can disable this behavior in the settings."] = "%s est couvert par %s. Voulez-vous placer l'action intelligente à la place ? Ce comportement peut être désactivé dans les options.",

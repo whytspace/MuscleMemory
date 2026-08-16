@@ -34,6 +34,9 @@ local function newFrame()
   })
 end
 
+-- Where GetProfessions puts each secondary; everything else fills slots 1-2.
+local SECONDARY_PROFESSION_SLOT = { [794] = 3, [356] = 4, [185] = 5 }
+
 function Stubs.new()
   local world = {
     playerName = "Tester",
@@ -44,6 +47,7 @@ function Stubs.new()
     level = 70,
     faction = "Alliance",
     race = "Gnome", -- the raceFile UnitRace returns as its 2nd value
+    professions = {}, -- parent skill line ids, e.g. { 202 } for an engineer
     inCombat = false,
     macroLimit = 120,
     charMacroLimit = 30,
@@ -117,6 +121,29 @@ function Stubs.new()
     end,
     GetSpecializationRole = function()
       return world.role
+    end,
+
+    -- Real WoW answers in five fixed slots -- prof1, prof2, archaeology,
+    -- fishing, cooking -- and leaves the unlearned ones nil, so a cooking-only
+    -- character returns nil,nil,nil,nil,index. The indices are opaque handles;
+    -- here a skill line id doubles as its own handle.
+    GetProfessions = function()
+      local slots, primary = {}, 0
+      for _, skillLine in ipairs(world.professions) do
+        local slot = SECONDARY_PROFESSION_SLOT[skillLine]
+        if not slot then
+          primary = primary + 1
+          slot = primary
+        end
+        slots[slot] = skillLine
+      end
+      return slots[1], slots[2], slots[3], slots[4], slots[5]
+    end,
+    -- name, icon, skillLevel, maxSkillLevel, numAbilities, spelloffset, skillLine.
+    -- The skill line is the *parent* ("Engineering"), while the skill numbers
+    -- describe the current expansion's child line (verified in 12.0).
+    GetProfessionInfo = function(index)
+      return "Profession " .. tostring(index), 0, 96, 100, 1, 0, index
     end,
 
     -- Spells ---------------------------------------------------------------

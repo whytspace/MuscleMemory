@@ -72,6 +72,58 @@ local RACES = {
   { token = "Dracthyr", name = "Dracthyr" },
 }
 
+-- Tokens are parent skill line ids — "Engineering", not "Midnight Engineering" —
+-- which is what GetProfessionInfo reports and Conditions.Match compares against.
+-- Each `name` is a last-resort label; the client supplies the real one below.
+-- Ids that don't resolve are dropped from the list rather than offered as a
+-- choice that could never match.
+local PROFESSIONS = {
+  { token = 171, name = "Alchemy" },
+  { token = 164, name = "Blacksmithing" },
+  { token = 333, name = "Enchanting" },
+  { token = 202, name = "Engineering" },
+  { token = 182, name = "Herbalism" },
+  { token = 773, name = "Inscription" },
+  { token = 755, name = "Jewelcrafting" },
+  { token = 165, name = "Leatherworking" },
+  { token = 186, name = "Mining" },
+  { token = 393, name = "Skinning" },
+  { token = 197, name = "Tailoring" },
+  { token = 185, name = "Cooking" },
+  { token = 356, name = "Fishing" },
+  { token = 794, name = "Archaeology" },
+}
+
+-- The parent line carries no skill numbers (it reports 0/0 and an "Unknown"
+-- expansion), but its localized name is good, which is all a label needs.
+local function professionInfo(skillLine)
+  if not (C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID) then
+    return nil
+  end
+  return C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
+end
+
+-- Selected professions the client doesn't recognize stay visible so a stale
+-- choice can still be unselected, mirroring how specs are handled.
+local function professionOptions(conditions)
+  local options, seen = {}, {}
+  for _, profession in ipairs(PROFESSIONS) do
+    local info = professionInfo(profession.token)
+    if info or not C_TradeSkillUI then
+      options[#options + 1] = profession
+      seen[profession.token] = true
+    end
+  end
+  for _, token in ipairs(conditions.professions or {}) do
+    if not seen[token] then
+      seen[token] = true
+      local info = professionInfo(token)
+      options[#options + 1] = { token = token, name = (info and info.professionName) or tostring(token) }
+    end
+  end
+  return options
+end
+
 -- The player's current class specs, used when no class condition narrows the list.
 local function playerSpecs()
   local specs = {}
@@ -159,6 +211,9 @@ local function optionName(field, option)
     client = _G[FACTION_GLOBAL[option.token] or ""]
   elseif field == "races" then
     client = raceNameByToken(option.token)
+  elseif field == "professions" then
+    local info = professionInfo(option.token)
+    client = info and info.professionName
   end
   return client or option.name
 end
@@ -366,6 +421,7 @@ function ConditionsEditor:Build(parent, conditions, editable, onChange, width)
   sections[#sections + 1] = { title = "Role", field = "roles", options = ROLES }
   sections[#sections + 1] = { title = "Faction", field = "factions", options = FACTIONS }
   sections[#sections + 1] = { title = "Race", field = "races", options = raceOptions() }
+  sections[#sections + 1] = { title = "Profession", field = "professions", options = professionOptions(conditions) }
 
   -- Read-only (predefined) conditions show only the dimensions actually set,
   -- always expanded, with static headers — there's nothing to edit or explore.

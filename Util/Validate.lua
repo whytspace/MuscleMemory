@@ -23,7 +23,8 @@ local ASSIGNMENT_TYPES = {
   action = {},
 }
 
-local CONDITION_LISTS = { classes = true, specs = true, roles = true, factions = true, races = true }
+local CONDITION_LISTS =
+  { classes = true, specs = true, roles = true, factions = true, races = true, professions = true }
 
 function Validate.Conditions(conditions)
   if conditions == nil then

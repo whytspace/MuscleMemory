@@ -34,6 +34,26 @@ describe("Conditions", function()
     assert.is_false(MM.Conditions.Match({ races = { "Worgen" } }))
   end)
 
+  it("checks professions, matching any of the listed ones", function()
+    stubs:setCharacter({ professions = { 202, 186 } })
+    assert.is_true(MM.Conditions.Match({ professions = { 202 } }))
+    assert.is_true(MM.Conditions.Match({ professions = { 171, 186 } }))
+    assert.is_false(MM.Conditions.Match({ professions = { 171 } }))
+  end)
+
+  it("finds a profession that sits in a later slot", function()
+    -- GetProfessions leaves the unlearned slots nil; cooking alone answers
+    -- nil,nil,nil,nil,index, which a packed iteration would never reach.
+    stubs:setCharacter({ professions = { 185 } })
+    assert.is_true(MM.Conditions.Match({ professions = { 185 } }))
+  end)
+
+  it("matches no profession when the character has none", function()
+    stubs:setCharacter({ professions = {} })
+    assert.is_false(MM.Conditions.Match({ professions = { 202 } }))
+    assert.is_true(MM.Conditions.Match({ professions = {} }))
+  end)
+
   it("checks the level range", function()
     assert.is_true(MM.Conditions.Match({ levelMin = 60, levelMax = 80 }))
     assert.is_false(MM.Conditions.Match({ levelMin = 71 }))
@@ -45,5 +65,6 @@ describe("Conditions", function()
     assert.is_false(MM.Conditions.Any({}))
     assert.is_true(MM.Conditions.Any({ roles = { "TANK" } }))
     assert.is_true(MM.Conditions.Any({ levelMin = 10 }))
+    assert.is_true(MM.Conditions.Any({ professions = { 202 } }))
   end)
 end)
