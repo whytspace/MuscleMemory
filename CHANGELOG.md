@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.17.0 - 2026-08-16
+
 - **[New]** Layers and Smart Actions can now require a **profession**, keeping an engineer-only macro off your other characters.
 - **[Fix]** Logging in no longer pops up an apply prompt for a toy you can't use, e.g. an engineering toy on a non-engineer.
 
