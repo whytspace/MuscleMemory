@@ -4,7 +4,7 @@
 ## Notes-deDE: Belege Knöpfe nach Zweck, nicht nur nach Zauber.
 ## Notes-frFR: Placez vos boutons par usage, pas seulement par sort.
 ## Author: whytspace
-## Version: 0.17.0
+## Version: 0.18.0
 ## IconTexture: Interface\AddOns\MuscleMemory\Assets\logo
 ## X-Website: https://github.com/whytspace/MuscleMemory/
 ## X-Curse-Project-ID: 1585706

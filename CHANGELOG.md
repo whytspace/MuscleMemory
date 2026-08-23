@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.18.0 - 2026-08-23
+
 - **[New]** An interactive **tutorial** that walks you through the window one section at a time, from the "i" button in the top-left corner. It opens by itself the first time you use Muscle Memory.
 - **[Change]** A new profile now starts with one empty **Core** layer, so there is somewhere to capture into right away. Imported profiles are unaffected — they bring their own layers.
 
