@@ -15,6 +15,13 @@ MM.ui.state = MM.ui.state or { tab = "layers" }
 -- scripts/build-textures.sh). Used for the title-bar portrait and the About page.
 MM.ui.LOGO_TEXTURE = "Interface\\AddOns\\MuscleMemory\\Assets\\logo"
 
+-- Blizzard's own help button art, at the size and offsets its windows use.
+local HELP_ICON = "Interface\\common\\help-i"
+local HELP_RING = "Interface\\Minimap\\MiniMap-TrackingBorder"
+local HELP_BUTTON_SIZE = 64
+local HELP_BUTTON_X = -14
+local HELP_BUTTON_Y = -2
+
 local TABS = {
   { id = "layers", label = "Layers", icon = MM.ui.Widgets.ICON.layers },
   { id = "actions", label = "Smart Actions", icon = MM.ui.Widgets.ICON.smartAction },
@@ -26,12 +33,12 @@ local TABS = {
 }
 
 local TAB_DESCRIPTIONS = {
-  layers = "Layers are stacked rules that decide what each action-bar slot becomes. Higher Layers win; unmanaged slots show the Layer beneath.",
-  actions = "Smart Actions are named stand-ins for an action (Interrupt, Taunt, Bloodlust). Each resolves to the first ability the current character actually has.",
-  settings = "Settings tune how the active profile behaves \226\128\148 each profile keeps its own.",
-  profiles = "Profiles are self-contained setups, each with its own Layers and Smart Actions. Choose the account-wide default and an optional per-character override.",
-  export = "Bundle Layers, Smart Actions and settings from the active profile into a copyable string other players can import.",
-  import = "Paste a sharing string, pick what to take, and import it into the current or a new profile. Imports always create new entries — nothing of yours is overwritten.",
+  layers = "A Layer is a set of managed action bar slots. If you manage the same slot with multiple Layers, the higher one wins; faded slots are left alone.",
+  actions = "A Smart Action binds a purpose, like Interrupt, instead of a spell. Each character uses the first spell it can actually use for that purpose.",
+  settings = "Settings change how the active profile behaves. Each profile has its own.",
+  profiles = "A Profile is a separate Muscle Memory configuration with its own Layers and Smart Actions. Pick one for all your characters, and a different one for any character that needs it.",
+  export = "Turn the Layers, Smart Actions and settings of the active profile into a code you can pass on to a friend.",
+  import = "Paste a code you were given, pick what you want to take, and add it to this profile or a new one. Everything you import is added alongside your own — nothing of yours is replaced.",
 }
 
 local function tabBuilder(id)
@@ -128,10 +135,19 @@ function UI:CreateFrame()
   frame:SetScript("OnKeyDown", function(f, key)
     if key == "ESCAPE" then
       f:SetPropagateKeyboardInput(false)
-      f:Hide()
+      -- Escape backs out of the tutorial first; the window itself stays put.
+      if MM.ui.Tutorial:IsActive() then
+        MM.ui.Tutorial:Stop()
+      else
+        f:Hide()
+      end
     else
       f:SetPropagateKeyboardInput(true)
     end
+  end)
+
+  frame:SetScript("OnHide", function()
+    MM.ui.Tutorial:Stop()
   end)
 
   if frame.SetTitle then
@@ -155,6 +171,56 @@ function UI:CreateFrame()
       backdrop:AddMaskTexture(mask)
     end
   end
+
+  -- Parented into the title bar, which is a child frame of its own and draws
+  -- over anything placed on the window itself. Composed like Blizzard's
+  -- MainHelpPlateButton: the ring art is off-centre in its texture, hence the
+  -- offset on it.
+  local titleBar = frame.TitleContainer or frame
+  local helpScale = HELP_BUTTON_SIZE / 64
+  local helpGlyph = 46 * helpScale
+
+  local help = CreateFrame("Button", nil, titleBar)
+  help:SetSize(HELP_BUTTON_SIZE, HELP_BUTTON_SIZE)
+  help:SetFrameLevel(titleBar:GetFrameLevel() + 5)
+  help:SetPoint("LEFT", titleBar, "LEFT", HELP_BUTTON_X, HELP_BUTTON_Y)
+  -- The art is far wider than the disc, and the full square would swallow
+  -- clicks meant for the tab row underneath it.
+  local helpInset = 20 * helpScale
+  help:SetHitRectInsets(helpInset, helpInset, helpInset, helpInset)
+
+  local helpIcon = help:CreateTexture(nil, "ARTWORK")
+  helpIcon:SetSize(helpGlyph, helpGlyph)
+  helpIcon:SetPoint("CENTER")
+  helpIcon:SetTexture(HELP_ICON)
+
+  local helpRing = help:CreateTexture(nil, "OVERLAY")
+  helpRing:SetSize(HELP_BUTTON_SIZE, HELP_BUTTON_SIZE)
+  helpRing:SetPoint("CENTER", 12 * helpScale, -13 * helpScale)
+  helpRing:SetTexture(HELP_RING)
+
+  help:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
+  local helpHighlight = help:GetHighlightTexture()
+  helpHighlight:ClearAllPoints()
+  helpHighlight:SetSize(helpGlyph, helpGlyph)
+  helpHighlight:SetPoint("CENTER", -1, 1)
+  help:SetScript("OnEnter", function(button)
+    -- The offset takes up the slack between the button and the art inside it.
+    GameTooltip:SetOwner(button, "ANCHOR_TOP", 0, -(HELP_BUTTON_SIZE - 46 * (HELP_BUTTON_SIZE / 64)) / 2)
+    GameTooltip:SetText(L["Tutorial"])
+    GameTooltip:Show()
+  end)
+  help:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+  end)
+  help:SetScript("OnClick", function()
+    if MM.ui.Tutorial:IsActive() then
+      MM.ui.Tutorial:Stop()
+    else
+      MM.ui.Tutorial:Start(false)
+    end
+  end)
+  self.helpButton = help
 
   -- Drag from the title bar.
   local titleRegion = frame.TitleContainer or frame
@@ -202,6 +268,12 @@ function UI:CreateFrame()
   end)
   preview:SetPoint("RIGHT", apply, "LEFT", -8, 0)
 
+  -- Invisible spans, so the tutorial can highlight a header group as one region.
+  local applyRow = CreateFrame("Frame", nil, frame)
+  applyRow:SetPoint("TOPLEFT", preview, "TOPLEFT", -4, 4)
+  applyRow:SetPoint("BOTTOMRIGHT", apply, "BOTTOMRIGHT", 4, -4)
+  MM.ui.Tutorial:SetAnchor("frame.apply", applyRow)
+
   -- Undo/Redo revert configuration changes (never the bars themselves). They
   -- keep their place and fade when there is nothing to do; tooltips stay alive
   -- on the disabled state so the buttons remain discoverable.
@@ -222,6 +294,16 @@ function UI:CreateFrame()
   end)
   self.undoButton:SetPoint("RIGHT", self.redoButton, "LEFT", -6, 0)
   self.undoButton:SetMotionScriptsWhileDisabled(true)
+
+  local undoRow = CreateFrame("Frame", nil, frame)
+  undoRow:SetPoint("TOPLEFT", self.undoButton, "TOPLEFT", -4, 4)
+  undoRow:SetPoint("BOTTOMRIGHT", self.redoButton, "BOTTOMRIGHT", 4, -4)
+  MM.ui.Tutorial:SetAnchor("frame.undo", undoRow)
+
+  local shareRow = CreateFrame("Frame", nil, frame)
+  shareRow:SetPoint("TOPLEFT", self.tabButtons.export, "TOPLEFT", -3, 3)
+  shareRow:SetPoint("BOTTOMRIGHT", self.tabButtons.import, "BOTTOMRIGHT", 3, -3)
+  MM.ui.Tutorial:SetAnchor("frame.share", shareRow)
 
   -- One shared inset sits behind all tab content so the three panels read as a
   -- single recessed surface; tabs separate their panels with groove dividers. It
@@ -317,6 +399,9 @@ function UI:Refresh()
   if self.frame and self.frame:IsShown() then
     self:ShowContent()
   end
+  -- Every config mutation lands here, so it is the one place the tutorial
+  -- needs to watch for fresh anchors and completed steps.
+  MM.ui.Tutorial:OnRefresh()
 end
 
 -- Snap the window back to the centre of the screen — handy after dragging it
@@ -331,6 +416,12 @@ function UI:Open()
   self:CreateFrame()
   self.frame:Show()
   self:ShowContent()
+
+  -- Marked seen on open rather than on finish, so dismissing it sticks.
+  if not MM.DB:HasSeenTutorial() then
+    MM.DB:MarkTutorialSeen()
+    MM.ui.Tutorial:Start(true)
+  end
 end
 
 function UI:OnInitialize()

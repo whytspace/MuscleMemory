@@ -54,6 +54,7 @@ UI/Widgets.lua
 UI/Modals.lua
 UI/ShareTabs.lua
 UI/ConditionsEditor.lua
+UI/Tutorial.lua
 UI/MainFrame.lua
 UI/LayersTab.lua
 UI/SmartActionsTab.lua

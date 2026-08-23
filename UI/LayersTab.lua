@@ -355,6 +355,8 @@ function LayersTab:BuildRail(parent)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
 
+  MM.ui.Tutorial:SetAnchor("layers.rail", inset)
+
   local newButton = Widgets.Button(inset, L["+ New Layer"], RAIL_WIDTH - 24, newLayer)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 8)
 
@@ -869,6 +871,7 @@ function LayersTab:BuildEditor(parent, layerId, layer)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   inset:SetWidth(EDITOR_WIDTH + 2)
+  MM.ui.Tutorial:SetAnchor("layers.editor", inset)
 
   local slot = MM.DB:GetSelectedSlot()
   if not slot then
@@ -1017,6 +1020,13 @@ function LayersTab:BuildContent(parent)
   local rightGroove = Widgets.VGroove(parent)
   rightGroove:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(EDITOR_WIDTH + 6), -6)
   rightGroove:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(EDITOR_WIDTH + 6), 6)
+
+  -- Groove to groove and full height, so the tutorial's highlight matches the
+  -- panels either side of it; the grid itself is inset within this.
+  local centerColumn = CreateFrame("Frame", nil, parent)
+  centerColumn:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 6, 0)
+  centerColumn:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(EDITOR_WIDTH + 6), 0)
+  MM.ui.Tutorial:SetAnchor("layers.grid", centerColumn)
 
   -- A button behind the grid: clicking empty centre space deselects the slot
   -- (interactive children handle their own clicks first).

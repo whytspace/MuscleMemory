@@ -165,6 +165,7 @@ function ProfilesTab:Build(parent)
   selectorRow:SetPoint("TOPLEFT", column, "TOPLEFT", 0, 0)
   selectorRow:SetPoint("TOPRIGHT", column, "TOPRIGHT", -20, 0)
   selectorRow:SetPoint("BOTTOMLEFT", self.globalDropdown, "BOTTOMLEFT", 0, 0)
+  MM.ui.Tutorial:SetAnchor("profiles.selectors", selectorRow)
 
   -- Separate the selectors from the manage list. The rule extends past the
   -- column's content margins so it lines up with the tab-description divider above

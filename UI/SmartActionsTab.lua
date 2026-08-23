@@ -315,6 +315,7 @@ function SmartActionsTab:BuildRail(parent)
   inset:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
   inset:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
   inset:SetWidth(RAIL_WIDTH)
+  MM.ui.Tutorial:SetAnchor("actions.rail", inset)
 
   local newButton = Widgets.Button(inset, "+ " .. L["New Smart Action"], RAIL_WIDTH - 24, newSmartAction)
   newButton:SetPoint("BOTTOM", inset, "BOTTOM", 0, 8)
@@ -502,6 +503,7 @@ function SmartActionsTab:BuildCenter(parent, ref, smartAction)
     cloneSmartAction(ref)
   end)
   Widgets.AnchorHeaderAction(clone, center, title)
+  MM.ui.Tutorial:SetAnchor("actions.clone", clone)
 
   if not locked then
     local del = Widgets.IconButton(center, Widgets.ICON.delete, L["Delete"], function()
@@ -705,6 +707,7 @@ function SmartActionsTab:BuildRule(parent, smartAction)
   inset:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
   inset:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
   inset:SetWidth(RULE_WIDTH + 2)
+  MM.ui.Tutorial:SetAnchor("actions.rule", inset)
 
   local candidates = smartAction and smartAction.candidates or {}
   local candidate = MM.ui.state.candidate and candidates[MM.ui.state.candidate]
@@ -793,6 +796,12 @@ function SmartActionsTab:BuildContent(parent)
   local rightGroove = Widgets.VGroove(parent)
   rightGroove:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(RULE_WIDTH + 6), -6)
   rightGroove:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 6), 6)
+
+  -- Groove to groove and full height, as on the Layers tab.
+  local centerColumn = CreateFrame("Frame", nil, parent)
+  centerColumn:SetPoint("TOPLEFT", parent, "TOPLEFT", RAIL_WIDTH + 6, 0)
+  centerColumn:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(RULE_WIDTH + 6), 0)
+  MM.ui.Tutorial:SetAnchor("actions.center", centerColumn)
 end
 
 function SmartActionsTab:Build(parent)

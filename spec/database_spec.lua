@@ -195,6 +195,12 @@ describe("DB", function()
   end)
 
   describe("profiles", function()
+    it("remembers that the tutorial has run, account-wide", function()
+      assert.is_false(MM.DB:HasSeenTutorial())
+      MM.DB:MarkTutorialSeen()
+      assert.is_true(MM.DB:HasSeenTutorial())
+    end)
+
     it("creates a profile with one empty starter layer", function()
       local _, profile = MM.DB:CreateProfile("Raid")
       assert.equals("Raid", profile.name)

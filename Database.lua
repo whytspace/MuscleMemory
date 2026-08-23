@@ -268,9 +268,19 @@ function DB:FindLayerId(target)
   return matchByName(self:Layers(), target)
 end
 
--- A new profile has its own layers, actions and fallback, and starts with one
--- empty layer so there is somewhere to capture into. Import passes `bare`: the
--- package brings its own layers, and a stray empty one would just sit under them.
+-- Account-wide, and outside the undo snapshot: it records what the player has
+-- been shown, not configuration.
+function DB:HasSeenTutorial()
+  return self:GetRoot().tutorialSeen == true
+end
+
+function DB:MarkTutorialSeen()
+  self:GetRoot().tutorialSeen = true
+end
+
+-- Starts with one empty layer so there is somewhere to capture into. Import
+-- passes `bare`: the package brings its own, and a stray empty one would just
+-- sit underneath them.
 function DB:CreateProfile(name, opts)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
