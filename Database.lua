@@ -7,6 +7,9 @@ MM:RegisterModule("DB", DB)
 -- Runtime-only UI selection. Never saved.
 local session = {}
 
+-- The layer every new profile starts with, matching the fresh-install seed.
+local STARTER_LAYER = "Core"
+
 -- Slugify a display name into a unique key for `taken` (a map of existing ids).
 local function uniqueId(name, fallback, taken)
   local base = string.gsub(string.lower(name or fallback), "[^%w]+", "_")
@@ -265,19 +268,29 @@ function DB:FindLayerId(target)
   return matchByName(self:Layers(), target)
 end
 
--- A new profile starts empty: its own layers, actions and fallback.
-function DB:CreateProfile(name)
+-- A new profile has its own layers, actions and fallback, and starts with one
+-- empty layer so there is somewhere to capture into. Import passes `bare`: the
+-- package brings its own layers, and a stray empty one would just sit under them.
+function DB:CreateProfile(name, opts)
   local root = self:GetRoot()
   local id = uniqueId(name, "profile", root.profiles)
 
-  root.profiles[id] = {
+  local profile = {
     name = name and name ~= "" and name or ("Profile " .. (MM.Tables.Count(root.profiles) + 1)),
     fallback = "keep",
     layerOrder = {},
     layers = {},
     actions = {},
   }
-  return id, root.profiles[id]
+  root.profiles[id] = profile
+
+  if not (opts and opts.bare) then
+    local layerId = uniqueId(STARTER_LAYER, "layer", profile.layers)
+    profile.layers[layerId] = { name = STARTER_LAYER, slots = {}, enabled = true }
+    profile.layerOrder[1] = layerId
+  end
+
+  return id, profile
 end
 
 -- Clone an existing profile 1:1 (layers, actions, order and fallback) under a

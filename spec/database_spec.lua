@@ -195,13 +195,23 @@ describe("DB", function()
   end)
 
   describe("profiles", function()
-    it("creates an empty profile", function()
+    it("creates a profile with one empty starter layer", function()
       local _, profile = MM.DB:CreateProfile("Raid")
       assert.equals("Raid", profile.name)
       assert.equals("keep", profile.fallback)
+      assert.same({}, profile.actions)
+
+      assert.equals(1, #profile.layerOrder)
+      local layer = profile.layers[profile.layerOrder[1]]
+      assert.equals("Core", layer.name)
+      assert.is_true(layer.enabled)
+      assert.same({}, layer.slots)
+    end)
+
+    it("creates a bare profile for imports, which bring their own layers", function()
+      local _, profile = MM.DB:CreateProfile("Raid", { bare = true })
       assert.same({}, profile.layerOrder)
       assert.same({}, profile.layers)
-      assert.same({}, profile.actions)
     end)
 
     it("clones a profile 1:1, fully independent of the source", function()
@@ -261,10 +271,11 @@ describe("DB", function()
       MM.DB:CreateLayer("Shared")
       local other = MM.DB:CreateProfile("Other")
 
-      -- The new profile starts empty; the active profile's layer is not visible.
+      -- The new profile only has its own starter layer; "Shared" is not visible.
       MM.DB:SetActiveProfile(other)
       assert.is_nil(MM.DB:FindLayerId("Shared"))
-      assert.equals(0, #MM.DB:GetProfileLayers())
+      assert.equals(1, #MM.DB:GetProfileLayers())
+      assert.equals("Core", MM.DB:GetProfileLayers()[1].name)
     end)
   end)
 

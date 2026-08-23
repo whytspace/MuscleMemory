@@ -250,7 +250,7 @@ function Share:ImportSelection(package, selection, target)
   local profileId
   if target and target.newProfile then
     local name = target.newProfile ~= "" and target.newProfile or package.profileName
-    profileId = MM.DB:CreateProfile(name)
+    profileId = MM.DB:CreateProfile(name, { bare = true })
     if package.settings then
       -- Invalid or absent values are simply rejected by the setters.
       MM.DB:SetFallback(package.settings.fallback, profileId)

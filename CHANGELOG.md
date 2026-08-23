@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[Change]** A new profile now starts with one empty **Core** layer, so there is somewhere to capture into right away. Imported profiles are unaffected — they bring their own layers.
+
 ## 0.17.0 - 2026-08-16
 
 - **[New]** Layers and Smart Actions can now require a **profession**, keeping an engineer-only macro off your other characters.
