@@ -45,6 +45,22 @@ function Events:PromptApplyIfChanged()
   end
 end
 
+-- "Not this session" on the apply prompt: the automatic re-scans stop nagging
+-- until the next login or reload. Explicit checks (profile switch, import, undo)
+-- ask through PromptApplyIfChanged and still prompt.
+local silenced = false
+
+function Events:SilenceSession()
+  silenced = true
+  MM:Print(MM.L["no more apply prompts until your next login."])
+end
+
+local function promptUnlessSilenced()
+  if not silenced then
+    Events:PromptApplyIfChanged()
+  end
+end
+
 -- Login, zoning and spec swaps stream data in a burst; an early read misjudges
 -- slots, or sees empty bars. Trailing-debounce until it settles.
 local REEVALUATE_DELAY = 5.0
@@ -56,14 +72,14 @@ local loadingScreen = false
 
 local function reevaluateProfile()
   if not C_Timer then
-    Events:PromptApplyIfChanged()
+    promptUnlessSilenced()
     return
   end
   reevaluateGen = reevaluateGen + 1
   local gen = reevaluateGen
   C_Timer.After(REEVALUATE_DELAY, function()
     if gen == reevaluateGen and not loadingScreen then
-      Events:PromptApplyIfChanged()
+      promptUnlessSilenced()
     end
   end)
 end

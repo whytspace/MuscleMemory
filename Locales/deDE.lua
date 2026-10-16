@@ -240,6 +240,8 @@ MM.Locales.deDE = {
   ["Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window."] = "Muscle Memory: Änderungen an den Aktionsleisten verfügbar (Details im Chat). Jetzt anwenden?\nÖffne das Fenster mit /mm.",
   ["Apply"] = "Anwenden",
   ["Cancel"] = "Abbrechen",
+  ["Not this session"] = "Nicht in dieser Sitzung",
+  ["no more apply prompts until your next login."] = "keine Anwenden-Abfragen mehr bis zur nächsten Anmeldung.",
   ["Done"] = "Fertig",
   ["Delete"] = "Löschen",
 

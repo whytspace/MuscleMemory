@@ -81,6 +81,22 @@ describe("Events", function()
     assert.equals(1, applies)
   end)
 
+  it("stops prompting for the rest of the session once silenced", function()
+    MM.Events:SilenceSession()
+    MM.Events:OnEvent("SPELLS_CHANGED")
+    stubs:flushTimers()
+    assert.equals(0, prompts)
+    assert.equals(0, previews)
+  end)
+
+  it("still prompts on an explicit check after being silenced", function()
+    -- Silencing mutes the automatic re-scans; switching profile by hand, importing
+    -- or undoing asks directly and still prompts.
+    MM.Events:SilenceSession()
+    MM.Events:PromptApplyIfChanged()
+    assert.equals(1, prompts)
+  end)
+
   it("does nothing on changes when the response is ignore", function()
     MM.DB:SetResponse("ignore")
     MM.Events:OnEvent("SPELLS_CHANGED")

@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+- **[New]** The apply prompt now has a **Not this session** button that stops further prompts until your next login, for when you park something on a bar on purpose.
+
 ## 0.18.0 - 2026-08-23
 
 - **[New]** An interactive **tutorial** that walks you through the window one section at a time, from the "i" button in the top-left corner. It opens by itself the first time you use Muscle Memory.

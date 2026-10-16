@@ -437,17 +437,22 @@ function UI:PromptApply()
     return
   end
 
-  -- Standard Blizzard two-button layout: button1 (left, OnAccept) is the OK
-  -- action -- Apply -- and button2 (right, OnCancel) just dismisses. Apply lives
-  -- on OnAccept, which the framework only fires on a real button1 click, so the
-  -- recycle/displace path (which routes through OnCancel) can never apply.
+  -- Standard Blizzard layout: button1 (OnAccept) is the OK action -- Apply --
+  -- button2 (OnCancel) just dismisses, and button3 (OnAlt) silences the prompt
+  -- for this session. Apply lives on OnAccept, which the framework only fires on
+  -- a real button1 click, so the recycle/displace path (which routes through
+  -- OnCancel) can never apply.
   StaticPopupDialogs[APPLY_DIALOG] = StaticPopupDialogs[APPLY_DIALOG]
     or {
       text = L["Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window."],
       button1 = L["Apply"],
       button2 = L["Cancel"],
+      button3 = L["Not this session"],
       OnAccept = function()
         MM.Applier:ApplyProfile()
+      end,
+      OnAlt = function()
+        MM.Events:SilenceSession()
       end,
       -- Cancel just closes; no apply on any dismissal path.
       timeout = 0,

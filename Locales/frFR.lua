@@ -244,6 +244,8 @@ MM.Locales.frFR = {
   ["Muscle Memory: action bar changes are available (details in chat). Apply them now?\nUse /mm to open the window."] = "Muscle Memory : des changements de barres d'action sont disponibles (détails dans le chat). Les appliquer maintenant ?\nUtilisez /mm pour ouvrir la fenêtre.",
   ["Apply"] = "Appliquer",
   ["Cancel"] = "Annuler",
+  ["Not this session"] = "Pas pour cette session",
+  ["no more apply prompts until your next login."] = "plus de demandes d'application jusqu'à votre prochaine connexion.",
   ["Done"] = "Terminé",
   ["Delete"] = "Supprimer",
 
