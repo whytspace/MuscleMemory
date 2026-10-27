@@ -4,6 +4,8 @@ All notable player-facing changes are recorded here.
 
 ## Unreleased
 
+## 0.19.0 - 2026-10-27
+
 - **[New]** The apply prompt now has a **Not this session** button that stops further prompts until your next login, for when you park something on a bar on purpose.
 - **[Change]** Settings → **When a slot can't resolve** → **Clear** now also empties slots with actions you can't use yet, like unlearned spells, consistent with Smart Actions.
 - **[Change]** Updated for patch 12.1.5.
