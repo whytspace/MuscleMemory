@@ -346,7 +346,7 @@ MM.Locales.frFR = {
 
   -- Settings tab ------------------------------------------------------------------------
   ["When a slot can't resolve"] = "Quand un emplacement ne se résout pas",
-  ["If a Smart Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."] = "Si une action intelligente n'a aucune capacité utilisable pour le personnage actuel, décidez ce qui arrive à cet emplacement de barre d'action quand un calque est appliqué.",
+  ["Decide what happens to an action-bar slot when a Layer is applied and the current character can't use its action (like an unlearned spell or a Smart Action with no usable ability)."] = "Décidez ce qui arrive à un emplacement de barre d'action quand un calque est appliqué et que le personnage actuel ne peut pas utiliser son action (comme un sort non appris ou une action intelligente sans capacité utilisable).",
   ["When changes are detected"] = "Quand des changements sont détectés",
   ["An event such as logging in, changing specialization or learning a spell re-scans the active profile. Choose how the add-on reacts when that scan finds changes to apply."] = "Un événement comme une connexion, un changement de spécialisation ou l'apprentissage d'un sort relance l'analyse du profil actif. Choisissez comment l'add-on réagit quand cette analyse trouve des changements à appliquer.",
   ["When binding an action"] = "Quand vous placez une action",

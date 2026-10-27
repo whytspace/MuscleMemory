@@ -2,7 +2,7 @@ local ADDON_NAME, MM = ...
 local L = MM.L
 
 -- The Settings tab: the active profile's fallback, which decides what happens to
--- a managed slot whose smartAction can't resolve for the current character. The design
+-- a managed slot whose action can't resolve or be placed for the current character. The design
 -- shows an Ignore/Clear segmented control; natively that's a pair of radios.
 -- "Ignore" maps to the stored fallback value "keep".
 local SettingsTab = {}
@@ -76,7 +76,7 @@ function SettingsTab:Build(parent)
   local blurb = Widgets.Label(
     column,
     "GameFontHighlightSmall",
-    L["If a Smart Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."]
+    L["Decide what happens to an action-bar slot when a Layer is applied and the current character can't use its action (like an unlearned spell or a Smart Action with no usable ability)."]
   )
   blurb:SetPoint("TOPLEFT", subHeading, "BOTTOMLEFT", 0, -6)
   blurb:SetWidth(480)

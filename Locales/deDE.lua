@@ -342,7 +342,7 @@ MM.Locales.deDE = {
 
   -- Settings tab ------------------------------------------------------------------------
   ["When a slot can't resolve"] = "Wenn ein Slot nicht auflösbar ist",
-  ["If a Smart Action has no usable ability for the current character, decide what happens to that action-bar slot when a Layer is applied."] = "Wenn eine smarte Aktion für den aktuellen Charakter keine nutzbare Fähigkeit hat, entscheide, was beim Anwenden einer Ebene mit dem Aktionsleisten-Slot passiert.",
+  ["Decide what happens to an action-bar slot when a Layer is applied and the current character can't use its action (like an unlearned spell or a Smart Action with no usable ability)."] = "Entscheide, was beim Anwenden einer Ebene mit einem Aktionsleisten-Slot passiert, dessen Aktion der aktuelle Charakter nicht nutzen kann (etwa ein nicht erlernter Zauber oder eine smarte Aktion ohne nutzbare Fähigkeit).",
   ["When changes are detected"] = "Wenn Änderungen erkannt werden",
   ["An event such as logging in, changing specialization or learning a spell re-scans the active profile. Choose how the add-on reacts when that scan finds changes to apply."] = "Ereignisse wie Einloggen, Spezialisierungswechsel oder das Erlernen eines Zaubers durchsuchen das aktive Profil erneut. Wähle, wie das Add-on reagiert, wenn dabei anwendbare Änderungen gefunden werden.",
   ["When binding an action"] = "Beim Belegen einer Aktion",

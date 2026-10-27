@@ -82,8 +82,9 @@ end
 
 -- The one decision preview, apply, the API and the pending-changes check all
 -- share: what would applying `entry` do to its slot right now? Returns "place"
--- (resolved action differs from the live one), "clear" (unresolved slot the
--- fallback empties), "unavailable" (resolved but not placeable), "keep"
+-- (resolved action differs from the live one), "clear" (unresolved or
+-- unplaceable slot the fallback empties), "unavailable" (resolved but not
+-- placeable, under the keep fallback), "keep"
 -- (unresolved and left unchanged — worth a debug note), or nil when there is
 -- nothing to do.
 function Applier:ClassifyEntry(entry)
@@ -92,10 +93,13 @@ function Applier:ClassifyEntry(entry)
     if MM.Actions.IsResolvedInSlot(entry.resolved, slot) then
       return nil
     end
-    if entry.resolved.pickupAvailable == false then
+    if entry.resolved.pickupAvailable ~= false then
+      return "place"
+    end
+    if entry.fallback ~= "clear" then
       return "unavailable"
     end
-    return "place"
+    -- Unplaceable under the clear fallback: treated like an unresolved slot.
   end
 
   if entry.fallback == "clear" then
@@ -132,7 +136,7 @@ end
 -- Label for what a resolved entry would place, annotating the macro lifecycle.
 function Applier:DescribeTo(entry)
   local resolved = entry.resolved
-  if not resolved or resolved.kind == "empty" then
+  if not resolved or resolved.kind == "empty" or resolved.pickupAvailable == false then
     return L["empty"]
   end
   local label = resolved.label
@@ -304,7 +308,8 @@ function Applier:ApplyEntry(entry)
     return false, "invalid action slot"
   end
 
-  if not entry.resolved then
+  local unplaceable = entry.resolved and entry.resolved.pickupAvailable == false
+  if not entry.resolved or (unplaceable and entry.fallback == "clear") then
     if entry.fallback == "clear" then
       local ok, reason = MM.Actions.ClearSlot(slot)
       if ok then
